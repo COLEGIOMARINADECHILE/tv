@@ -1,0 +1,51 @@
+# Crea la APK de Android TV en GitHub (sin instalar Android Studio).
+name: Crear APK Android TV
+
+on:
+  workflow_dispatch:
+    inputs:
+      perfil:
+        description: 'Pantalla con la que abre la app'
+        type: choice
+        default: inicio
+        options: [inicio, funcionarios, familias]
+  push:
+    paths: ['android/**', '.github/workflows/apk.yml']
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Poner la dirección del sitio (GitHub Pages de este repositorio)
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          URL="https://${OWNER}.github.io/${{ github.event.repository.name }}/index.html"
+          PERFIL="${{ inputs.perfil }}"
+          if [ -n "$PERFIL" ] && [ "$PERFIL" != "inicio" ]; then URL="${URL}?perfil=${PERFIL}"; fi
+          sed -i "s#https://USUARIO.github.io/REPOSITORIO/index.html#${URL}#" android/app/src/main/java/cl/marinadechile/tv/MainActivity.java
+          grep START_URL android/app/src/main/java/cl/marinadechile/tv/MainActivity.java
+
+      - name: Compilar APK
+        working-directory: android
+        run: gradle assembleDebug --no-daemon
+
+      - name: Renombrar
+        run: |
+          PERFIL="${{ inputs.perfil }}"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "ColegioMarinaTV-${PERFIL:-inicio}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ColegioMarinaTV-APK
+          path: ColegioMarinaTV-*.apk
