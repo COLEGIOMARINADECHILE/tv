@@ -149,7 +149,8 @@
   UI.autoData(data => {
     renderCanales(data.canales || []);
     renderAgenda(API.para(data.actividades, 'funcionarios'));
-    UI.gallery(document.getElementById('gal'), API.para(data.fotos, 'funcionarios'), CFG.DURACION_FOTO_SEG, 'Actividades del colegio');
+    UI.gallery(document.getElementById('gal'), API.para(data.fotos, 'funcionarios'),
+      { seg: CFG.DURACION_FOTO_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: false },'Actividades del colegio');
     renderEdu(API.para(data.noticias, 'funcionarios'));
     UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'funcionarios'));
   });

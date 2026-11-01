@@ -58,7 +58,9 @@
   setInterval(rotarTip, CFG.DURACION_SLIDE_SEG * 1000);
 
   UI.autoData(data => {
-    UI.gallery(document.getElementById('gal'), API.para(data.fotos, 'familias'), CFG.DURACION_FOTO_SEG, 'Actividades del colegio');
+    UI.gallery(document.getElementById('gal'), API.para(data.fotos, 'familias'),
+      // con sonido solo dentro de la app (el navegador bloquea autoplay con audio)
+      { seg: CFG.DURACION_FOTO_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS && !!window.AndroidTV },'Actividades del colegio');
     renderFechas(data.fechas || [], (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos'));
     notas = API.para(data.noticias, 'familias');
     rotarTip();

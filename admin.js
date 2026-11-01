@@ -25,13 +25,18 @@
       linea: a => [a.titulo, `${a.fecha} ${a.hora || ''} · ${a.lugar || ''} · ${a.publico}`],
     },
     fotos: {
-      nombre: '📸 Fotografías',
+      nombre: '📸 Fotos y videos',
       form: `<label>Título / actividad<input name="titulo" required></label>
-        <label>Imagen<input type="file" name="imagen" accept="image/*" required></label>
+        <label>Tipo
+          <select name="tipo"><option value="imagen">📷 Imagen</option><option value="video">▶️ Video de YouTube</option></select></label>
+        <label data-tipo="imagen">Imagen<input type="file" name="imagen" accept="image/*"></label>
+        <label data-tipo="video" hidden>Enlace de YouTube<input name="url" placeholder="https://www.youtube.com/watch?v=..."></label>
         <img class="preview" id="preview" hidden alt="">${PUBLICO}
-        <p class="note">La imagen se reduce automáticamente a 1920 px antes de subirla a Google Drive.</p>`,
-      linea: f => [f.titulo, f.publico],
-      img: f => f.url,
+        <p class="note" data-tipo="imagen">La imagen se reduce automáticamente a 1920 px antes de subirla a Google Drive.</p>
+        <p class="note" data-tipo="video" hidden>El video se reproduce completo y luego pasa al siguiente elemento del carrusel.
+        Debe ser público o "no listado" y permitir insertarse en otros sitios.</p>`,
+      linea: f => [(UI.youtubeId(f.url) ? '▶ ' : '') + f.titulo, f.publico],
+      img: f => (UI.youtubeId(f.url) ? `https://img.youtube.com/vi/${UI.youtubeId(f.url)}/mqdefault.jpg` : f.url),
     },
     noticias: {
       nombre: '📚 Educación',
@@ -157,22 +162,44 @@
 
     const form = document.getElementById('f-add');
     const file = form.querySelector('input[type=file]');
+    const preview = document.getElementById('preview');
+    const tipo = form.elements.tipo;
     if (file) file.onchange = () => {
-      const p = document.getElementById('preview');
-      p.src = URL.createObjectURL(file.files[0]);
-      p.hidden = false;
+      preview.src = URL.createObjectURL(file.files[0]);
+      preview.hidden = false;
     };
+    if (tipo) {
+      // mostrar campos de imagen o de video según el tipo elegido
+      tipo.onchange = () => {
+        form.querySelectorAll('[data-tipo]').forEach(el => (el.hidden = el.dataset.tipo !== tipo.value));
+        preview.hidden = true;
+      };
+      form.elements.url.oninput = () => {
+        const id = UI.youtubeId(form.elements.url.value);
+        preview.hidden = !id;
+        if (id) preview.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+      };
+    }
 
     form.onsubmit = async e => {
       e.preventDefault();
       const btn = form.querySelector('.btn');
-      btn.disabled = true;
-      btn.textContent = 'Publicando…';
       try {
         const item = {};
-        new FormData(form).forEach((v, k) => { if (k !== 'imagen') item[k] = v; });
+        new FormData(form).forEach((v, k) => { if (k !== 'imagen' && k !== 'tipo') item[k] = v; });
+        const esVideo = tipo && tipo.value === 'video';
+        if (tipo && esVideo) {
+          const id = UI.youtubeId(item.url);
+          if (!id) throw new Error('El enlace no parece ser un video de YouTube');
+          item.url = 'https://www.youtube.com/watch?v=' + id;
+        } else if (tipo) {
+          delete item.url;
+          if (!file.files[0]) throw new Error('Seleccione una imagen');
+        }
+        btn.disabled = true;
+        btn.textContent = 'Publicando…';
         let image = null;
-        if (file && file.files[0]) image = { data: await comprimir(file.files[0]), mimeType: 'image/jpeg', name: file.files[0].name.replace(/\.\w+$/, '') + '.jpg' };
+        if (file && !esVideo && file.files[0]) image ={ data: await comprimir(file.files[0]), mimeType: 'image/jpeg', name: file.files[0].name.replace(/\.\w+$/, '') + '.jpg' };
         await API.admin('add', { password, sheet: seccion, item, image });
         toast('Publicado ✔');
         await recargar();

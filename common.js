@@ -80,28 +80,76 @@
     });
   }
 
-  // Galería de fotos con transición tipo Ken Burns
-  function gallery(el, fotos, seg, etiqueta) {
-    clearInterval(el._timer);
+  // Galería de fotos (transición tipo Ken Burns) y videos de YouTube.
+  // opts: { seg, maxVideo, sonido }
+  function gallery(el, fotos, opts, etiqueta) {
+    // Al refrescar datos no reiniciar el carrusel (ni cortar un video) si nada cambió
+    const firma = JSON.stringify(fotos.map(f => f.url + '|' + f.titulo));
+    if (el._firma === firma) return;
+    el._firma = firma;
+    clearTimeout(el._timer);
+    if (el._onMsg) window.removeEventListener('message', el._onMsg);
     if (!fotos.length) {
-      el.innerHTML = '<p class="empty-msg" style="padding-top:20vh">Aún no hay fotografías publicadas</p>';
+      el.innerHTML = '<p class="empty-msg" style="padding-top:20vh">Aún no hay fotografías ni videos publicados</p>';
       return;
     }
     el.innerHTML =
-      fotos.map(f => `<div class="ph"><img src="${esc(f.url)}" alt="${esc(f.titulo)}" loading="lazy">
-        <div class="caption"><small>${esc(etiqueta)}</small>${esc(f.titulo)}</div></div>`).join('') +
+      fotos.map(f => {
+        const yt = youtubeId(f.url);
+        const media = yt
+          ? `<img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" alt="">` // portada mientras carga
+          : `<img src="${esc(f.url)}" alt="${esc(f.titulo)}" loading="lazy">`;
+        return `<div class="ph ${yt ? 'video' : ''}" data-yt="${yt || ''}">${media}
+          <div class="caption"><small>${yt ? '▶ Video · ' : ''}${esc(etiqueta)}</small>${esc(f.titulo)}</div></div>`;
+      }).join('') +
       `<div class="dots">${fotos.map(() => '<i></i>').join('')}</div>`;
-    const phs = el.querySelectorAll('.ph');
+    const phs = [...el.querySelectorAll('.ph')];
     const dots = el.querySelectorAll('.dots i');
-    let i = 0;
-    const show = () => {
-      phs.forEach((p, k) => p.classList.toggle('active', k === i));
-      dots.forEach((d, k) => d.classList.toggle('on', k === i));
+    let i = -1;
+
+    const siguiente = () => {
+      clearTimeout(el._timer);
+      const prev = phs[i];
       i = (i + 1) % phs.length;
+      const ph = phs[i];
+      // solo un video a la vez: se quita el reproductor del anterior
+      if (prev && prev !== ph) prev.querySelector('iframe')?.remove();
+      phs.forEach(p => p.classList.toggle('active', p === ph));
+      dots.forEach((d, k) => d.classList.toggle('on', k === i));
+      if (ph.dataset.yt) {
+        if (!ph.querySelector('iframe')) {
+          const origin = location.protocol.startsWith('http') ? '&origin=' + encodeURIComponent(location.origin) : '';
+          ph.insertAdjacentHTML('afterbegin', `<iframe allow="autoplay; encrypted-media"
+            src="https://www.youtube.com/embed/${ph.dataset.yt}?autoplay=1&mute=${opts.sonido ? 0 : 1}&controls=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1${origin}"></iframe>`);
+          const fr = ph.querySelector('iframe');
+          // pedir a YouTube que avise cuando el video termine
+          fr.onload = () => fr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+        }
+        el._timer = setTimeout(siguiente, opts.maxVideo * 1000);
+      } else if (phs.length > 1) {
+        el._timer = setTimeout(siguiente, opts.seg * 1000);
+      }
     };
-    show();
-    el._timer = setInterval(show, seg * 1000);
+
+    el._onMsg = e => {
+      if (!/youtube\.com$/.test(new URL(e.origin).hostname)) return;
+      let d;
+      try { d = JSON.parse(e.data); } catch (err) { return; }
+      const estado = d.event === 'onStateChange' ? d.info : d.info && d.info.playerState;
+      if (estado === 0 && phs[i] && phs[i].dataset.yt) {
+        if (phs.length > 1) siguiente();
+        else phs[i].querySelector('iframe').contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+      }
+    };
+    window.addEventListener('message', el._onMsg);
+    siguiente();
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery };
+  // ID de un enlace de YouTube (watch, youtu.be, shorts, live, embed) o null
+  function youtubeId(url) {
+    const m = String(url || '').match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId };
 })();
