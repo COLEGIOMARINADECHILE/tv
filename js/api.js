@@ -18,6 +18,7 @@
       { id: 'a5', titulo: 'Desayuno de funcionarios', descripcion: 'Celebración de cumpleaños del mes.', fecha: hoyMas(4), hora: '08:00', lugar: 'Comedor', publico: 'funcionarios' },
     ],
     fotos: [
+      { id: 'f0', titulo: 'Video de ejemplo', url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ', publico: 'ambos', audio: 'si', audioFunc: 'no' },
       { id: 'f1', titulo: 'Feria científica 2026', url: 'https://picsum.photos/seed/marina1/1280/720', publico: 'ambos' },
       { id: 'f2', titulo: 'Día del Profesor', url: 'https://picsum.photos/seed/marina2/1280/720', publico: 'funcionarios' },
       { id: 'f3', titulo: 'Acto de Glorias Navales', url: 'https://picsum.photos/seed/marina3/1280/720', publico: 'ambos' },
@@ -44,11 +45,17 @@
       { id: 'v2', texto: 'Recuerde revisar el correo institucional diariamente', publico: 'funcionarios' },
       { id: 'v3', texto: 'Horario de atención de apoderados: lunes a viernes 8:00 a 13:00', publico: 'familias' },
     ],
+    musica: [
+      { id: 'm1', titulo: 'Pista de ejemplo (libre)', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+    ],
     demo: true,
   };
 
+  // ...html?demo=1 muestra datos de ejemplo (para revisar el diseño)
+  const MODO_DEMO = !CFG.API_URL || /[?&]demo=1/.test(location.search);
+
   async function cargarDatos() {
-    if (!CFG.API_URL) return DEMO;
+    if (MODO_DEMO) return DEMO;
     try {
       const r = await fetch(CFG.API_URL + '?t=' + Date.now());
       const data = await r.json();
@@ -61,6 +68,19 @@
         if (c) return JSON.parse(c);
       } catch (e2) {}
       return DEMO;
+    }
+  }
+
+  // Consulta liviana: número que cambia cada vez que el administrador publica algo.
+  // null = no disponible (sin API o backend antiguo).
+  async function version() {
+    if (MODO_DEMO) return 'demo';
+    try {
+      const r = await fetch(CFG.API_URL + '?accion=version&t=' + Date.now());
+      const d = await r.json();
+      return d.version === undefined ? null : String(d.version);
+    } catch (e) {
+      return undefined; // sin conexión: no hacer nada esta vez
     }
   }
 
@@ -80,5 +100,5 @@
   const para = (lista, perfil) =>
     (lista || []).filter(x => !x.publico || x.publico === 'ambos' || x.publico === perfil);
 
-  window.API = { cargarDatos, admin, para, DEMO };
+  window.API = { cargarDatos, version, admin, para, DEMO };
 })();

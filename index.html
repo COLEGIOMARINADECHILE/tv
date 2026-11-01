@@ -40,8 +40,10 @@
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { items[Math.max(i - 1, 0)].focus(); e.preventDefault(); }
     });
     // Abrir directamente un perfil guardado: index.html?perfil=funcionarios
-    const p = new URLSearchParams(location.search).get('perfil');
-    if (p === 'funcionarios' || p === 'familias') location.replace(p + '.html');
+    // index.html?perfil=funcionarios&tv=0 → funcionarios sin TV
+    const q = new URLSearchParams(location.search);
+    const p = q.get('perfil');
+    if (p === 'funcionarios' || p === 'familias') location.replace(p + '.html' + (q.get('tv') === '0' ? '?tv=0' : ''));
   </script>
 </body>
 </html>
