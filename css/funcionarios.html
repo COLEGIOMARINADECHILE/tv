@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Funcionarios · Colegio Marina de Chile</title>
+  <link rel="icon" href="assets/insignia.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=20261101d">
+</head>
+<body>
+  <div class="tv">
+    <div id="hdr"></div>
+
+    <main class="split">
+      <!-- Mitad izquierda: televisión -->
+      <section class="tv-side">
+        <div class="player" id="player"></div>
+        <div class="channels">
+          <div class="card-title"><span class="dot"></span>Canales
+            <span class="hint" style="margin-left:auto">
+              <kbd>◀ ▶ ▲ ▼</kbd> elegir · <kbd>OK</kbd> cambiar · <kbd>CH+/CH−</kbd> · números
+            </span>
+          </div>
+          <div class="channel-list" id="channels"></div>
+        </div>
+      </section>
+
+      <!-- Mitad derecha: información del colegio -->
+      <section class="card info2">
+        <div class="info-top">
+          <div class="gallery" id="gal"></div>
+          <div class="edu-box">
+            <div class="card-title"><span class="dot"></span>📚 Educación</div>
+            <div class="scroller" id="edu"></div>
+          </div>
+        </div>
+        <div class="agenda-box">
+          <div class="card-title"><span class="dot"></span>📅 Actividades de la semana · funcionarios</div>
+          <div class="scroller" id="agenda"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="ticker" id="ticker"></footer>
+  </div>
+
+  <script src="js/config.js?v=20261101d"></script>
+  <script src="js/api.js?v=20261101d"></script>
+  <script src="js/common.js?v=20261101d"></script>
+  <script src="js/funcionarios.js?v=20261101d"></script>
+</body>
+</html>

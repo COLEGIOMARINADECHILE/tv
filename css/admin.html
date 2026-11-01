@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administrador · Colegio Marina de Chile</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="assets/insignia.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=20261101d">
+  <style>
+    body { overflow: auto; font-size: 15px; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+    .top { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+    .top img { height: 64px; }
+    .top h1 { font-size: 22px; color: #fff; }
+    .top p { color: var(--gold); font-size: 13px; letter-spacing: .25em; text-transform: uppercase; }
+    .top .right { margin-left: auto; display: flex; gap: 8px; }
+    .panel { background: var(--glass); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+    .login { max-width: 380px; margin: 12vh auto; text-align: center; }
+    .login img { height: 120px; margin: 0 auto 12px; }
+    .nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    .nav button { background: var(--glass); border: 1px solid var(--line); border-radius: 99px; padding: 9px 16px; cursor: pointer; font-weight: 700; }
+    .nav button.on { background: var(--gold); color: var(--navy-900); border-color: var(--gold); }
+    .grid { display: grid; grid-template-columns: 360px 1fr; gap: 18px; align-items: start; }
+    @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } .top .right { display: none; } }
+    form { display: flex; flex-direction: column; gap: 12px; }
+    label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; display: flex; flex-direction: column; gap: 5px; }
+    input, textarea, select {
+      font: inherit; color: #fff; background: rgba(6,21,58,.6); border: 1px solid var(--line);
+      border-radius: 10px; padding: 10px 12px; text-transform: none; letter-spacing: 0; font-weight: 500;
+    }
+    input:focus, textarea:focus, select:focus { outline: 2px solid var(--gold); }
+    textarea { min-height: 90px; resize: vertical; }
+    .btn { background: var(--gold); color: var(--navy-900); border: 0; border-radius: 10px; padding: 12px 16px; font-weight: 800; cursor: pointer; }
+    .btn.ghost { background: var(--glass-strong); color: #fff; }
+    .btn:disabled { opacity: .5; cursor: wait; }
+    h2 { font-size: 17px; color: #fff; margin-bottom: 14px; }
+    .items { display: flex; flex-direction: column; gap: 8px; }
+    .item { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: rgba(6,21,58,.5); }
+    .item img { width: 96px; height: 54px; object-fit: cover; border-radius: 8px; }
+    .item .t { flex: 1; min-width: 0; }
+    .item .t b { color: #fff; display: block; }
+    .item .t small { color: var(--muted); }
+    .item .toggle { background: rgba(255,255,255,.06); border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 6px 8px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+    .item .toggle.on { border-color: var(--gold); color: var(--gold); }
+    label.check { flex-direction: row; align-items: flex-start; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--ink); font-weight: 500; }
+    label.check input { margin-top: 2px; accent-color: var(--gold); }
+    .item .del { background: transparent; border: 1px solid var(--red); color: #ff8b8e; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+    .preview { max-height: 180px; border-radius: 10px; object-fit: cover; }
+    .msg { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 10px; font-weight: 700; z-index: 99; }
+    .msg.ok { background: #2fbf71; color: #fff; } .msg.err { background: var(--red); color: #fff; }
+    .note { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+    .warn { background: rgba(229,72,77,.15); border: 1px solid var(--red); padding: 12px; border-radius: 10px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app"></div>
+  <script src="js/config.js?v=20261101d"></script>
+  <script src="js/api.js?v=20261101d"></script>
+  <script src="js/common.js?v=20261101d"></script>
+  <script src="js/admin.js?v=20261101d"></script>
+</body>
+</html>
