@@ -146,19 +146,31 @@
     UI.autoScroll(el);
   }
 
+  // Educación: los videos se reproducen dentro de su propio recuadro; los textos van debajo
+  const eduVideo = document.getElementById('edu-video');
+
+  // Educación muestra UNA publicación a la vez, en grande y rotando:
+  // los videos se reproducen completos en el recuadro; los textos se leen ~15 s.
   function renderEdu(notas) {
-    const icons = ['💡', '🎯', '🧠', '🌱', '📖'];
-    const el = document.getElementById('edu');
-    el.innerHTML = notas.length ? notas.map((n, i) => `
-      <article class="edu" style="animation-delay:${i * 0.1}s">
-        ${UI.miniaturaVideo(UI.enlaceVideo(n))}
-        <h3>${icons[i % icons.length]} ${esc(n.titulo)}</h3>${UI.textoLimpio(n) ? `<p>${esc(UI.textoLimpio(n))}</p>` : ''}
-      </article>`).join('') : '<p class="empty-msg">Sin publicaciones</p>';
-    UI.autoScroll(el);
+    const items = notas.map(n => UI.enlaceVideo(n)
+      ? { titulo: n.titulo, url: UI.enlaceVideo(n), audio: n.audio, audioFunc: n.audioFunc }
+      : { titulo: n.titulo, texto: UI.textoLimpio(n) });
+    eduVideo.hidden = false;
+    UI.gallery(eduVideo, items,
+      { seg: CFG.DURACION_EDUCACION_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true,
+        audioDe: f => f.audioFunc === 'si', onCambio: onCambioEdu },
+      '📚 Experiencia educativa');
+    if (!items.length) eduVideo.innerHTML = '<p class="empty-msg" style="padding-top:8vh">Sin publicaciones</p>';
+    return items.filter(f => f.url);
   }
 
-  // Si un video suena, la TV se pausa para que no se mezclen; vuelve al terminar
-  function onCambioVideo(conAudio) {
+  // Sonido: si el video de Educación suena, tiene prioridad y TODO lo demás se silencia
+  // (el carrusel de fotos y videos, y la TV se pausa). Vuelve al terminar.
+  let galAudio = false;
+  let eduAudio = false;
+
+  function actualizarTv() {
+    const conAudio = galAudio || eduAudio;
     if (!conTv || conAudio === tvPausada) return;
     tvPausada = conAudio;
     if (conAudio) {
@@ -170,20 +182,37 @@
     }
   }
 
+  const gal = document.getElementById('gal');
+
+  function onCambioVideo(conAudio) {
+    galAudio = conAudio;
+    actualizarTv();
+  }
+
+  function onCambioEdu(conAudio) {
+    eduAudio = conAudio;
+    if (gal._setMudo) gal._setMudo(conAudio);
+    else gal._mudo = conAudio;
+    actualizarTv();
+  }
+
   function activarSonido() {
     document.getElementById('gal')._activarSonido();
+    eduVideo._activarSonido && eduVideo._activarSonido();
   }
 
   UI.autoData(data => {
+    const aj = UI.ajustes(data);
     renderCanales(data.canales || []);
     renderAgenda(API.para(data.actividades, 'funcionarios'));
-    const fotos = UI.carrusel(data, 'funcionarios');
+    UI.avisoHoy(document.getElementById('aviso-hoy'), API.para(data.actividades, 'funcionarios'));
+    const fotos = API.para(data.fotos, 'funcionarios');
     UI.gallery(document.getElementById('gal'), fotos,
-      { seg: CFG.DURACION_FOTO_FUNCIONARIOS_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true,
+      { seg: aj.segFotosFuncionarios, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true,
         audioDe: f => f.audioFunc === 'si', onCambio: onCambioVideo },
       'Actividades del colegio');
-    if (fotos.some(f => UI.youtubeId(f.url) && f.audioFunc === 'si')) UI.pedirSonido(activarSonido);
-    renderEdu(API.para(data.noticias, 'funcionarios'));
+    const videosEdu = renderEdu(API.para(data.noticias, 'funcionarios'));
+    if (fotos.concat(videosEdu).some(f => UI.youtubeId(f.url) && f.audioFunc === 'si')) UI.pedirSonido(activarSonido);
     UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'funcionarios'));
   });
 })();

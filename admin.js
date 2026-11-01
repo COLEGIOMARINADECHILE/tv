@@ -29,7 +29,8 @@
       form: `<label>Título / actividad<input name="titulo" required></label>
         <label>Tipo
           <select name="tipo"><option value="imagen">📷 Imagen</option><option value="video">▶️ Video de YouTube</option></select></label>
-        <label data-tipo="imagen">Imagen<input type="file" name="imagen" accept="image/*"></label>
+        <label data-tipo="imagen">Imágenes (puede elegir varias a la vez con Ctrl)<input type="file" name="imagen" accept="image/*" multiple></label>
+        <p class="note cuantas" data-tipo="imagen" style="color:var(--gold)"></p>
         <label data-tipo="video" hidden>Enlace de YouTube<input name="url" placeholder="https://www.youtube.com/watch?v=..."></label>
         <label data-tipo="video" hidden class="check"><input type="checkbox" name="audio" value="si" checked>
           🔊 Con sonido en <b>Familias</b> (la música de fondo baja mientras suena)</label>
@@ -94,6 +95,7 @@
       form: `<label>Texto del aviso<input name="texto" required maxlength="140"></label>${PUBLICO}`,
       linea: a => [a.texto, a.publico],
     },
+    ajustes: { nombre: '⚙️ Ajustes' },
     canales: {
       nombre: '📺 Canales TV',
       form: `<label>Nombre<input name="nombre" required></label>
@@ -173,21 +175,27 @@
     vistaPanel();
   }
 
+  // Ajustes generales: mensaje para las familias y segundos de las fotos
+  function formAjustes() {
+    const a = UI.ajustes(data);
+    return `<div class="panel" style="max-width:720px">
+      <h2>⚙️ Ajustes de las pantallas</h2>
+      <form id="f-ajustes">
+        <label>Título del mensaje para las familias<input name="mensajeTitulo" value="${esc(a.mensajeTitulo)}" maxlength="60"></label>
+        <label>Mensaje para las familias<textarea name="mensajeTexto" maxlength="280">${esc(a.mensajeTexto)}</textarea></label>
+        <p class="note">Aparece en el recuadro amarillo de la pantalla Familias (rota junto a las publicaciones de Educación).
+        Déjelo vacío para no mostrarlo.</p>
+        <label>Segundos que se ve cada foto · Familias<input type="number" name="segFotosFamilias" min="3" max="120" value="${esc(a.segFotosFamilias)}"></label>
+        <label>Segundos que se ve cada foto · Funcionarios<input type="number" name="segFotosFuncionarios" min="3" max="120" value="${esc(a.segFotosFuncionarios)}"></label>
+        <p class="note">Los videos siempre se muestran completos.</p>
+        <button class="btn">Guardar ajustes</button>
+      </form></div>`;
+  }
+
   function vistaPanel() {
     const S = SECCIONES[seccion];
     const lista = (data[seccion] || []).slice().reverse();
-    app.innerHTML = `
-      <div class="top">
-        <img src="insignia.png" alt="Escudo">
-        <div><h1>Panel Administrador</h1><p>${esc(CFG.NOMBRE)}</p></div>
-        <div class="right">
-          <a class="btn ghost" href="funcionarios.html" target="_blank">Ver Funcionarios</a>
-          <a class="btn ghost" href="familias.html" target="_blank">Ver Familias</a>
-          <button class="btn ghost" id="salir">Salir</button>
-        </div>
-      </div>
-      <div class="nav">${Object.keys(SECCIONES).map(k =>
-        `<button data-k="${k}" class="${k === seccion ? 'on' : ''}">${SECCIONES[k].nombre}</button>`).join('')}</div>
+    const cuerpo = seccion === 'ajustes' ? formAjustes() : `
       <div class="grid">
         <div class="panel"><h2>Agregar</h2><form id="f-add">${S.form}<button class="btn">Publicar</button></form></div>
         <div class="panel"><h2>Publicado (${lista.length})</h2>
@@ -200,6 +208,19 @@
           }).join('') || '<p class="note">Nada publicado aún.</p>'}</div>
         </div>
       </div>`;
+    app.innerHTML = `
+      <div class="top">
+        <img src="insignia.png" alt="Escudo">
+        <div><h1>Panel Administrador</h1><p>${esc(CFG.NOMBRE)}</p></div>
+        <div class="right">
+          <a class="btn ghost" href="funcionarios.html" target="_blank">Ver Funcionarios</a>
+          <a class="btn ghost" href="familias.html" target="_blank">Ver Familias</a>
+          <button class="btn ghost" id="salir">Salir</button>
+        </div>
+      </div>
+      <div class="nav">${Object.keys(SECCIONES).map(k =>
+        `<button data-k="${k}" class="${k === seccion ? 'on' : ''}">${SECCIONES[k].nombre}</button>`).join('')}</div>
+      ${cuerpo}`;
 
     app.querySelectorAll('.nav button').forEach(b => (b.onclick = () => { seccion = b.dataset.k; vistaPanel(); }));
     document.getElementById('salir').onclick = () => {
@@ -208,13 +229,38 @@
       vistaLogin();
     };
 
+    if (seccion === 'ajustes') {
+      const fa = document.getElementById('f-ajustes');
+      fa.onsubmit = async e => {
+        e.preventDefault();
+        const btn = fa.querySelector('.btn');
+        const valores = {};
+        new FormData(fa).forEach((v, k) => (valores[k] = String(v).trim()));
+        btn.disabled = true;
+        btn.textContent = 'Guardando…';
+        try {
+          await API.admin('ajustes', { password, valores });
+          toast('Ajustes guardados ✔');
+          await recargar();
+        } catch (err) {
+          toast(err.message, 'err');
+          btn.disabled = false;
+          btn.textContent = 'Guardar ajustes';
+        }
+      };
+      return;
+    }
+
     const form = document.getElementById('f-add');
     const file = form.querySelector('input[type=file]');
     const preview = document.getElementById('preview');
     const tipo = form.elements.tipo;
     if (file && preview) file.onchange = () => {
+      if (!file.files.length) return;
       preview.src = URL.createObjectURL(file.files[0]);
       preview.hidden = false;
+      const n = form.querySelector('.cuantas');
+      if (n) n.textContent = file.files.length > 1 ? `${file.files.length} fotos seleccionadas · se publicarán con el mismo título` : '';
     };
     if (tipo) {
       // mostrar los campos que corresponden al tipo elegido
@@ -271,10 +317,21 @@
         const f = file && (t === 'imagen' || t === 'archivo') ? file.files[0] : null;
         if (f && seccion === 'musica' && f.size > 20 * 1024 * 1024) throw new Error('El archivo supera 20 MB');
         btn.disabled = true;
+        if (f && t === 'imagen') {
+          // varias fotos con el mismo título: una publicación por foto
+          const fotos = [...file.files];
+          for (let k = 0; k < fotos.length; k++) {
+            btn.textContent = `Subiendo foto ${k + 1} de ${fotos.length}…`;
+            const image = { data: await comprimir(fotos[k]), mimeType: 'image/jpeg', name: fotos[k].name.replace(/\.\w+$/, '') + '.jpg' };
+            await API.admin('add', { password, sheet: seccion, item: Object.assign({}, item), image });
+          }
+          toast(fotos.length > 1 ? `${fotos.length} fotos publicadas ✔` : 'Publicado ✔');
+          await recargar();
+          return;
+        }
         btn.textContent = f && seccion === 'musica' ? 'Subiendo música… (puede tardar)' : 'Publicando…';
         let image = null;
-        if (f && seccion === 'musica') image = { data: await aBase64(f), mimeType: f.type || 'audio/mpeg', name: f.name };
-        else if (f) image = { data: await comprimir(f), mimeType: 'image/jpeg', name: f.name.replace(/\.\w+$/, '') + '.jpg' };
+        if (f) image = { data: await aBase64(f), mimeType: f.type || 'audio/mpeg', name: f.name };
         await API.admin('add', { password, sheet: seccion, item, image });
         toast('Publicado ✔');
         await recargar();

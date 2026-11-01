@@ -5,9 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Funcionarios · Colegio Marina de Chile</title>
   <link rel="icon" href="insignia.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#0a1f52">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261101e">
+  <link rel="stylesheet" href="styles.css?v=20261101g">
 </head>
 <body>
   <div class="tv">
@@ -33,11 +38,12 @@
           <div class="gallery" id="gal"></div>
           <div class="edu-box">
             <div class="card-title"><span class="dot"></span>📚 Educación</div>
-            <div class="scroller" id="edu"></div>
+            <div class="gallery edu-video" id="edu-video"></div>
           </div>
         </div>
         <div class="agenda-box">
           <div class="card-title"><span class="dot"></span>📅 Actividades de la semana · funcionarios</div>
+          <div class="aviso-hoy" id="aviso-hoy" hidden></div>
           <div class="scroller" id="agenda"></div>
         </div>
       </section>
@@ -46,9 +52,9 @@
     <footer class="ticker" id="ticker"></footer>
   </div>
 
-  <script src="config.js?v=20261101e"></script>
-  <script src="api.js?v=20261101e"></script>
-  <script src="common.js?v=20261101e"></script>
-  <script src="funcionarios.js?v=20261101e"></script>
+  <script src="config.js?v=20261101g"></script>
+  <script src="api.js?v=20261101g"></script>
+  <script src="common.js?v=20261101g"></script>
+  <script src="funcionarios.js?v=20261101g"></script>
 </body>
 </html>

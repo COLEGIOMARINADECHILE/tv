@@ -5,9 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Familias · Colegio Marina de Chile</title>
   <link rel="icon" href="insignia.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#0a1f52">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261101e">
+  <link rel="stylesheet" href="styles.css?v=20261101g">
 </head>
 <body>
   <div class="tv">
@@ -16,6 +21,7 @@
     <main class="family">
       <section class="gallery card" id="gal"></section>
       <aside class="family-side">
+        <div class="aviso-hoy" id="aviso-hoy" hidden></div>
         <section class="card dates">
           <div class="card-title"><span class="dot"></span>Fechas importantes</div>
           <div class="date-list" id="fechas"></div>
@@ -27,9 +33,9 @@
     <footer class="ticker" id="ticker"></footer>
   </div>
 
-  <script src="config.js?v=20261101e"></script>
-  <script src="api.js?v=20261101e"></script>
-  <script src="common.js?v=20261101e"></script>
-  <script src="familias.js?v=20261101e"></script>
+  <script src="config.js?v=20261101g"></script>
+  <script src="api.js?v=20261101g"></script>
+  <script src="common.js?v=20261101g"></script>
+  <script src="familias.js?v=20261101g"></script>
 </body>
 </html>

@@ -137,7 +137,7 @@
   // Devuelve (en el elemento) el._activarSonido() para quitar el silencio al video actual.
   function gallery(el, fotos, opts, etiqueta) {
     // Al refrescar datos no reiniciar el carrusel (ni cortar un video) si nada cambió
-    const firma = JSON.stringify(fotos.map(f => [f.url, f.titulo, f.audio, f.audioFunc, f.etiqueta].join('|')).concat(!!opts.sonido));
+    const firma = JSON.stringify(fotos.map(f => [f.url, f.titulo, f.texto, f.audio, f.audioFunc, f.etiqueta].join('|')).concat(!!opts.sonido, opts.seg));
     // qué videos llevan sonido en este perfil (por defecto: el campo "audio" de Familias)
     const audioDe = opts.audioDe || (f => f.audio !== 'no');
     if (el._firma === firma) return;
@@ -153,6 +153,11 @@
     }
     el.innerHTML =
       fotos.map(f => {
+        // diapositiva de solo texto (Educación sin video)
+        if (!f.url && f.texto !== undefined) {
+          return `<div class="ph texto"><div class="slide-texto">
+            <h3>${esc(f.titulo)}</h3>${f.texto ? `<p>${esc(f.texto)}</p>` : ''}</div></div>`;
+        }
         const yt = youtubeId(f.url);
         const media = yt
           ? `<img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" alt="">` // portada mientras carga
@@ -177,7 +182,7 @@
       ph._duracion = 0;
       phs.forEach(p => p.classList.toggle('active', p === ph));
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
-      const conAudio = !!ph.dataset.audio && sonidoPermitido();
+      const conAudio = !!ph.dataset.audio && sonidoPermitido() && !el._mudo;
       if (ph.dataset.yt) {
         if (!ph.querySelector('iframe')) {
           const origin = location.protocol.startsWith('http') ? '&origin=' + encodeURIComponent(location.origin) : '';
@@ -201,12 +206,25 @@
     // tras el primer clic/OK en un navegador: dar sonido al video que se está viendo
     el._activarSonido = () => {
       const ph = phs[i];
-      if (ph && ph.dataset.audio) {
+      if (ph && ph.dataset.audio && !el._mudo) {
         const fr = ph.querySelector('iframe');
         ytCmd(fr, 'unMute');
         ytCmd(fr, 'setVolume', [100]);
         avisar(true);
       }
+    };
+
+    // Silenciar / devolver el sonido desde afuera (cuando otro video tiene prioridad)
+    el._setMudo = mudo => {
+      if (!!el._mudo === !!mudo) return;
+      el._mudo = mudo;
+      const ph = phs[i];
+      if (!ph || !ph.dataset.yt || !ph.dataset.audio) return;
+      const fr = ph.querySelector('iframe');
+      const suena = !mudo && sonidoPermitido();
+      ytCmd(fr, suena ? 'unMute' : 'mute');
+      if (suena) ytCmd(fr, 'setVolume', [100]);
+      avisar(suena);
     };
 
     el._onMsg = e => {
@@ -252,6 +270,75 @@
     }, 40);
   }
 
+  // ---------- Recordatorio de las actividades de HOY ----------
+  // Muestra la próxima actividad del día con hora, lugar y cuánto falta;
+  // "AHORA" mientras está en curso (se considera 1 hora de duración).
+  const DURACION_ACTIVIDAD_MIN = 60;
+
+  function minutosDelDia(hora) {
+    const m = String(hora || '').match(/^(\d{1,2}):(\d{2})/);
+    return m ? +m[1] * 60 + +m[2] : null;
+  }
+
+  function faltaTexto(min) {
+    if (min < 60) return `En ${min} min`;
+    const h = Math.floor(min / 60);
+    const r = min % 60;
+    return `Faltan ${h} h${r ? ' ' + r + ' min' : ''}`;
+  }
+
+  function avisoHoy(el, actividades) {
+    el._acts = actividades;
+    const pintar = () => {
+      const ahora = new Date();
+      const nowMin = ahora.getHours() * 60 + ahora.getMinutes();
+      const hoyActs = (el._acts || [])
+        .filter(a => diasHasta(a.fecha) === 0)
+        .map(a => ({ ...a, ini: minutosDelDia(a.hora) }))
+        .filter(a => a.ini === null || a.ini + DURACION_ACTIVIDAD_MIN > nowMin) // las terminadas se ocultan
+        .sort((a, b) => (a.ini === null ? 9999 : a.ini) - (b.ini === null ? 9999 : b.ini));
+      if (!hoyActs.length) {
+        el.hidden = true;
+        el.innerHTML = '';
+        return;
+      }
+      const a = hoyActs[0];
+      let estado;
+      let clase;
+      if (a.ini === null) { estado = 'Hoy'; clase = 'hoy'; }
+      else if (nowMin >= a.ini) { estado = '🔴 AHORA · En este momento'; clase = 'ahora'; }
+      else if (a.ini - nowMin <= 60) { estado = '⏰ ' + faltaTexto(a.ini - nowMin); clase = 'pronto'; }
+      else { estado = faltaTexto(a.ini - nowMin); clase = 'hoy'; }
+      const mas = hoyActs.length - 1;
+      el.hidden = false;
+      el.className = 'aviso-hoy ' + clase;
+      el.innerHTML = `
+        <div class="ah-estado">${estado}</div>
+        <div class="ah-cuerpo">
+          <div class="ah-titulo">${esc(a.titulo)}</div>
+          <div class="ah-meta">${a.hora ? '🕒 ' + esc(a.hora) + ' hrs' : '📅 Durante el día'}${a.lugar ? ' · 📍 ' + esc(a.lugar) : ''}</div>
+        </div>
+        ${mas > 0 ? `<div class="ah-mas">+${mas} más hoy</div>` : ''}`;
+    };
+    pintar();
+    clearInterval(el._timer);
+    el._timer = setInterval(pintar, 30000);
+  }
+
+  // Ajustes editables desde el panel (con valores por defecto de config.js)
+  function ajustes(data) {
+    const a = {
+      mensajeTitulo: 'Mensaje para las familias',
+      mensajeTexto: '¡Gracias por acompañar a sus hijos e hijas en su aprendizaje!',
+      segFotosFamilias: CFG.DURACION_FOTO_SEG,
+      segFotosFuncionarios: CFG.DURACION_FOTO_FUNCIONARIOS_SEG,
+    };
+    (data.ajustes || []).forEach(r => { if (r.id) a[r.id] = r.valor; });
+    a.segFotosFamilias = Math.max(3, +a.segFotosFamilias || CFG.DURACION_FOTO_SEG);
+    a.segFotosFuncionarios = Math.max(3, +a.segFotosFuncionarios || CFG.DURACION_FOTO_FUNCIONARIOS_SEG);
+    return a;
+  }
+
   // Video de una publicación de Educación: en el campo del enlace o pegado en el texto
   function enlaceVideo(n) {
     const id = youtubeId(n.url) || youtubeId(n.texto);
@@ -284,5 +371,5 @@
     return m ? m[1] : null;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy };
 })();

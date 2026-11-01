@@ -41,17 +41,26 @@
     }).join('') : '<p class="empty-msg">No hay fechas próximas</p>';
   }
 
+  // Recuadro amarillo: mensaje editable (Admin → Ajustes) + publicaciones de Educación, rotando
   let notas = [];
+  let mensaje = null;
   let n = 0;
   function rotarTip() {
     const el = document.getElementById('tip');
-    if (!notas.length) {
-      el.innerHTML = `<div class="card-title"><span class="dot"></span>Mensaje para las familias</div>
-        <p style="margin-top:1vh">¡Gracias por acompañar a sus hijos e hijas en su aprendizaje!</p>`;
+    const items = (mensaje ? [mensaje] : []).concat(notas);
+    if (!items.length) {
+      el.innerHTML = '';
+      el.hidden = true;
       return;
     }
-    const t = notas[n % notas.length];
+    el.hidden = false;
+    const t = items[n % items.length];
     n++;
+    if (t === mensaje) {
+      el.innerHTML = `<div class="fade"><div class="card-title"><span class="dot"></span>${esc(t.titulo)}</div>
+        <p style="margin-top:1vh">${esc(t.texto)}</p></div>`;
+      return;
+    }
     el.innerHTML = `<div class="fade"><div class="card-title"><span class="dot"></span>Para las familias</div>
       <h3>${UI.enlaceVideo(t) ? '▶ ' : ''}${esc(t.titulo)}</h3>
       <p>${esc(UI.textoLimpio(t) || (UI.enlaceVideo(t) ? 'Experiencia educativa: véala en el carrusel de videos.' : ''))}</p></div>`;
@@ -186,14 +195,18 @@
   }
 
   UI.autoData(data => {
+    const aj = UI.ajustes(data);
+    mensaje = aj.mensajeTexto ? { titulo: aj.mensajeTitulo || 'Mensaje para las familias', texto: aj.mensajeTexto } : null;
     const fotos = UI.carrusel(data, 'familias');
     UI.gallery(document.getElementById('gal'), fotos,
-      { seg: CFG.DURACION_FOTO_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS, onCambio: onCambioVideo },
+      { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS, onCambio: onCambioVideo },
       'Actividades del colegio');
     setMusica(data.musica || []);
     const videosConAudio = CFG.VIDEO_CON_SONIDO_FAMILIAS && fotos.some(f => UI.youtubeId(f.url) && f.audio !== 'no');
     if (pistas.length || videosConAudio) UI.pedirSonido(activarSonido);
     renderFechas(data.fechas || [], (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos'));
+    UI.avisoHoy(document.getElementById('aviso-hoy'),
+      (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos').concat(data.fechas || []));
     notas = API.para(data.noticias, 'familias');
     rotarTip();
     UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'familias'));

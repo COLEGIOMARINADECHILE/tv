@@ -17,12 +17,15 @@ window.APP_CONFIG = {
   // Duración de cada diapositiva del panel informativo
   DURACION_SLIDE_SEG: 12,
   // Duración de cada foto en el carrusel
-  DURACION_FOTO_SEG: 8,
+  // (también se cambian desde el panel Administrador → ⚙️ Ajustes, que tiene prioridad)
+  DURACION_FOTO_SEG: 12,
   // En Funcionarios las fotos pasan más lento (se leen junto a las actividades)
-  DURACION_FOTO_FUNCIONARIOS_SEG: 15,
+  DURACION_FOTO_FUNCIONARIOS_SEG: 20,
   // Los videos de YouTube se ven COMPLETOS y pasan al siguiente al terminar.
   // Este es solo un tope de seguridad por si YouTube no avisa el final (en segundos).
   DURACION_VIDEO_MAX_SEG: 1800,
+  // Educación (Funcionarios): segundos que se ve cada texto antes de pasar al siguiente
+  DURACION_EDUCACION_SEG: 15,
   // Videos del perfil Familias con sonido (cada video se puede silenciar desde Admin).
   // En Funcionarios siempre van en silencio para no tapar la TV.
   // En un navegador de PC se pide un clic la primera vez; en la app Android TV suena solo.
