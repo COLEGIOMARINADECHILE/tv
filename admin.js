@@ -13,6 +13,14 @@
     <select name="publico"><option value="ambos">Funcionarios y familias</option>
     <option value="funcionarios">Solo funcionarios</option><option value="familias">Solo familias</option></select></label>`;
 
+  // Cuántas veces al día suena un video (para no saturar)
+  const OPC_VECES = [['', 'Siempre'], ['1', '1 vez al día'], ['2', '2 veces al día'], ['3', '3 veces al día'],
+    ['4', '4 veces al día'], ['6', '6 veces al día'], ['8', '8 veces al día']];
+  const opcionesVeces = sel => OPC_VECES.map(([v, t]) => `<option value="${v}" ${String(sel || '') === v ? 'selected' : ''}>${t}</option>`).join('');
+  const VECES = attrs => `<label ${attrs || ''}>🔁 ¿Cuántas veces al día con sonido?
+    <select name="vecesAudio">${opcionesVeces('')}</select></label>
+    <p class="note" ${attrs || ''}>Las veces se reparten durante la jornada; el resto del tiempo el video se ve sin sonido.</p>`;
+
   // Selector de íconos (incluye la insignia del colegio)
   const selectorIconos = def => `<div class="etiqueta">Ícono</div>
     <input type="hidden" name="icono" value="${esc(def)}">
@@ -43,6 +51,7 @@
           🔊 Con sonido en <b>Familias</b> (la música de fondo baja mientras suena)</label>
         <label data-tipo="video" hidden class="check"><input type="checkbox" name="audioFunc" value="si">
           🔊 Con sonido en <b>Funcionarios</b> (la TV se pausa mientras suena y vuelve al terminar)</label>
+        ${VECES('data-tipo="video" hidden')}
         <img class="preview" id="preview" hidden alt="">${PUBLICO}
         <p class="note" data-tipo="imagen">La imagen se reduce automáticamente a 1920 px antes de subirla a Google Drive.</p>
         <p class="note" data-tipo="video" hidden>El video se reproduce completo y luego pasa al siguiente elemento del carrusel.
@@ -54,7 +63,8 @@
         if (!UI.youtubeId(f.url)) return '';
         const fam = f.audio !== 'no';
         const fun = f.audioFunc === 'si';
-        return `<button class="toggle ${fam ? 'on' : ''}" data-id="${esc(f.id)}" data-campo="audio" data-valor="${fam ? 'no' : 'si'}"
+        return `<select class="veces-sel" data-id="${esc(f.id)}" title="Veces al día con sonido">${opcionesVeces(f.vecesAudio)}</select>
+          <button class="toggle ${fam ? 'on' : ''}" data-id="${esc(f.id)}" data-campo="audio" data-valor="${fam ? 'no' : 'si'}"
             title="Sonido en Familias">${fam ? '🔊' : '🔇'} Familias</button>
           <button class="toggle ${fun ? 'on' : ''}" data-id="${esc(f.id)}" data-campo="audioFunc" data-valor="${fun ? 'no' : 'si'}"
             title="Sonido en Funcionarios">${fun ? '🔊' : '🔇'} Funcionarios</button>`;
@@ -83,6 +93,7 @@
           🔊 Con sonido en <b>Familias</b> (la música de fondo baja mientras suena)</label>
         <label class="check"><input type="checkbox" name="audioFunc" value="si">
           🔊 Con sonido en <b>Funcionarios</b> (la TV se pausa mientras suena y vuelve al terminar)</label>
+        ${VECES()}
         ${PUBLICO}
         <p class="note">El video se muestra completo en el carrusel de fotos y videos, con el rótulo "📚 Experiencia educativa".</p>`,
       linea: n => [(UI.enlaceVideo(n) ? '▶ ' : '') + n.titulo, n.publico + ' · ' + UI.textoLimpio(n).slice(0, 80)],
@@ -328,6 +339,7 @@
             if (!item.texto) throw new Error('Escriba un texto o agregue un video');
             delete item.audio;
             delete item.audioFunc;
+            delete item.vecesAudio;
           }
         } else if (t === 'enlace') {
           if (!/^https?:\/\//.test(item.url || '')) throw new Error('Escriba un enlace que empiece con https://');
@@ -335,6 +347,7 @@
           delete item.url;
           delete item.audio;
           delete item.audioFunc;
+            delete item.vecesAudio;
           if (!file.files[0]) throw new Error('Seleccione un archivo');
         }
         const f = file && (t === 'imagen' || t === 'archivo') ? file.files[0] : null;
@@ -364,6 +377,18 @@
         btn.textContent = 'Publicar';
       }
     };
+
+    app.querySelectorAll('.veces-sel').forEach(s => (s.onchange = async () => {
+      s.disabled = true;
+      try {
+        await API.admin('update', { password, sheet: seccion, item: { id: s.dataset.id, vecesAudio: s.value } });
+        toast('Actualizado ✔');
+        await recargar();
+      } catch (err) {
+        toast(err.message, 'err');
+        s.disabled = false;
+      }
+    }));
 
     app.querySelectorAll('.toggle').forEach(b => (b.onclick = async () => {
       b.disabled = true;

@@ -189,11 +189,11 @@
   // los videos se reproducen completos en el recuadro; los textos se leen ~15 s.
   function renderEdu(notas) {
     const items = notas.map(n => UI.enlaceVideo(n)
-      ? { titulo: n.titulo, url: UI.enlaceVideo(n), audio: n.audio, audioFunc: n.audioFunc }
+      ? { titulo: n.titulo, url: UI.enlaceVideo(n), audio: n.audio, audioFunc: n.audioFunc, vecesAudio: n.vecesAudio }
       : { titulo: n.titulo, texto: UI.textoLimpio(n) });
     eduVideo.hidden = false;
     UI.gallery(eduVideo, items,
-      { seg: CFG.DURACION_EDUCACION_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true,
+      { seg: CFG.DURACION_EDUCACION_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true, perfil: 'funcionarios',
         audioDe: f => f.audioFunc === 'si', onCambio: onCambioEdu },
       '📚 Experiencia educativa');
     if (!items.length) eduVideo.innerHTML = '<p class="empty-msg" style="padding-top:8vh">Sin publicaciones</p>';
@@ -243,7 +243,7 @@
     renderAgenda(API.para(data.actividades, 'funcionarios'));
     const fotos = API.para(data.fotos, 'funcionarios');
     UI.gallery(document.getElementById('gal'), fotos,
-      { seg: aj.segFotosFuncionarios, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true,
+      { seg: aj.segFotosFuncionarios, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true, perfil: 'funcionarios',
         audioDe: f => f.audioFunc === 'si', onCambio: onCambioVideo },
       'Actividades del colegio');
     const videosEdu = renderEdu(API.para(data.noticias, 'funcionarios'));

@@ -132,12 +132,38 @@
     iframe?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args: args || [] }), '*');
   }
 
+  // ---------- Límite de veces al día con sonido (por video, perfil y televisor) ----------
+  // vecesAudio vacío = siempre. Si es N, suena como máximo N veces al día y
+  // repartidas en la jornada (no antes de JORNADA_MIN / N minutos desde la última vez).
+  function cuotaLeer(clave) {
+    const hoy = new Date().toDateString();
+    let r = null;
+    try { r = JSON.parse(localStorage.getItem(clave)); } catch (e) {}
+    return r && r.d === hoy ? r : { d: hoy, n: 0, t: 0 };
+  }
+
+  function cuotaDisponible(clave, veces) {
+    if (!veces) return true;
+    const r = cuotaLeer(clave);
+    if (r.n >= veces) return false;
+    const separacion = (CFG.JORNADA_MIN || 600) / veces * 60000;
+    return !r.t || Date.now() - r.t >= separacion;
+  }
+
+  function cuotaRegistrar(clave, veces) {
+    if (!veces) return;
+    const r = cuotaLeer(clave);
+    r.n++;
+    r.t = Date.now();
+    try { localStorage.setItem(clave, JSON.stringify(r)); } catch (e) {}
+  }
+
   // Galería de fotos (transición tipo Ken Burns) y videos de YouTube.
-  // opts: { seg, maxVideo, sonido, onCambio(videoConAudio) }
+  // opts: { seg, maxVideo, sonido, perfil, onCambio(videoConAudio) }
   // Devuelve (en el elemento) el._activarSonido() para quitar el silencio al video actual.
   function gallery(el, fotos, opts, etiqueta) {
     // Al refrescar datos no reiniciar el carrusel (ni cortar un video) si nada cambió
-    const firma = JSON.stringify(fotos.map(f => [f.url, f.titulo, f.texto, f.audio, f.audioFunc, f.etiqueta].join('|')).concat(!!opts.sonido, opts.seg));
+    const firma = JSON.stringify(fotos.map(f => [f.url, f.titulo, f.texto, f.audio, f.audioFunc, f.vecesAudio, f.etiqueta].join('|')).concat(!!opts.sonido, opts.seg));
     // qué videos llevan sonido en este perfil (por defecto: el campo "audio" de Familias)
     const audioDe = opts.audioDe || (f => f.audio !== 'no');
     if (el._firma === firma) return;
@@ -164,13 +190,26 @@
           : `<img src="${esc(f.url)}" alt="${esc(f.titulo)}" loading="lazy">`;
         // audio: 'no' lo silencia; vacío o 'si' suena (solo donde opts.sonido lo permite)
         const audio = yt && opts.sonido && audioDe(f);
-        return `<div class="ph ${yt ? 'video' : ''}" data-yt="${yt || ''}" data-audio="${audio ? 1 : ''}">${media}
+        return `<div class="ph ${yt ? 'video' : ''}" data-yt="${yt || ''}" data-audio="${audio ? 1 : ''}" data-veces="${esc(f.vecesAudio || '')}">${media}
           <div class="caption"><small>${yt ? '▶ Video · ' : ''}${esc(f.etiqueta || etiqueta)}</small>${esc(f.titulo)}</div></div>`;
       }).join('') +
       `<div class="dots">${fotos.map(() => '<i></i>').join('')}</div>`;
     const phs = [...el.querySelectorAll('.ph')];
     const dots = el.querySelectorAll('.dots i');
     let i = -1;
+
+    // ¿Puede sonar ahora este video? (quiere sonido, se permite, nadie tiene prioridad
+    // y aún le quedan veces hoy). Cada reproducción cuenta una sola vez.
+    const tocaSonido = ph => {
+      if (!ph.dataset.audio || !sonidoPermitido() || el._mudo) return false;
+      if (ph._sonoEstaVez) return true;
+      const veces = +ph.dataset.veces || 0;
+      const clave = `cmch_snd_${opts.perfil || 'x'}_${ph.dataset.yt}`;
+      if (!cuotaDisponible(clave, veces)) return false;
+      cuotaRegistrar(clave, veces);
+      ph._sonoEstaVez = true;
+      return true;
+    };
 
     const siguiente = () => {
       clearTimeout(el._timer);
@@ -180,9 +219,10 @@
       // solo un video a la vez: se quita el reproductor del anterior
       if (prev && prev !== ph) prev.querySelector('iframe')?.remove();
       ph._duracion = 0;
+      ph._sonoEstaVez = false;
       phs.forEach(p => p.classList.toggle('active', p === ph));
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
-      const conAudio = !!ph.dataset.audio && sonidoPermitido() && !el._mudo;
+      const conAudio = tocaSonido(ph);
       if (ph.dataset.yt) {
         if (!ph.querySelector('iframe')) {
           const origin = location.protocol.startsWith('http') ? '&origin=' + encodeURIComponent(location.origin) : '';
@@ -206,7 +246,7 @@
     // tras el primer clic/OK en un navegador: dar sonido al video que se está viendo
     el._activarSonido = () => {
       const ph = phs[i];
-      if (ph && ph.dataset.audio && !el._mudo) {
+      if (ph && ph.dataset.yt && tocaSonido(ph)) {
         const fr = ph.querySelector('iframe');
         ytCmd(fr, 'unMute');
         ytCmd(fr, 'setVolume', [100]);
@@ -221,7 +261,7 @@
       const ph = phs[i];
       if (!ph || !ph.dataset.yt || !ph.dataset.audio) return;
       const fr = ph.querySelector('iframe');
-      const suena = !mudo && sonidoPermitido();
+      const suena = !mudo && tocaSonido(ph);
       ytCmd(fr, suena ? 'unMute' : 'mute');
       if (suena) ytCmd(fr, 'setVolume', [100]);
       avisar(suena);
@@ -247,7 +287,18 @@
       const estado = d.event === 'onStateChange' ? d.info : d.info && d.info.playerState;
       if (estado === 0 && phs[i] && phs[i].dataset.yt) {
         if (phs.length > 1) siguiente();
-        else phs[i].querySelector('iframe').contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+        else {
+          // un solo video: se repite, y cada repetición cuenta como una vez nueva con sonido
+          const ph = phs[i];
+          const frv = ph.querySelector('iframe');
+          ph._sonoEstaVez = false;
+          ph._duracion = 0;
+          const suena = tocaSonido(ph);
+          ytCmd(frv, suena ? 'unMute' : 'mute');
+          if (suena) ytCmd(frv, 'setVolume', [100]);
+          avisar(suena);
+          ytCmd(frv, 'playVideo');
+        }
       }
     };
     window.addEventListener('message', el._onMsg);

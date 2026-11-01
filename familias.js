@@ -81,31 +81,28 @@
     }).join('') : '<p class="empty-msg">No hay fechas próximas</p>';
   }
 
-  // Recuadro amarillo: mensaje editable (Admin → Ajustes) + publicaciones de Educación, rotando
-  let notas = [];
-  let mensaje = null;
-  let n = 0;
-  function rotarTip() {
+  // Recuadro amarillo: solo el mensaje editable (Admin → Ajustes), sin título
+  function renderMensaje(texto) {
     const el = document.getElementById('tip');
-    const items = (mensaje ? [mensaje] : []).concat(notas);
-    if (!items.length) {
-      el.innerHTML = '';
-      el.hidden = true;
-      return;
-    }
-    el.hidden = false;
-    const t = items[n % items.length];
-    n++;
-    if (t === mensaje) {
-      // solo el texto del mensaje, sin título
-      el.innerHTML = `<div class="fade"><p class="tip-msg">${esc(t.texto)}</p></div>`;
-      return;
-    }
-    el.innerHTML = `<div class="fade">
-      <h3>${UI.enlaceVideo(t) ? '▶ ' : ''}${esc(t.titulo)}</h3>
-      <p>${esc(UI.textoLimpio(t) || (UI.enlaceVideo(t) ? 'Experiencia educativa: véala en el carrusel de videos.' : ''))}</p></div>`;
+    el.hidden = !texto;
+    el.innerHTML = texto ? `<div class="fade"><p class="tip-msg">${esc(texto)}</p></div>` : '';
   }
-  setInterval(rotarTip, CFG.DURACION_SLIDE_SEG * 1000);
+
+  // Educación: recuadro propio (solo aparece si hay algo para familias).
+  // Los videos se reproducen ahí mismo y los textos se leen unos segundos.
+  const eduBox = document.getElementById('edu-fam-box');
+  const eduFam = document.getElementById('edu-fam');
+  function renderEducacion(notas) {
+    const items = notas.map(n => UI.enlaceVideo(n)
+      ? { titulo: n.titulo, url: UI.enlaceVideo(n), audio: n.audio, audioFunc: n.audioFunc, vecesAudio: n.vecesAudio }
+      : { titulo: n.titulo, texto: UI.textoLimpio(n) });
+    eduBox.hidden = !items.length;
+    UI.gallery(eduFam, items,
+      { seg: CFG.DURACION_EDUCACION_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,
+        perfil: 'familias', onCambio: onCambioEdu },
+      '📚 Experiencia educativa');
+    return items.filter(f => f.url);
+  }
 
   // ---------- Música de fondo: MP3 o YouTube (video o lista de reproducción) ----------
   // Baja de volumen mientras suena un video del carrusel.
@@ -218,10 +215,27 @@
     tocar();
   }
 
-  // La galería avisa si el elemento visible es un video con sonido
-  function onCambioVideo(conAudio) {
-    videoSonando = conAudio;
+  // Sonido: si el video de Educación suena tiene prioridad (se silencia el carrusel);
+  // mientras suene cualquier video, la música de fondo baja.
+  const gal = document.getElementById('gal');
+  let galAudio = false;
+  let eduAudio = false;
+
+  function ajustarMusica() {
+    videoSonando = galAudio || eduAudio;
     if (pistas.length) fundido(volObjetivo());
+  }
+
+  function onCambioVideo(conAudio) {
+    galAudio = conAudio;
+    ajustarMusica();
+  }
+
+  function onCambioEdu(conAudio) {
+    eduAudio = conAudio;
+    if (gal._setMudo) gal._setMudo(conAudio);
+    else gal._mudo = conAudio;
+    ajustarMusica();
   }
 
   function activarSonido() {
@@ -231,24 +245,26 @@
     } else if (pistas.length && musica.paused) {
       tocar();
     }
-    document.getElementById('gal')._activarSonido();
+    eduFam._activarSonido && eduFam._activarSonido();
+    gal._activarSonido();
   }
 
   UI.autoData(data => {
     const aj = UI.ajustes(data);
-    mensaje = aj.mensajeTexto ? { texto: aj.mensajeTexto } : null;
-    const fotos = UI.carrusel(data, 'familias');
-    UI.gallery(document.getElementById('gal'), fotos,
-      { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS, onCambio: onCambioVideo },
+    renderMensaje(aj.mensajeTexto);
+    const fotos = API.para(data.fotos, 'familias');
+    UI.gallery(gal, fotos,
+      { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,
+        perfil: 'familias', onCambio: onCambioVideo },
       'Actividades del colegio');
+    const videosEdu = renderEducacion(API.para(data.noticias, 'familias'));
     setMusica(data.musica || []);
-    const videosConAudio = CFG.VIDEO_CON_SONIDO_FAMILIAS && fotos.some(f => UI.youtubeId(f.url) && f.audio !== 'no');
+    const videosConAudio = CFG.VIDEO_CON_SONIDO_FAMILIAS &&
+      fotos.concat(videosEdu).some(f => UI.youtubeId(f.url) && f.audio !== 'no');
     if (pistas.length || videosConAudio) UI.pedirSonido(activarSonido);
     renderFechas(data.fechas || [], (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos'));
     UI.avisoHoy(document.getElementById('aviso-hoy'),
       (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos').concat(data.fechas || []));
-    notas = API.para(data.noticias, 'familias');
-    rotarTip();
     UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'familias'));
   });
 })();

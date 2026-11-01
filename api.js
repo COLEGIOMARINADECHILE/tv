@@ -26,7 +26,7 @@
     ],
     noticias: [
       { id: 'n1', titulo: 'Evaluación formativa', texto: 'La retroalimentación oportuna mejora el aprendizaje hasta en un 30%. Compartamos criterios de logro al inicio de cada clase.', publico: 'funcionarios' },
-      { id: 'n4', titulo: 'Experiencia: aprendizaje basado en proyectos', texto: 'Mire esta experiencia https://youtu.be/aqz-KE-bpKQ?si=abc123', url: '', publico: 'ambos', audio: '', audioFunc: '' },
+      { id: 'n4', titulo: 'Experiencia: aprendizaje basado en proyectos', texto: 'Mire esta experiencia https://youtu.be/aqz-KE-bpKQ?si=abc123', url: '', publico: 'ambos', audio: '', audioFunc: '', vecesAudio: '3' },
       { id: 'n2', titulo: 'Bienestar docente', texto: 'Recuerda tomar pausas activas. El autocuidado también es parte de nuestra labor educativa.', publico: 'funcionarios' },
       { id: 'n3', titulo: 'Lectura en familia', texto: '15 minutos diarios de lectura compartida fortalecen el vocabulario y el vínculo familiar.', publico: 'familias' },
     ],

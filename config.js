@@ -24,7 +24,10 @@ window.APP_CONFIG = {
   // Los videos de YouTube se ven COMPLETOS y pasan al siguiente al terminar.
   // Este es solo un tope de seguridad por si YouTube no avisa el final (en segundos).
   DURACION_VIDEO_MAX_SEG: 1800,
-  // Educación (Funcionarios): segundos que se ve cada texto antes de pasar al siguiente
+  // Duración de la jornada (minutos) en la que se reparten los videos con sonido
+  // "N veces al día" (600 = 10 horas: entre cada vez con sonido pasan 600/N minutos)
+  JORNADA_MIN: 600,
+  // Educación: segundos que se ve cada texto antes de pasar al siguiente
   DURACION_EDUCACION_SEG: 15,
   // Videos del perfil Familias con sonido (cada video se puede silenciar desde Admin).
   // En Funcionarios siempre van en silencio para no tapar la TV.
