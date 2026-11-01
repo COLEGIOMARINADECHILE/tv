@@ -137,7 +137,7 @@
   // Devuelve (en el elemento) el._activarSonido() para quitar el silencio al video actual.
   function gallery(el, fotos, opts, etiqueta) {
     // Al refrescar datos no reiniciar el carrusel (ni cortar un video) si nada cambió
-    const firma = JSON.stringify(fotos.map(f => [f.url, f.titulo, f.audio, f.audioFunc].join('|')).concat(!!opts.sonido));
+    const firma = JSON.stringify(fotos.map(f => [f.url, f.titulo, f.audio, f.audioFunc, f.etiqueta].join('|')).concat(!!opts.sonido));
     // qué videos llevan sonido en este perfil (por defecto: el campo "audio" de Familias)
     const audioDe = opts.audioDe || (f => f.audio !== 'no');
     if (el._firma === firma) return;
@@ -160,7 +160,7 @@
         // audio: 'no' lo silencia; vacío o 'si' suena (solo donde opts.sonido lo permite)
         const audio = yt && opts.sonido && audioDe(f);
         return `<div class="ph ${yt ? 'video' : ''}" data-yt="${yt || ''}" data-audio="${audio ? 1 : ''}">${media}
-          <div class="caption"><small>${yt ? '▶ Video · ' : ''}${esc(etiqueta)}</small>${esc(f.titulo)}</div></div>`;
+          <div class="caption"><small>${yt ? '▶ Video · ' : ''}${esc(f.etiqueta || etiqueta)}</small>${esc(f.titulo)}</div></div>`;
       }).join('') +
       `<div class="dots">${fotos.map(() => '<i></i>').join('')}</div>`;
     const phs = [...el.querySelectorAll('.ph')];
@@ -249,11 +249,26 @@
     }, 40);
   }
 
+  // Fotos y videos + videos de Educación (experiencias educativas), para el carrusel
+  function carrusel(data, perfil) {
+    const edu = API.para(data.noticias, perfil)
+      .filter(n => youtubeId(n.url))
+      .map(n => ({ titulo: n.titulo, url: n.url, audio: n.audio, audioFunc: n.audioFunc, etiqueta: '📚 Experiencia educativa' }));
+    return API.para(data.fotos, perfil).concat(edu);
+  }
+
+  // Miniatura de video para tarjetas de Educación
+  function miniaturaVideo(url) {
+    const id = youtubeId(url);
+    return id ? `<div class="edu-thumb"><img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" alt="">
+      <span>▶ En el carrusel</span></div>` : '';
+  }
+
   // ID de un enlace de YouTube (watch, youtu.be, shorts, live, embed) o null
   function youtubeId(url) {
     const m = String(url || '').match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([\w-]{11})/);
     return m ? m[1] : null;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo };
 })();

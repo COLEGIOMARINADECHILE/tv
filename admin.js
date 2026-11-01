@@ -66,8 +66,18 @@
     noticias: {
       nombre: '📚 Educación',
       form: `<label>Título<input name="titulo" required></label>
-        <label>Texto<textarea name="texto" required maxlength="280"></textarea></label>${PUBLICO}`,
-      linea: n => [n.titulo, n.publico + ' · ' + String(n.texto).slice(0, 80)],
+        <label>Texto<textarea name="texto" maxlength="280" placeholder="Breve descripción (opcional si agrega un video)"></textarea></label>
+        <label>Video de YouTube · experiencia educativa (opcional)<input name="url" placeholder="https://www.youtube.com/watch?v=..."></label>
+        <img class="preview" id="preview" hidden alt="">
+        <label class="check"><input type="checkbox" name="audio" value="si" checked>
+          🔊 Con sonido en <b>Familias</b> (la música de fondo baja mientras suena)</label>
+        <label class="check"><input type="checkbox" name="audioFunc" value="si">
+          🔊 Con sonido en <b>Funcionarios</b> (la TV se pausa mientras suena y vuelve al terminar)</label>
+        ${PUBLICO}
+        <p class="note">El video se muestra completo en el carrusel de fotos y videos, con el rótulo "📚 Experiencia educativa".</p>`,
+      linea: n => [(UI.youtubeId(n.url) ? '▶ ' : '') + n.titulo, n.publico + ' · ' + String(n.texto || '').slice(0, 80)],
+      img: n => (UI.youtubeId(n.url) ? `https://img.youtube.com/vi/${UI.youtubeId(n.url)}/mqdefault.jpg` : ''),
+      extra: f => SECCIONES.fotos.extra(f),
     },
     fechas: {
       nombre: '🗓️ Fechas familias',
@@ -181,7 +191,7 @@
         <div class="panel"><h2>Publicado (${lista.length})</h2>
           <div class="items">${lista.map(it => {
             const [t, sub] = S.linea(it);
-            return `<div class="item">${S.img ? `<img src="${esc(S.img(it))}" alt="">` : ''}
+            return `<div class="item">${S.img && S.img(it) ? `<img src="${esc(S.img(it))}" alt="">` : ''}
               <div class="t"><b>${esc(t)}</b><small>${esc(sub)}</small></div>
               ${S.extra ? S.extra(it) : ''}
               <button class="del" data-id="${esc(it.id)}">Eliminar</button></div>`;
@@ -200,10 +210,6 @@
     const file = form.querySelector('input[type=file]');
     const preview = document.getElementById('preview');
     const tipo = form.elements.tipo;
-    if (file) file.onchange = () => {
-      preview.src = URL.createObjectURL(file.files[0]);
-      preview.hidden = false;
-    };
     if (file && preview) file.onchange = () => {
       preview.src = URL.createObjectURL(file.files[0]);
       preview.hidden = false;
@@ -214,12 +220,13 @@
         form.querySelectorAll('[data-tipo]').forEach(el => (el.hidden = el.dataset.tipo !== tipo.value));
         if (preview) preview.hidden = true;
       };
-      if (preview) form.elements.url.oninput = () => {
-        const id = UI.youtubeId(form.elements.url.value);
-        preview.hidden = !id;
-        if (id) preview.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-      };
     }
+    // vista previa de un enlace de YouTube (Fotos y videos, Educación)
+    if (preview && form.elements.url) form.elements.url.oninput = () => {
+      const id = UI.youtubeId(form.elements.url.value);
+      preview.hidden = !id;
+      if (id) preview.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    };
 
     form.onsubmit = async e => {
       e.preventDefault();
@@ -234,6 +241,19 @@
           item.url = 'https://www.youtube.com/watch?v=' + id;
           item.audio = item.audio === 'si' ? 'si' : 'no';
           item.audioFunc = item.audioFunc === 'si' ? 'si' : 'no';
+        } else if (seccion === 'noticias') {
+          // Educación: texto y/o video
+          if (item.url) {
+            const id = UI.youtubeId(item.url);
+            if (!id) throw new Error('El enlace no parece ser un video de YouTube');
+            item.url = 'https://www.youtube.com/watch?v=' + id;
+            item.audio = item.audio === 'si' ? 'si' : 'no';
+            item.audioFunc = item.audioFunc === 'si' ? 'si' : 'no';
+          } else {
+            if (!item.texto) throw new Error('Escriba un texto o agregue un video');
+            delete item.audio;
+            delete item.audioFunc;
+          }
         } else if (t === 'enlace') {
           if (!/^https?:\/\//.test(item.url || '')) throw new Error('Escriba un enlace que empiece con https://');
         } else if (t) {

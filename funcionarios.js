@@ -5,6 +5,7 @@
   // Dentro de la app Android TV existe el puente nativo window.AndroidTV
   const NATIVE = window.AndroidTV || null;
   const KEY_CANAL = 'cmch_canal';
+  const KEY_TV = 'cmch_con_tv';
 
   document.getElementById('hdr').outerHTML = UI.header('Funcionarios');
   UI.startClock();
@@ -14,7 +15,32 @@
   const chList = document.getElementById('channels');
   let canales = [];
   let actual = 0;
+  let tvPausada = false;
   try { actual = +localStorage.getItem(KEY_CANAL) || 0; } catch (e) {}
+
+  // ¿Este televisor muestra TV? Lo recuerda cada equipo. Por defecto sí,
+  // salvo que la dirección traiga ?tv=0 (ej. una APK creada "sin TV").
+  let conTv = new URLSearchParams(location.search).get('tv') !== '0';
+  try {
+    const guardado = localStorage.getItem(KEY_TV);
+    if (guardado !== null) conTv = guardado === '1';
+  } catch (e) {}
+
+  function cambiarTv(mostrar) {
+    try { localStorage.setItem(KEY_TV, mostrar ? '1' : '0'); } catch (e) {}
+    NATIVE && NATIVE.hideTv();
+    location.reload();
+  }
+
+  if (!conTv) {
+    document.querySelector('main.split').classList.add('sin-tv');
+    // botón en el encabezado para volver a ver TV (se elige con OK del control)
+    document.querySelector('.tv-header .clock').insertAdjacentHTML('beforebegin',
+      '<button class="tv-toggle" id="ver-tv">📺 Ver TV</button>');
+    const b = document.getElementById('ver-tv');
+    b.onclick = () => cambiarTv(true);
+    b.focus();
+  }
 
   // ---------- Televisión ----------
   function embedUrl(url) {
@@ -31,7 +57,7 @@
   }
 
   function sintonizar(i, osd) {
-    if (!canales.length) return;
+    if (!conTv || !canales.length) return;
     actual = (i + canales.length) % canales.length;
     try { localStorage.setItem(KEY_CANAL, actual); } catch (e) {}
     const c = canales[actual];
@@ -67,12 +93,15 @@
   }
 
   function renderCanales(lista) {
+    if (!conTv) return;
     const nuevos = lista.slice().sort((a, b) => (+a.orden || 0) - (+b.orden || 0));
     if (JSON.stringify(nuevos) === JSON.stringify(canales)) return; // sin cambios → no interrumpir
     canales = nuevos;
     chList.innerHTML = canales.map((c, i) =>
-      `<button class="channel-btn" data-i="${i}"><span class="num">${i + 1}</span>${esc(c.nombre)}</button>`).join('');
-    chList.querySelectorAll('.channel-btn').forEach(b => b.addEventListener('click', () => sintonizar(+b.dataset.i, true)));
+      `<button class="channel-btn" data-i="${i}"><span class="num">${i + 1}</span>${esc(c.nombre)}</button>`).join('') +
+      '<button class="channel-btn tv-off" id="ocultar-tv"><span class="num">✕</span>Ocultar TV</button>';
+    chList.querySelectorAll('.channel-btn[data-i]').forEach(b => b.addEventListener('click', () => sintonizar(+b.dataset.i, true)));
+    document.getElementById('ocultar-tv').onclick = () => cambiarTv(false);
     sintonizar(actual < canales.length ? actual : 0);
     chList.children[actual]?.focus();
   }
@@ -92,12 +121,12 @@
       e.preventDefault(); sintonizar(actual + 1, true); btns[actual].focus();
     } else if (e.key === 'ChannelDown' || e.key === 'PageDown' || e.keyCode === 167) {
       e.preventDefault(); sintonizar(actual - 1, true); btns[actual].focus();
-    } else if (/^[1-9]$/.test(e.key) && +e.key <= btns.length) {
+    } else if (/^[1-9]$/.test(e.key) && +e.key <= canales.length) {
       sintonizar(+e.key - 1, true); btns[actual].focus();
     }
   });
 
-  window.addEventListener('resize', () => NATIVE && canales[actual]?.url && NATIVE.showTv(canales[actual].url, ...playerRect()));
+  window.addEventListener('resize', () => NATIVE && conTv && !tvPausada && canales[actual]?.url && NATIVE.showTv(canales[actual].url, ...playerRect()));
 
   // ---------- Panel informativo (todo visible a la vez) ----------
   function renderAgenda(acts) {
@@ -122,15 +151,15 @@
     const el = document.getElementById('edu');
     el.innerHTML = notas.length ? notas.map((n, i) => `
       <article class="edu" style="animation-delay:${i * 0.1}s">
-        <h3>${icons[i % icons.length]} ${esc(n.titulo)}</h3><p>${esc(n.texto)}</p>
+        ${UI.miniaturaVideo(n.url)}
+        <h3>${icons[i % icons.length]} ${esc(n.titulo)}</h3>${n.texto ? `<p>${esc(n.texto)}</p>` : ''}
       </article>`).join('') : '<p class="empty-msg">Sin publicaciones</p>';
     UI.autoScroll(el);
   }
 
   // Si un video suena, la TV se pausa para que no se mezclen; vuelve al terminar
-  let tvPausada = false;
   function onCambioVideo(conAudio) {
-    if (conAudio === tvPausada) return;
+    if (!conTv || conAudio === tvPausada) return;
     tvPausada = conAudio;
     if (conAudio) {
       NATIVE && NATIVE.hideTv();
@@ -148,7 +177,7 @@
   UI.autoData(data => {
     renderCanales(data.canales || []);
     renderAgenda(API.para(data.actividades, 'funcionarios'));
-    const fotos = API.para(data.fotos, 'funcionarios');
+    const fotos = UI.carrusel(data, 'funcionarios');
     UI.gallery(document.getElementById('gal'), fotos,
       { seg: CFG.DURACION_FOTO_FUNCIONARIOS_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true,
         audioDe: f => f.audioFunc === 'si', onCambio: onCambioVideo },

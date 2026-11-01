@@ -53,7 +53,8 @@
     const t = notas[n % notas.length];
     n++;
     el.innerHTML = `<div class="fade"><div class="card-title"><span class="dot"></span>Para las familias</div>
-      <h3>${esc(t.titulo)}</h3><p>${esc(t.texto)}</p></div>`;
+      <h3>${UI.youtubeId(t.url) ? '▶ ' : ''}${esc(t.titulo)}</h3>
+      <p>${esc(t.texto || (UI.youtubeId(t.url) ? 'Experiencia educativa: véala en el carrusel de videos.' : ''))}</p></div>`;
   }
   setInterval(rotarTip, CFG.DURACION_SLIDE_SEG * 1000);
 
@@ -123,7 +124,7 @@
   }
 
   UI.autoData(data => {
-    const fotos = API.para(data.fotos, 'familias');
+    const fotos = UI.carrusel(data, 'familias');
     UI.gallery(document.getElementById('gal'), fotos,
       { seg: CFG.DURACION_FOTO_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS, onCambio: onCambioVideo },
       'Actividades del colegio');

@@ -2,7 +2,8 @@
 
 **Haga primero el paso 2 (Apps Script)** para tener la URL `/exec`.
 
-1. Abra `js/config.js` y pegue la URL en `API_URL: 'https://script.google.com/macros/s/.../exec'`.
+1. `js/config.js` **ya trae configurada** la URL de su Apps Script (`API_URL`).
+   Ahí también puede ajustar los tiempos de fotos/videos.
 2. En github.com cree un repositorio nuevo **público** (ej.: `tv-colegio`).
 3. *Add file → Upload files* → arrastre **todo el contenido de esta carpeta**
    (index.html, admin.html, css, js, assets…) → *Commit changes*.
@@ -13,6 +14,7 @@ Direcciones:
 - Inicio: `https://USUARIO.github.io/tv-colegio/`
 - Directo funcionarios: `.../index.html?perfil=funcionarios`
 - Directo familias: `.../index.html?perfil=familias`
-- Administrador: `.../admin.html`
+- Administrador: `.../admin.html` → **no aparece en las pantallas del TV**; solo se entra
+  escribiendo esta dirección (guárdela en marcadores del computador de quien administra).
 
 > Sin `API_URL` el sitio funciona en **MODO DEMO** con datos de ejemplo.
