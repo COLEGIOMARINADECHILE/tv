@@ -554,33 +554,49 @@ button { font: inherit; color: inherit; }
 .contacto {
   flex: none; display: flex; align-items: stretch; gap: 1.4vw;
   padding: 1.4vh 1.2vw;
-  background: linear-gradient(135deg, rgba(36, 83, 196, 0.35), rgba(6, 21, 58, 0.6));
-  border: 1px solid rgba(246, 201, 14, 0.35);
+  /* fondo destacado: azul intenso con borde dorado */
+  background: linear-gradient(135deg, #1d4ed8 0%, #0f2c72 55%, #0a1f52 100%);
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 3vh rgba(246, 201, 14, 0.18), inset 0 0 4vh rgba(255, 255, 255, 0.05);
 }
 .contacto[hidden] { display: none; }
 .ct-tels { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1vh; }
-.ct-titulo { font-size: 2.2vh; font-weight: 800; color: var(--gold); letter-spacing: 0.04em; }
-.ct-lista { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9vh 0.8vw; }
-.ct-tel {
-  --c: var(--navy-500);
-  display: flex; align-items: center; gap: 0.7vw; min-width: 0;
-  padding: 0.8vh 0.8vw 0.8vh 0.6vw; border-radius: 1.4vh;
-  background: rgba(6, 21, 58, 0.6); border: 1px solid rgba(255, 255, 255, 0.14);
-  border-left: 0.6vh solid var(--c);
+.ct-titulo {
+  align-self: flex-start;
+  font-size: 2vh; font-weight: 800; color: var(--navy-900); letter-spacing: 0.06em;
+  background: var(--gold); padding: 0.4vh 1vw; border-radius: 99px;
 }
-.ct-tel.t-tel { --c: #3b82f6; }
-.ct-tel.t-cel { --c: #a855f7; }
-.ct-tel.t-wsp { --c: #25d366; }
-.ct-tel.t-mail { --c: #f97316; }
-.ct-tel.t-mail b { font-size: 1.65vh; }
+.ct-lista { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 1vh 0.8vw; align-content: center; }
+/* cada teléfono es una tarjeta de color propio */
+.ct-tel {
+  --c1: #2563eb; --c2: #1e3a8a;
+  display: flex; align-items: center; gap: 0.6vw; min-width: 0;
+  padding: 1.1vh 0.7vw 1.1vh 0.6vw; border-radius: 1.6vh;
+  background: linear-gradient(135deg, var(--c1), var(--c2));
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0.8vh 1.8vh rgba(0, 0, 0, 0.35), inset 0 0.3vh 0 rgba(255, 255, 255, 0.25);
+}
+.ct-tel.col-0 { --c1: #3b82f6; --c2: #1d4ed8; }  /* azul */
+.ct-tel.col-1 { --c1: #22c55e; --c2: #15803d; }  /* verde */
+.ct-tel.col-2 { --c1: #fb923c; --c2: #c2410c; }  /* naranjo */
+.ct-tel.col-3 { --c1: #c084fc; --c2: #7e22ce; }  /* morado */
+.ct-tel.col-4 { --c1: #f472b6; --c2: #be185d; }  /* rosado */
+.ct-tel.col-5 { --c1: #2dd4bf; --c2: #0f766e; }  /* turquesa */
 .ct-ico {
-  flex: none; width: 4vh; height: 4vh; border-radius: 50%;
-  display: grid; place-items: center; font-size: 2vh;
-  background: var(--c); box-shadow: 0 0.5vh 1.2vh rgba(0, 0, 0, 0.3);
+  flex: none; width: 5vh; height: 5vh; border-radius: 50%;
+  display: grid; place-items: center; font-size: 2.5vh;
+  background: #fff; box-shadow: 0 0.5vh 1.2vh rgba(0, 0, 0, 0.3);
 }
 .ct-tel > div { min-width: 0; }
-.ct-tel small { display: block; font-size: 1.35vh; color: var(--gold-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ct-tel b { display: block; font-size: 2vh; color: var(--white); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-tel small {
+  display: block; font-size: 1.4vh; color: rgba(255, 255, 255, 0.9); font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ct-tel b {
+  display: block; font-size: 2.45vh; color: #fff; font-weight: 800; letter-spacing: 0;
+  text-shadow: 0 0.2vh 0.4vh rgba(0, 0, 0, 0.3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 /* códigos QR */
 .ct-qrs { flex: none; width: min-content; display: flex; flex-direction: column; align-items: stretch; gap: 0.8vh; }
 .ct-qr-fila { display: flex; gap: 0.9vw; }

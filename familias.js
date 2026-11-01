@@ -113,9 +113,10 @@
 
     // de a 4 teléfonos; si hay más, rotan
     const POR_GRUPO = 4;
-    const grupo = n => tels.slice(n, n + POR_GRUPO).map(t => {
+    // cada teléfono con su propio color (para no confundirlos); el ícono indica el tipo
+    const grupo = n => tels.slice(n, n + POR_GRUPO).map((t, k) => {
       const tp = TIPOS_TEL[t.tipo] || TIPOS_TEL.telefono;
-      return `<div class="ct-tel ${tp.clase} fade"><span class="ct-ico">${tp.ico}</span>
+      return `<div class="ct-tel col-${(n + k) % 6} fade"><span class="ct-ico">${tp.ico}</span>
         <div><small>${esc(t.nombre)}</small><b>${esc(t.numero)}</b></div></div>`;
     }).join('');
 

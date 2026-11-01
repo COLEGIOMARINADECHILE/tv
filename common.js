@@ -97,6 +97,31 @@
     cargar();
     setInterval(revisar, CFG.VERIFICAR_CAMBIOS_SEG * 1000);
     setInterval(cargar, CFG.REFRESCO_DATOS_SEG * 1000); // por si se edita la hoja a mano
+    autoActualizarApp();
+  }
+
+  // Si se subió una versión nueva de la página a GitHub, las pantallas se recargan solas
+  // (evita que el TV o el navegador sigan mostrando una copia antigua guardada en memoria).
+  function autoActualizarApp() {
+    const script = document.querySelector('script[src*="common.js"]');
+    const actual = script && (script.src.match(/[?&]v=(\w+)/) || [])[1];
+    if (!actual || !location.protocol.startsWith('http')) return;
+    const revisar = async () => {
+      try {
+        const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+        const j = await r.json();
+        if (!j.v || j.v === actual) return;
+        // evitar recargas seguidas si el servidor aún entrega la versión antigua
+        const ultimo = +sessionStorage.getItem('cmch_recarga') || 0;
+        if (Date.now() - ultimo < 10 * 60000) return;
+        sessionStorage.setItem('cmch_recarga', Date.now());
+        const u = new URL(location.href);
+        u.searchParams.set('r', Date.now()); // dirección nueva = la página se descarga de nuevo
+        location.replace(u.toString());
+      } catch (e) {}
+    };
+    setTimeout(revisar, 8000);
+    setInterval(revisar, 2 * 60000);
   }
 
   // Botón "Atrás" del control remoto → volver al inicio
