@@ -347,6 +347,61 @@ button { font: inherit; color: inherit; }
 .hoy-card.fin { opacity: 0.55; }
 .semana-head { flex: none; font-size: 1.9vh; font-weight: 800; color: var(--muted); letter-spacing: 0.06em; margin-top: 0.4vh; }
 
+/* ---------- Funcionarios: próximos días (tarjetas con color por día) ---------- */
+.sem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1vh 0.8vw; }
+.sem-card {
+  --c: #2453c4;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.9vw;
+  padding: 1vh 0.9vw 1vh 0; border-radius: 1.4vh; overflow: hidden;
+  background: rgba(6, 21, 58, 0.55); border: 1px solid rgba(255, 255, 255, 0.15); /* respaldo */
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 28%, transparent), rgba(6, 21, 58, 0.55) 55%);
+  border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+  animation: rise 0.6s backwards;
+}
+.sem-card.dia-1 { --c: #3b82f6; }  /* lunes */
+.sem-card.dia-2 { --c: #14b8a6; }  /* martes */
+.sem-card.dia-3 { --c: #a855f7; }  /* miércoles */
+.sem-card.dia-4 { --c: #f97316; }  /* jueves */
+.sem-card.dia-5 { --c: #22c55e; }  /* viernes */
+.sem-card.dia-6, .sem-card.dia-0 { --c: #94a3b8; } /* fin de semana */
+.sem-fecha {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 8vh; align-self: stretch; margin: -1vh 0; padding: 0.8vh 0;
+  background: var(--c); color: #fff; text-align: center;
+  box-shadow: inset -0.4vh 0 0 rgba(0, 0, 0, 0.15);
+}
+.sem-dia { font-size: 1.5vh; font-weight: 800; letter-spacing: 0.12em; opacity: 0.95; }
+.sem-num { font-size: 3.8vh; font-weight: 800; line-height: 1; }
+.sem-mes { font-size: 1.3vh; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.9; }
+.sem-info { min-width: 0; }
+.sem-info h3 { font-size: 2vh; color: var(--white); line-height: 1.2; }
+.sem-info p {
+  font-size: 1.5vh; color: var(--muted); margin-top: 0.2vh;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
+.sem-chips { display: flex; flex-wrap: wrap; gap: 0.4vh 0.4vw; margin-top: 0.5vh; }
+.sem-chips span {
+  font-size: 1.45vh; font-weight: 700; color: var(--white);
+  background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.25vh 0.6vw; border-radius: 99px; white-space: nowrap;
+}
+.sem-lado { display: flex; flex-direction: column; align-items: center; gap: 0.5vh; }
+.sem-lado .sem-ico { width: 4.6vh; height: 4.6vh; font-size: 2.6vh; border-radius: 1.2vh; }
+.sem-falta {
+  font-size: 1.3vh; font-weight: 800; white-space: nowrap;
+  color: var(--navy-900); background: var(--gold); padding: 0.2vh 0.5vw; border-radius: 99px;
+}
+.split.sin-tv .sem-grid { grid-template-columns: 1fr; }
+
+/* ---------- Funcionarios: carrusel arriba y actividades abajo (sin Educación) ---------- */
+.info3 { grid-template-rows: minmax(0, 1.05fr) minmax(0, 1fr); }
+.info3 #gal { aspect-ratio: auto; height: 100%; }
+.split.sin-tv .info3 {
+  grid-template-columns: 1.5fr 1fr; grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "gal agenda";
+}
+.split.sin-tv .info3 #gal { aspect-ratio: 16 / 9; height: auto; align-self: center; }
+
 /* ---------- Recordatorio de la actividad de HOY ---------- */
 .aviso-hoy {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1vw;
@@ -478,6 +533,61 @@ button { font: inherit; color: inherit; }
 .edu-fam .edu-video .caption { font-size: 2vh; padding: 3vh 1vw 1vh; }
 .edu-fam .slide-texto h3 { font-size: 2.6vh; }
 .edu-fam .slide-texto p { font-size: 2vh; }
+/* ---------- Familias: carrusel + franja "Contáctanos" debajo ---------- */
+.family-main { display: flex; flex-direction: column; gap: 1.4vh; min-height: 0; }
+.family-main #gal { flex: 1; height: auto; min-height: 0; }
+.contacto {
+  flex: none; display: flex; align-items: stretch; gap: 1.4vw;
+  padding: 1.4vh 1.2vw;
+  background: linear-gradient(135deg, rgba(36, 83, 196, 0.35), rgba(6, 21, 58, 0.6));
+  border: 1px solid rgba(246, 201, 14, 0.35);
+}
+.contacto[hidden] { display: none; }
+.ct-tels { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1vh; }
+.ct-titulo { font-size: 2.2vh; font-weight: 800; color: var(--gold); letter-spacing: 0.04em; }
+.ct-lista { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9vh 0.8vw; }
+.ct-tel {
+  --c: var(--navy-500);
+  display: flex; align-items: center; gap: 0.7vw; min-width: 0;
+  padding: 0.8vh 0.8vw 0.8vh 0.6vw; border-radius: 1.4vh;
+  background: rgba(6, 21, 58, 0.6); border: 1px solid rgba(255, 255, 255, 0.14);
+  border-left: 0.6vh solid var(--c);
+}
+.ct-tel.t-tel { --c: #3b82f6; }
+.ct-tel.t-cel { --c: #a855f7; }
+.ct-tel.t-wsp { --c: #25d366; }
+.ct-tel.t-mail { --c: #f97316; }
+.ct-tel.t-mail b { font-size: 1.65vh; }
+.ct-ico {
+  flex: none; width: 4vh; height: 4vh; border-radius: 50%;
+  display: grid; place-items: center; font-size: 2vh;
+  background: var(--c); box-shadow: 0 0.5vh 1.2vh rgba(0, 0, 0, 0.3);
+}
+.ct-tel > div { min-width: 0; }
+.ct-tel small { display: block; font-size: 1.35vh; color: var(--gold-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-tel b { display: block; font-size: 2vh; color: var(--white); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* códigos QR */
+.ct-qrs { flex: none; width: min-content; display: flex; flex-direction: column; align-items: stretch; gap: 0.8vh; }
+.ct-qr-fila { display: flex; gap: 0.9vw; }
+.ct-qr { display: flex; flex-direction: column; align-items: center; gap: 0.4vh; }
+.qr-caja {
+  background: #fff; padding: 0.8vh; border-radius: 1.2vh;
+  box-shadow: 0 0.8vh 2vh rgba(0, 0, 0, 0.35); border: 0.4vh solid var(--c, var(--gold));
+}
+.ct-qr.r-web { --c: var(--gold); }
+.ct-qr.r-ig { --c: #e1306c; }
+.ct-qr.r-yt { --c: #ff0000; }
+.qr img, .qr canvas { display: block; width: 10.5vh !important; height: 10.5vh !important; }
+.ct-qr span { font-size: 1.6vh; font-weight: 800; color: var(--white); white-space: nowrap; }
+.ct-qr small { font-size: 1.25vh; color: var(--gold-soft); font-weight: 700; max-width: 15vh; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-scan {
+  font-size: 1.5vh; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.3;
+  background: rgba(246, 201, 14, 0.15); border: 1px solid rgba(246, 201, 14, 0.5);
+  padding: 0.4vh 1vw; border-radius: 99px;
+}
+.ct-scan span { display: inline-block; animation: float 3s ease-in-out infinite; }
+.ct-scan b { color: var(--gold); }
+
 /* 📞 Teléfonos en el encabezado de Familias */
 .telefonos { margin-left: auto; display: flex; gap: 0.8vw; align-items: center; min-width: 0; overflow: hidden; }
 .telefonos[hidden] { display: none; }

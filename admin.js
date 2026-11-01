@@ -30,6 +30,12 @@
     Todo esto se puede cambiar después en la lista de la derecha.</p>
   </fieldset>`;
 
+  // Categoría de fotos y videos (define el rótulo en las pantallas)
+  const OPC_CAT = [['actividades', '🏫 Actividades del colegio'], ['educacion', '📚 Educación']];
+  const opcionesCat = sel => OPC_CAT.map(([v, t]) => `<option value="${v}" ${(sel || 'actividades') === v ? 'selected' : ''}>${t}</option>`).join('');
+  const filaCategoria = f => `<div class="cat-fila"><span class="sf-tit">🏷️ Categoría:</span>
+    <select class="cat-sel" data-id="${esc(f.id)}">${opcionesCat(f.categoria)}</select></div>`;
+
   // Fila "Sonido" editable de cada video ya publicado
   const filaSonido = f => {
     if (!UI.youtubeId(f.url)) return '';
@@ -64,6 +70,7 @@
     fotos: {
       nombre: '📸 Fotos y videos',
       form: `<label>Título / actividad<input name="titulo" required></label>
+        <label>🏷️ Categoría<select name="categoria">${opcionesCat('actividades')}</select></label>
         <label>Tipo
           <select name="tipo"><option value="imagen">📷 Imagen</option><option value="video">▶️ Video de YouTube</option></select></label>
         <label data-tipo="imagen">Imágenes (puede elegir varias a la vez con Ctrl)<input type="file" name="imagen" accept="image/*" multiple></label>
@@ -75,10 +82,11 @@
         <p class="note" data-tipo="imagen">La imagen se reduce automáticamente a 1920 px antes de subirla a Google Drive.</p>
         <p class="note" data-tipo="video" hidden>El video se reproduce completo y luego pasa al siguiente elemento del carrusel.
         Debe ser público o "no listado" y permitir insertarse en otros sitios.</p>`,
-      linea: f => [(UI.youtubeId(f.url) ? '▶ ' : '') + f.titulo, f.publico],
+      linea: f => [(UI.youtubeId(f.url) ? '▶ ' : '') + f.titulo,
+        (f.categoria === 'educacion' ? '📚 Educación' : '🏫 Actividades') + ' · ' + f.publico],
       img: f => (UI.youtubeId(f.url) ? `https://img.youtube.com/vi/${UI.youtubeId(f.url)}/mqdefault.jpg` : f.url),
-      // botones para cambiar el sonido de un video ya publicado, por perfil
-      extra: filaSonido,
+      // categoría y sonido editables en cada publicación
+      extra: f => filaCategoria(f) + filaSonido(f),
     },
     musica: {
       nombre: '🎵 Música Familias',
@@ -93,15 +101,19 @@
       linea: m => [(/youtu/.test(m.url) ? '▶ ' : '🎵 ') + m.titulo,
         m.fileId ? 'Archivo en Google Drive' : (/[?&]list=/.test(m.url) ? 'Lista de YouTube · ' : '') + m.url],
     },
+    // Sección antigua: solo aparece si quedan publicaciones de antes (para poder eliminarlas).
+    // Ahora Educación se publica en "Fotos y videos" con la categoría 📚 Educación.
     noticias: {
-      nombre: '📚 Educación',
+      nombre: '📚 Educación (anteriores)',
+      soloSiHay: true,
       form: `<label>Título<input name="titulo" required></label>
         <label>Texto<textarea name="texto" maxlength="280" placeholder="Breve descripción (opcional si agrega un video)"></textarea></label>
         <label>Video de YouTube · experiencia educativa (opcional)<input name="url" placeholder="Pegue aquí el enlace (botón Compartir → Copiar): https://youtu.be/..."></label>
         <img class="preview" id="preview" hidden alt="">
         ${SONIDO()}
         ${PUBLICO}
-        <p class="note">El video se reproduce completo en el recuadro de Educación (Funcionarios y Familias).</p>`,
+        <p class="note">Esta sección es de publicaciones anteriores. Para publicar algo nuevo de Educación use
+        <b>📸 Fotos y videos</b> con la categoría <b>📚 Educación</b>. Los videos de aquí se muestran en el carrusel.</p>`,
       linea: n => [(UI.enlaceVideo(n) ? '▶ ' : '') + n.titulo, n.publico + ' · ' + UI.textoLimpio(n).slice(0, 80)],
       img: n => (UI.enlaceVideo(n) ? `https://img.youtube.com/vi/${UI.youtubeId(UI.enlaceVideo(n))}/mqdefault.jpg` : ''),
       extra: n => SECCIONES.fotos.extra(Object.assign({}, n, { url: UI.enlaceVideo(n) })),
@@ -209,6 +221,15 @@
     vistaPanel();
   }
 
+  // Una fila de teléfono: tipo · nombre · número · quitar
+  const TIPOS_TEL = [['telefono', '📞 Teléfono'], ['celular', '📱 Celular'], ['whatsapp', '💬 WhatsApp'], ['correo', '✉️ Correo']];
+  const filaTel = t => `<div class="tel-fila">
+    <select data-campo="tipo">${TIPOS_TEL.map(([v, n]) => `<option value="${v}" ${(t.tipo || 'telefono') === v ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    <input data-campo="nombre" placeholder="Nombre (ej. Secretaría)" value="${esc(t.nombre || '')}">
+    <input data-campo="numero" placeholder="Número (ej. 41 234 5678)" value="${esc(t.numero || '')}">
+    <button type="button" class="tel-quitar" title="Quitar">✕</button>
+  </div>`;
+
   // Ajustes generales: mensaje para las familias y segundos de las fotos
   function formAjustes() {
     const a = UI.ajustes(data);
@@ -226,10 +247,22 @@
           <legend>👨‍👩‍👧 Pantalla Familias</legend>
           <label>Mensaje para las familias<textarea name="mensajeTexto" maxlength="280">${esc(a.mensajeTexto)}</textarea></label>
           <p class="note">Aparece destacado en la pantalla Familias. Déjelo vacío para no mostrarlo.</p>
-          <label>📞 Teléfonos de contacto (siempre visibles, uno por línea)
-            <textarea name="telefonos" rows="3" placeholder="Secretaría: 41 234 5678&#10;Inspectoría: 41 234 5679&#10;WhatsApp: +56 9 1234 5678">${esc(a.telefonos)}</textarea></label>
-          <p class="note">Formato: <b>Nombre: número</b>. Se muestran en la parte superior de la pantalla Familias.</p>
           <label>Segundos que se ve cada foto · Familias<input type="number" name="segFotosFamilias" min="3" max="120" value="${esc(a.segFotosFamilias)}"></label>
+        </fieldset>
+
+        <fieldset class="grupo">
+          <legend>📞 Teléfonos de contacto (franja "Contáctanos" en Familias)</legend>
+          <div class="tel-filas" id="tel-filas">${(UI.contactos(a.telefonos).length ? UI.contactos(a.telefonos) : [{}]).map(filaTel).join('')}</div>
+          <button type="button" class="btn ghost" id="tel-agregar">➕ Agregar otro teléfono</button>
+          <p class="note">Si hay más de 4, se muestran de a 4 rotando.</p>
+        </fieldset>
+
+        <fieldset class="grupo">
+          <legend>📱 Sitio web y redes (se muestran con código QR en Familias)</legend>
+          <label>🌐 Sitio web del colegio<input name="sitioWeb" value="${esc(a.sitioWeb)}" placeholder="www.colegiomarinadechile.cl"></label>
+          <label>📸 Instagram (usuario o enlace)<input name="instagram" value="${esc(a.instagram)}" placeholder="@colegiomarinadechile"></label>
+          <label>▶️ YouTube (canal o enlace)<input name="youtube" value="${esc(a.youtube)}" placeholder="@colegiomarinadechile o https://www.youtube.com/@..."></label>
+          <p class="note">Deje vacío lo que no quiera mostrar. Las familias escanean el QR con la cámara del celular.</p>
         </fieldset>
 
         <fieldset class="grupo">
@@ -268,7 +301,7 @@
           <button class="btn ghost" id="salir">Salir</button>
         </div>
       </div>
-      <div class="nav">${Object.keys(SECCIONES).map(k =>
+      <div class="nav">${Object.keys(SECCIONES).filter(k => !SECCIONES[k].soloSiHay || (data[k] || []).length).map(k =>
         `<button data-k="${k}" class="${k === seccion ? 'on' : ''}">${SECCIONES[k].nombre}</button>`).join('')}</div>
       ${cuerpo}`;
 
@@ -281,11 +314,25 @@
 
     if (seccion === 'ajustes') {
       const fa = document.getElementById('f-ajustes');
+      const filas = document.getElementById('tel-filas');
+      // agregar / quitar filas de teléfono
+      document.getElementById('tel-agregar').onclick = () => filas.insertAdjacentHTML('beforeend', filaTel({}));
+      filas.onclick = e => {
+        if (!e.target.classList.contains('tel-quitar')) return;
+        e.target.closest('.tel-fila').remove();
+        if (!filas.children.length) filas.insertAdjacentHTML('beforeend', filaTel({}));
+      };
       fa.onsubmit = async e => {
         e.preventDefault();
-        const btn = fa.querySelector('.btn');
+        const btn = fa.querySelector('button[type=submit], .btn:not(.ghost)');
         const valores = {};
         new FormData(fa).forEach((v, k) => (valores[k] = String(v).trim()));
+        // teléfonos: lista ordenada (se guardan solo las filas con número)
+        valores.telefonos = JSON.stringify([...filas.querySelectorAll('.tel-fila')].map(f => {
+          const o = {};
+          f.querySelectorAll('[data-campo]').forEach(c => (o[c.dataset.campo] = c.value.trim()));
+          return o;
+        }).filter(t => t.numero));
         btn.disabled = true;
         btn.textContent = 'Guardando…';
         try {
@@ -400,6 +447,18 @@
         btn.textContent = 'Publicar';
       }
     };
+
+    app.querySelectorAll('.cat-sel').forEach(s => (s.onchange = async () => {
+      s.disabled = true;
+      try {
+        await API.admin('update', { password, sheet: seccion, item: { id: s.dataset.id, categoria: s.value } });
+        toast('Categoría actualizada ✔');
+        await recargar();
+      } catch (err) {
+        toast(err.message, 'err');
+        s.disabled = false;
+      }
+    }));
 
     app.querySelectorAll('.veces-sel').forEach(s => (s.onchange = async () => {
       s.disabled = true;

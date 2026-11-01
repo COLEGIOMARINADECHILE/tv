@@ -416,11 +416,53 @@
       segFotosFuncionarios: CFG.DURACION_FOTO_FUNCIONARIOS_SEG,
       velocidadAvisos: 'normal',
       telefonos: '',
+      sitioWeb: '',
+      instagram: '',
+      youtube: '',
     };
     (data.ajustes || []).forEach(r => { if (r.id) a[r.id] = r.valor; });
     a.segFotosFamilias = Math.max(3, +a.segFotosFamilias || CFG.DURACION_FOTO_SEG);
     a.segFotosFuncionarios = Math.max(3, +a.segFotosFuncionarios || CFG.DURACION_FOTO_FUNCIONARIOS_SEG);
     return a;
+  }
+
+  // Teléfonos guardados en Ajustes: lista JSON [{tipo, nombre, numero}]
+  // (acepta también el formato antiguo "Nombre: número" por línea)
+  function contactos(valor) {
+    const s = String(valor || '').trim();
+    if (!s) return [];
+    try {
+      const lista = JSON.parse(s);
+      if (Array.isArray(lista)) return lista.filter(t => t && t.numero);
+    } catch (e) {}
+    return s.split(/\n+/).map(l => l.trim()).filter(Boolean).map(l => {
+      const k = l.indexOf(':');
+      return k > 0
+        ? { tipo: 'telefono', nombre: l.slice(0, k).trim(), numero: l.slice(k + 1).trim() }
+        : { tipo: 'telefono', nombre: 'Contacto', numero: l };
+    });
+  }
+
+  // Sitio web, Instagram y YouTube → { nombre, ico, url, texto, clase } para mostrar con QR
+  function redes(aj) {
+    const out = [];
+    const web = String(aj.sitioWeb || '').trim();
+    if (web) {
+      const url = /^https?:\/\//i.test(web) ? web : 'https://' + web;
+      out.push({ nombre: 'Sitio web', ico: '🌐', url, texto: url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, ''), clase: 'r-web' });
+    }
+    const ig = String(aj.instagram || '').trim();
+    if (ig) {
+      const usuario = ig.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/[/?].*$/, '');
+      out.push({ nombre: 'Instagram', ico: '📸', url: 'https://www.instagram.com/' + usuario, texto: '@' + usuario, clase: 'r-ig' });
+    }
+    const yt = String(aj.youtube || '').trim();
+    if (yt) {
+      const url = /^https?:\/\//i.test(yt) ? yt : 'https://www.youtube.com/' + (yt.startsWith('@') ? yt : '@' + yt);
+      const texto = (url.match(/youtube\.com\/(@[\w.-]+)/i) || [])[1] || 'YouTube';
+      out.push({ nombre: 'YouTube', ico: '▶️', url, texto, clase: 'r-yt' });
+    }
+    return out;
   }
 
   // Video de una publicación de Educación: en el campo del enlace o pegado en el texto
@@ -434,12 +476,15 @@
     return String(n.texto || '').replace(/https?:\/\/\S+/g, '').trim();
   }
 
-  // Fotos y videos + videos de Educación (experiencias educativas), para el carrusel
+  // Carrusel: fotos y videos con su categoría (Actividades del colegio o 📚 Educación).
+  // También incluye los videos publicados antes en la antigua sección Educación.
   function carrusel(data, perfil) {
-    const edu = API.para(data.noticias, perfil)
+    const fotos = API.para(data.fotos, perfil)
+      .map(f => (f.categoria === 'educacion' ? Object.assign({}, f, { etiqueta: '📚 Educación' }) : f));
+    const antiguos = API.para(data.noticias, perfil)
       .filter(n => enlaceVideo(n))
-      .map(n => ({ titulo: n.titulo, url: enlaceVideo(n), audio: n.audio, audioFunc: n.audioFunc, etiqueta: '📚 Experiencia educativa' }));
-    return API.para(data.fotos, perfil).concat(edu);
+      .map(n => ({ titulo: n.titulo, url: enlaceVideo(n), audio: n.audio, audioFunc: n.audioFunc, vecesAudio: n.vecesAudio, etiqueta: '📚 Educación' }));
+    return fotos.concat(antiguos);
   }
 
   // Miniatura de video para tarjetas de Educación
@@ -455,5 +500,5 @@
     return m ? m[1] : null;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy, estadoHoy, minutosDelDia, ICONOS, icono };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy, estadoHoy, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

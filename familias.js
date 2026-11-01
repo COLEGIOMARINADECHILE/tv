@@ -90,47 +90,65 @@
       <p class="tip-msg">${esc(texto)}</p></div>` : '';
   }
 
-  // 📞 Teléfonos siempre visibles en el encabezado (Admin → Ajustes, "Nombre: número" por línea).
-  // Si hay más de 2, se muestran de a 2 rotando.
-  document.querySelector('.tv-header .clock').insertAdjacentHTML('beforebegin', '<div class="telefonos" id="telefonos"></div>');
+  // ---------- Franja "Contáctanos": teléfonos + QR (sitio web, Instagram, YouTube) ----------
+  const TIPOS_TEL = {
+    telefono: { ico: '📞', clase: 't-tel' },
+    celular: { ico: '📱', clase: 't-cel' },
+    whatsapp: { ico: '💬', clase: 't-wsp' },
+    correo: { ico: '✉️', clase: 't-mail' },
+  };
+  let contactoFirma = null;
   let telTimer;
-  let telFirma = null;
-  function renderTelefonos(texto) {
-    if (texto === telFirma) return;
-    telFirma = texto;
-    const el = document.getElementById('telefonos');
-    const tels = String(texto || '').split(/\n+/).map(l => l.trim()).filter(Boolean).map(l => {
-      const k = l.indexOf(':');
-      return k > 0 ? { nombre: l.slice(0, k).trim(), numero: l.slice(k + 1).trim() } : { nombre: 'Contacto', numero: l };
-    });
-    clearInterval(telTimer);
-    const grupo = n => tels.slice(n, n + 2).map(t => `<div class="tel fade">
-      <span class="tel-ico">📞</span><div><small>${esc(t.nombre)}</small><b>${esc(t.numero)}</b></div></div>`).join('');
-    el.hidden = !tels.length;
-    let n = 0;
-    el.innerHTML = grupo(0);
-    if (tels.length > 2) {
-      telTimer = setInterval(() => {
-        n = n + 2 >= tels.length ? 0 : n + 2;
-        el.innerHTML = grupo(n);
-      }, 7000);
-    }
-  }
 
-  // Educación: recuadro propio (solo aparece si hay algo para familias).
-  // Los videos se reproducen ahí mismo y los textos se leen unos segundos.
-  const eduBox = document.getElementById('edu-fam-box');
-  const eduFam = document.getElementById('edu-fam');
-  function renderEducacion(notas) {
-    const items = notas.map(n => UI.enlaceVideo(n)
-      ? { titulo: n.titulo, url: UI.enlaceVideo(n), audio: n.audio, audioFunc: n.audioFunc, vecesAudio: n.vecesAudio }
-      : { titulo: n.titulo, texto: UI.textoLimpio(n) });
-    eduBox.hidden = !items.length;
-    UI.gallery(eduFam, items,
-      { seg: CFG.DURACION_EDUCACION_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,
-        perfil: 'familias', onCambio: onCambioEdu },
-      '📚 Experiencia educativa');
-    return items.filter(f => f.url);
+  function renderContacto(aj) {
+    const tels = UI.contactos(aj.telefonos);
+    const redes = UI.redes(aj);
+    const firma = JSON.stringify([tels, redes]);
+    if (firma === contactoFirma) return;
+    contactoFirma = firma;
+    const el = document.getElementById('contacto');
+    clearInterval(telTimer);
+    el.hidden = !tels.length && !redes.length;
+    if (el.hidden) return;
+
+    // de a 4 teléfonos; si hay más, rotan
+    const POR_GRUPO = 4;
+    const grupo = n => tels.slice(n, n + POR_GRUPO).map(t => {
+      const tp = TIPOS_TEL[t.tipo] || TIPOS_TEL.telefono;
+      return `<div class="ct-tel ${tp.clase} fade"><span class="ct-ico">${tp.ico}</span>
+        <div><small>${esc(t.nombre)}</small><b>${esc(t.numero)}</b></div></div>`;
+    }).join('');
+
+    el.innerHTML = `
+      ${tels.length ? `<div class="ct-tels">
+        <div class="ct-titulo">📞 Contáctanos</div>
+        <div class="ct-lista" id="ct-lista">${grupo(0)}</div>
+      </div>` : ''}
+      ${redes.length ? `<div class="ct-qrs">
+        <div class="ct-scan"><span>📱</span> <b>Escanea</b> con la cámara de tu celular para acceder directo</div>
+        <div class="ct-qr-fila">${redes.map((r, i) => `<div class="ct-qr ${r.clase}">
+          <div class="qr-caja"><div class="qr" id="qr-${i}"></div></div>
+          <span>${r.ico} ${esc(r.nombre)}</span><small>${esc(r.texto)}</small></div>`).join('')}</div>
+      </div>` : ''}`;
+
+    // códigos QR
+    redes.forEach((r, i) => {
+      const caja = document.getElementById('qr-' + i);
+      const px = Math.round(window.innerHeight * 0.12);
+      if (window.QRCode) {
+        new QRCode(caja, { text: r.url, width: px, height: px, colorDark: '#06153a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+      } else {
+        caja.textContent = r.texto; // sin internet para cargar el generador
+      }
+    });
+
+    if (tels.length > POR_GRUPO) {
+      let n = 0;
+      telTimer = setInterval(() => {
+        n = n + POR_GRUPO >= tels.length ? 0 : n + POR_GRUPO;
+        document.getElementById('ct-lista').innerHTML = grupo(n);
+      }, 8000);
+    }
   }
 
   // ---------- Música de fondo: MP3 o YouTube (video o lista de reproducción) ----------
@@ -244,27 +262,12 @@
     tocar();
   }
 
-  // Sonido: si el video de Educación suena tiene prioridad (se silencia el carrusel);
-  // mientras suene cualquier video, la música de fondo baja.
+  // Mientras suene un video del carrusel, la música de fondo baja.
   const gal = document.getElementById('gal');
-  let galAudio = false;
-  let eduAudio = false;
-
-  function ajustarMusica() {
-    videoSonando = galAudio || eduAudio;
-    if (pistas.length) fundido(volObjetivo());
-  }
 
   function onCambioVideo(conAudio) {
-    galAudio = conAudio;
-    ajustarMusica();
-  }
-
-  function onCambioEdu(conAudio) {
-    eduAudio = conAudio;
-    if (gal._setMudo) gal._setMudo(conAudio);
-    else gal._mudo = conAudio;
-    ajustarMusica();
+    videoSonando = conAudio;
+    if (pistas.length) fundido(volObjetivo());
   }
 
   function activarSonido() {
@@ -274,23 +277,22 @@
     } else if (pistas.length && musica.paused) {
       tocar();
     }
-    eduFam._activarSonido && eduFam._activarSonido();
     gal._activarSonido();
   }
 
   UI.autoData(data => {
     const aj = UI.ajustes(data);
     renderMensaje(aj.mensajeTexto);
-    renderTelefonos(aj.telefonos);
-    const fotos = API.para(data.fotos, 'familias');
+    renderContacto(aj);
+    // Actividades del colegio + Educación en el mismo carrusel (el rótulo indica la categoría)
+    const fotos = UI.carrusel(data, 'familias');
     UI.gallery(gal, fotos,
       { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,
         perfil: 'familias', onCambio: onCambioVideo },
       'Actividades del colegio');
-    const videosEdu = renderEducacion(API.para(data.noticias, 'familias'));
     setMusica(data.musica || []);
     const videosConAudio = CFG.VIDEO_CON_SONIDO_FAMILIAS &&
-      fotos.concat(videosEdu).some(f => UI.youtubeId(f.url) && f.audio !== 'no');
+      fotos.some(f => UI.youtubeId(f.url) && f.audio !== 'no');
     if (pistas.length || videosConAudio) UI.pedirSonido(activarSonido);
     renderFechas(data.fechas || [], (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos'));
     UI.avisoHoy(document.getElementById('aviso-hoy'),

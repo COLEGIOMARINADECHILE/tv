@@ -20,6 +20,7 @@
     fotos: [
       { id: 'f0', titulo: 'Video de ejemplo', url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ', publico: 'ambos', audio: 'si', audioFunc: 'no' },
       { id: 'f1', titulo: 'Feria científica 2026', url: 'https://picsum.photos/seed/marina1/1280/720', publico: 'ambos' },
+      { id: 'f5', titulo: 'Taller de lectura compartida', url: 'https://picsum.photos/seed/marina5/1280/720', publico: 'ambos', categoria: 'educacion' },
       { id: 'f2', titulo: 'Día del Profesor', url: 'https://picsum.photos/seed/marina2/1280/720', publico: 'funcionarios' },
       { id: 'f3', titulo: 'Acto de Glorias Navales', url: 'https://picsum.photos/seed/marina3/1280/720', publico: 'ambos' },
       { id: 'f4', titulo: 'Salida pedagógica 4° básico', url: 'https://picsum.photos/seed/marina4/1280/720', publico: 'familias' },
@@ -48,7 +49,15 @@
       { id: 'v3', texto: 'Horario de atención de apoderados: lunes a viernes 8:00 a 13:00', publico: 'familias' },
     ],
     ajustes: [
-      { id: 'telefonos', valor: 'Secretaría: 41 234 5678\nInspectoría: 41 234 5679\nWhatsApp: +56 9 1234 5678' },
+      { id: 'telefonos', valor: JSON.stringify([
+        { tipo: 'telefono', nombre: 'Secretaría', numero: '41 234 5678' },
+        { tipo: 'telefono', nombre: 'Inspectoría', numero: '41 234 5679' },
+        { tipo: 'whatsapp', nombre: 'WhatsApp', numero: '+56 9 1234 5678' },
+        { tipo: 'correo', nombre: 'Correo', numero: 'contacto@colegio.cl' },
+      ]) },
+      { id: 'sitioWeb', valor: 'www.ejemplo-colegio.cl' },
+      { id: 'instagram', valor: '@ejemplo_colegio' },
+      { id: 'youtube', valor: '@ejemplo_colegio' },
     ],
     musica: [
       { id: 'm1', titulo: 'Lista de ejemplo', url: 'https://www.youtube.com/watch?v=CLeZyIID9Bo&list=PLhvRqWR6il6FAbhLWbHnEIVQErmpBRXCo' },

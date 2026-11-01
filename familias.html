@@ -12,14 +12,18 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261101l">
+  <link rel="stylesheet" href="styles.css?v=20261101m">
 </head>
 <body>
   <div class="tv">
     <div id="hdr"></div>
 
     <main class="family">
-      <section class="gallery card" id="gal"></section>
+      <div class="family-main">
+        <section class="gallery card" id="gal"></section>
+        <!-- Contáctanos: teléfonos + QR de sitio web, Instagram y YouTube (Admin → Ajustes) -->
+        <section class="contacto card" id="contacto" hidden></section>
+      </div>
       <aside class="family-side">
         <div class="aviso-hoy" id="aviso-hoy" hidden></div>
         <section class="card dates">
@@ -27,11 +31,6 @@
           <div class="date-list" id="fechas"></div>
         </section>
         <section class="card tip" id="tip"></section>
-        <!-- Educación (videos y textos); solo aparece si hay publicaciones para familias -->
-        <section class="card edu-fam" id="edu-fam-box" hidden>
-          <div class="card-title"><span class="dot"></span>📚 Educación</div>
-          <div class="gallery edu-video" id="edu-fam"></div>
-        </section>
         <!-- ocupa el espacio que sobra cuando hay pocos textos -->
         <div class="side-logo"><img src="insignia.png" alt="Escudo Colegio Marina de Chile"></div>
       </aside>
@@ -40,9 +39,11 @@
     <footer class="ticker" id="ticker"></footer>
   </div>
 
-  <script src="config.js?v=20261101l"></script>
-  <script src="api.js?v=20261101l"></script>
-  <script src="common.js?v=20261101l"></script>
-  <script src="familias.js?v=20261101l"></script>
+  <!-- generador de códigos QR -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="config.js?v=20261101m"></script>
+  <script src="api.js?v=20261101m"></script>
+  <script src="common.js?v=20261101m"></script>
+  <script src="familias.js?v=20261101m"></script>
 </body>
 </html>

@@ -155,15 +155,26 @@
           </div>`).join('')}</div>
       </section>` : '';
 
+    // Próximos días: tarjeta con el día de la semana destacado (un color por día),
+    // hora y lugar en etiquetas, y cuánto falta.
+    const DIAS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
     const bloqueSemana = semana.length ? `
       <div class="semana-head">📆 Próximos días</div>
-      <div class="agenda-grid">${semana.map((a, i) => {
+      <div class="sem-grid">${semana.map((a, i) => {
         const d = parseFecha(a.fecha);
-        return `<div class="event" style="animation-delay:${i * 0.06}s">
-          ${a.icono ? UI.icono(a.icono, 'ev-ico') : ''}
-          <div class="day"><div class="d">${d.getDate()}</div><div class="m">${MESES[d.getMonth()]}</div></div>
-          <div><h3>${esc(a.titulo)}</h3>${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
-          <div class="meta">${a.hora ? '🕒 ' + esc(a.hora) + ' hrs' : ''}${a.lugar ? ' · 📍 ' + esc(a.lugar) : ''}</div></div>
+        const falta = a.dias === 1 ? 'Mañana' : `En ${a.dias} días`;
+        return `<div class="sem-card dia-${d.getDay()}" style="animation-delay:${i * 0.06}s">
+          <div class="sem-fecha">
+            <span class="sem-dia">${DIAS[d.getDay()]}</span>
+            <span class="sem-num">${d.getDate()}</span>
+            <span class="sem-mes">${MESES[d.getMonth()]}</span>
+          </div>
+          <div class="sem-info">
+            <h3>${esc(a.titulo)}</h3>
+            ${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
+            <div class="sem-chips">${a.hora ? `<span>🕒 ${esc(a.hora)}</span>` : ''}${a.lugar ? `<span>📍 ${esc(a.lugar)}</span>` : ''}</div>
+          </div>
+          <div class="sem-lado">${UI.icono(a.icono || '📅', 'sem-ico')}<span class="sem-falta">${falta}</span></div>
         </div>`;
       }).join('')}</div>` : '';
 
@@ -182,31 +193,8 @@
   }
   setInterval(actualizarEstadosHoy, 30000);
 
-  // Educación: los videos se reproducen dentro de su propio recuadro; los textos van debajo
-  const eduVideo = document.getElementById('edu-video');
-
-  // Educación muestra UNA publicación a la vez, en grande y rotando:
-  // los videos se reproducen completos en el recuadro; los textos se leen ~15 s.
-  function renderEdu(notas) {
-    const items = notas.map(n => UI.enlaceVideo(n)
-      ? { titulo: n.titulo, url: UI.enlaceVideo(n), audio: n.audio, audioFunc: n.audioFunc, vecesAudio: n.vecesAudio }
-      : { titulo: n.titulo, texto: UI.textoLimpio(n) });
-    eduVideo.hidden = false;
-    UI.gallery(eduVideo, items,
-      { seg: CFG.DURACION_EDUCACION_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true, perfil: 'funcionarios',
-        audioDe: f => f.audioFunc === 'si', onCambio: onCambioEdu },
-      '📚 Experiencia educativa');
-    if (!items.length) eduVideo.innerHTML = '<p class="empty-msg" style="padding-top:8vh">Sin publicaciones</p>';
-    return items.filter(f => f.url);
-  }
-
-  // Sonido: si el video de Educación suena, tiene prioridad y TODO lo demás se silencia
-  // (el carrusel de fotos y videos, y la TV se pausa). Vuelve al terminar.
-  let galAudio = false;
-  let eduAudio = false;
-
-  function actualizarTv() {
-    const conAudio = galAudio || eduAudio;
+  // Sonido: si un video del carrusel suena, la TV se pausa para que no se mezclen; vuelve al terminar.
+  function onCambioVideo(conAudio) {
     if (!conTv || conAudio === tvPausada) return;
     tvPausada = conAudio;
     if (conAudio) {
@@ -218,36 +206,21 @@
     }
   }
 
-  const gal = document.getElementById('gal');
-
-  function onCambioVideo(conAudio) {
-    galAudio = conAudio;
-    actualizarTv();
-  }
-
-  function onCambioEdu(conAudio) {
-    eduAudio = conAudio;
-    if (gal._setMudo) gal._setMudo(conAudio);
-    else gal._mudo = conAudio;
-    actualizarTv();
-  }
-
   function activarSonido() {
     document.getElementById('gal')._activarSonido();
-    eduVideo._activarSonido && eduVideo._activarSonido();
   }
 
   UI.autoData(data => {
     const aj = UI.ajustes(data);
     renderCanales(data.canales || []);
     renderAgenda(API.para(data.actividades, 'funcionarios'));
-    const fotos = API.para(data.fotos, 'funcionarios');
+    // Actividades del colegio + Educación en el mismo carrusel (el rótulo indica la categoría)
+    const fotos = UI.carrusel(data, 'funcionarios');
     UI.gallery(document.getElementById('gal'), fotos,
       { seg: aj.segFotosFuncionarios, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true, perfil: 'funcionarios',
         audioDe: f => f.audioFunc === 'si', onCambio: onCambioVideo },
       'Actividades del colegio');
-    const videosEdu = renderEdu(API.para(data.noticias, 'funcionarios'));
-    if (fotos.concat(videosEdu).some(f => UI.youtubeId(f.url) && f.audioFunc === 'si')) UI.pedirSonido(activarSonido);
+    if (fotos.some(f => UI.youtubeId(f.url) && f.audioFunc === 'si')) UI.pedirSonido(activarSonido);
     UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'funcionarios'), aj.velocidadAvisos);
   });
 })();
