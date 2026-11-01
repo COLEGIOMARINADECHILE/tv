@@ -129,23 +129,58 @@
   window.addEventListener('resize', () => NATIVE && conTv && !tvPausada && canales[actual]?.url && NATIVE.showTv(canales[actual].url, ...playerRect()));
 
   // ---------- Panel informativo (todo visible a la vez) ----------
+  // Actividades: bloque destacado "HOY" (con estado en vivo) y, aparte, los próximos días
   function renderAgenda(acts) {
     const lista = acts
       .map(a => ({ ...a, dias: diasHasta(a.fecha) }))
       .filter(a => a.dias !== null && a.dias >= 0 && a.dias <= 7)
       .sort((a, b) => a.dias - b.dias || String(a.hora).localeCompare(String(b.hora)));
+    const hoy = lista.filter(a => a.dias === 0);
+    const semana = lista.filter(a => a.dias > 0);
     const el = document.getElementById('agenda');
-    el.innerHTML = lista.length ? `<div class="agenda-grid">${lista.map((a, i) => {
-      const d = parseFecha(a.fecha);
-      return `<div class="event ${a.dias === 0 ? 'today' : ''}" style="animation-delay:${i * 0.06}s">
-        ${a.icono ? UI.icono(a.icono, 'ev-ico') : ''}
-        <div class="day"><div class="d">${d.getDate()}</div><div class="m">${a.dias === 0 ? 'HOY' : MESES[d.getMonth()]}</div></div>
-        <div><h3>${esc(a.titulo)}</h3>${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
-        <div class="meta">${a.hora ? '🕒 ' + esc(a.hora) + ' hrs' : ''}${a.lugar ? ' · 📍 ' + esc(a.lugar) : ''}</div></div>
-      </div>`;
-    }).join('')}</div>` : '<p class="empty-msg">No hay actividades programadas esta semana</p>';
+    const fechaHoy = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    const bloqueHoy = hoy.length ? `
+      <section class="hoy-bloque">
+        <div class="hoy-head"><span class="hoy-tag">⭐ HOY</span><span class="hoy-fecha">${esc(fechaHoy)}</span></div>
+        <div class="hoy-cards">${hoy.map((a, i) => `
+          <div class="hoy-card" data-hora="${esc(a.hora || '')}" style="animation-delay:${i * 0.08}s">
+            ${UI.icono(a.icono || '📅', 'hoy-ico')}
+            <div class="hoy-info">
+              <h3>${esc(a.titulo)}</h3>
+              <div class="hoy-meta">${a.hora ? `<span>🕒 ${esc(a.hora)} hrs</span>` : ''}${a.lugar ? `<span>📍 ${esc(a.lugar)}</span>` : ''}</div>
+              ${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
+            </div>
+            <div class="hoy-estado"></div>
+          </div>`).join('')}</div>
+      </section>` : '';
+
+    const bloqueSemana = semana.length ? `
+      <div class="semana-head">📆 Próximos días</div>
+      <div class="agenda-grid">${semana.map((a, i) => {
+        const d = parseFecha(a.fecha);
+        return `<div class="event" style="animation-delay:${i * 0.06}s">
+          ${a.icono ? UI.icono(a.icono, 'ev-ico') : ''}
+          <div class="day"><div class="d">${d.getDate()}</div><div class="m">${MESES[d.getMonth()]}</div></div>
+          <div><h3>${esc(a.titulo)}</h3>${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
+          <div class="meta">${a.hora ? '🕒 ' + esc(a.hora) + ' hrs' : ''}${a.lugar ? ' · 📍 ' + esc(a.lugar) : ''}</div></div>
+        </div>`;
+      }).join('')}</div>` : '';
+
+    el.innerHTML = (bloqueHoy + bloqueSemana) || '<p class="empty-msg">No hay actividades programadas esta semana</p>';
+    actualizarEstadosHoy();
     UI.autoScroll(el);
   }
+
+  // Estado en vivo de cada actividad de hoy (AHORA / En 25 min / Finalizada)
+  function actualizarEstadosHoy() {
+    document.querySelectorAll('.hoy-card').forEach(c => {
+      const e = UI.estadoHoy(c.dataset.hora);
+      c.className = 'hoy-card ' + e.clase;
+      c.querySelector('.hoy-estado').textContent = e.texto;
+    });
+  }
+  setInterval(actualizarEstadosHoy, 30000);
 
   // Educación: los videos se reproducen dentro de su propio recuadro; los textos van debajo
   const eduVideo = document.getElementById('edu-video');
@@ -206,7 +241,6 @@
     const aj = UI.ajustes(data);
     renderCanales(data.canales || []);
     renderAgenda(API.para(data.actividades, 'funcionarios'));
-    UI.avisoHoy(document.getElementById('aviso-hoy'), API.para(data.actividades, 'funcionarios'));
     const fotos = API.para(data.fotos, 'funcionarios');
     UI.gallery(document.getElementById('gal'), fotos,
       { seg: aj.segFotosFuncionarios, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true,

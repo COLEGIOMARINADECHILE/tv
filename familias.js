@@ -7,35 +7,75 @@
   UI.startClock();
   UI.backToHome();
 
-  function faltan(d) {
-    if (d === 0) return '¡Hoy!';
-    if (d === 1) return 'Mañana';
-    return `En ${d} días`;
+  // Momento exacto (Date) de una fecha "yyyy-mm-dd" + hora "HH:MM" opcional
+  function momento(fecha, hora, finDelDia) {
+    const d = parseFecha(fecha);
+    if (!d) return null;
+    const m = UI.minutosDelDia(hora);
+    if (m !== null) d.setMinutes(m);
+    else if (finDelDia) d.setHours(23, 59, 59);
+    return d;
   }
 
+  const diaMes = s => { const d = parseFecha(s); return d ? `${d.getDate()} ${MESES[d.getMonth()]}` : ''; };
+
+  // Texto del estado de una fecha o período: { chip, clase, orden }
+  function estadoFecha(f) {
+    const ahora = new Date();
+    const ini = momento(f.fecha, f.hora, false);
+    const fin = f.fechaFin ? momento(f.fechaFin, f.horaFin, true) : null;
+    const dias = diasHasta(f.fecha);
+    if (fin && ahora >= ini) {
+      // período vigente
+      const quedan = diasHasta(f.fechaFin);
+      const resta = quedan === 0
+        ? (f.horaFin ? `Termina hoy a las ${f.horaFin}` : 'Último día')
+        : quedan === 1 ? 'Termina mañana' : `Quedan ${quedan} días`;
+      return { chip: '🟢 Disponible ahora', sub: `Hasta el ${diaMes(f.fechaFin)}${f.horaFin ? ' · ' + f.horaFin + ' hrs' : ''} · ${resta}`, clase: 'vigente', orden: -1 };
+    }
+    const hora = f.hora ? ` desde las ${f.hora}` : '';
+    let chip = dias === 0 ? '¡Hoy!' : dias === 1 ? 'Mañana' : `En ${dias} días`;
+    if (f.hora && dias <= 1) chip += hora.replace(' desde las', ' ·');
+    const sub = fin ? `Del ${diaMes(f.fecha)}${f.hora ? ' (' + f.hora + ' hrs)' : ''} al ${diaMes(f.fechaFin)}` : '';
+    return { chip, sub, clase: dias <= 3 ? 'soon' : '', orden: dias };
+  }
+
+  // Los estados cambian con la hora ("Mañana" → "¡Hoy!" → "Disponible ahora"): se recalculan cada minuto
+  let ultimasFechas = null;
+  setInterval(() => ultimasFechas && renderFechas(...ultimasFechas), 60000);
+
   function renderFechas(fechas, acts) {
-    // Fechas importantes + actividades marcadas para familias
+    ultimasFechas = [fechas, acts];
+    // Fechas importantes (pueden ser un período) + actividades marcadas para familias
     const todas = fechas.concat(acts.map(a => ({
       titulo: a.titulo,
       fecha: a.fecha,
       descripcion: [a.hora && a.hora + ' hrs', a.lugar].filter(Boolean).join(' · ') || a.descripcion,
       icono: a.icono || '📌',
     })));
+    const ahora = new Date();
     const vistos = new Set();
     const lista = todas
-      .map(f => ({ ...f, dias: diasHasta(f.fecha) }))
-      .filter(f => f.dias !== null && f.dias >= 0)
+      .filter(f => {
+        if (f.fechaFin) return momento(f.fechaFin, f.horaFin, true) >= ahora; // período aún no termina
+        const d = diasHasta(f.fecha);
+        return d !== null && d >= 0;
+      })
       .filter(f => {
         const k = f.fecha + '|' + String(f.titulo).toLowerCase().trim();
         return !vistos.has(k) && vistos.add(k);
       })
-      .sort((a, b) => a.dias - b.dias)
+      .map(f => ({ ...f, est: estadoFecha(f) }))
+      .sort((a, b) => a.est.orden - b.est.orden)
       .slice(0, 4);
     document.getElementById('fechas').innerHTML = lista.length ? lista.map((f, i) => {
       const d = parseFecha(f.fecha);
-      return `<div class="date-item ${f.dias <= 3 ? 'soon' : ''}" style="animation-delay:${i * 0.08}s">
-        <div class="cal"><div class="m">${MESES[d.getMonth()]}</div><div class="d">${d.getDate()}</div></div>
-        <div><h3>${esc(f.titulo)}</h3>${f.descripcion ? `<p>${esc(f.descripcion)}</p>` : ''}<span class="left">${faltan(f.dias)}</span></div>
+      return `<div class="date-item ${f.est.clase}" style="animation-delay:${i * 0.08}s">
+        <div class="cal"><div class="m">${MESES[d.getMonth()]}</div><div class="d">${d.getDate()}</div>
+          ${f.fechaFin ? `<div class="hasta">al ${esc(diaMes(f.fechaFin))}</div>` : ''}</div>
+        <div><h3>${esc(f.titulo)}</h3>${f.descripcion ? `<p>${esc(f.descripcion)}</p>` : ''}
+          ${f.est.sub ? `<p class="periodo">${esc(f.est.sub)}</p>` : ''}
+          <span class="left">${esc(f.est.chip)}</span></div>
         ${UI.icono(f.icono || '📅')}
       </div>`;
     }).join('') : '<p class="empty-msg">No hay fechas próximas</p>';

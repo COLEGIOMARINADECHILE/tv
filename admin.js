@@ -91,11 +91,20 @@
     },
     fechas: {
       nombre: '🗓️ Fechas familias',
-      form: `<label>Título<input name="titulo" required></label>
-        <label>Fecha<input type="date" name="fecha" required></label>
-        <label>Detalle<input name="descripcion" placeholder="Ej: 19:00 hrs en cada sala"></label>
+      form: `<label>Título<input name="titulo" required placeholder="Ej: Completar ficha de matrícula"></label>
+        <div class="dos">
+          <label>Desde (fecha)<input type="date" name="fecha" required></label>
+          <label>Hora (opcional)<input type="time" name="hora"></label>
+        </div>
+        <div class="dos">
+          <label>Hasta (opcional)<input type="date" name="fechaFin"></label>
+          <label>Hora término (opcional)<input type="time" name="horaFin"></label>
+        </div>
+        <p class="note">Para un <b>período</b> (ej. del 2 de noviembre a las 14:00 hasta el 30 de noviembre) complete "Hasta".
+        Mientras esté vigente se muestra "🟢 Disponible ahora" con los días que quedan, y desaparece al terminar.</p>
+        <label>Detalle<input name="descripcion" placeholder="Ej: En la página del colegio o en secretaría"></label>
         ${selectorIconos('📅')}`,
-      linea: f => [f.titulo, `${f.fecha} · ${f.descripcion || ''}`],
+      linea: f => [f.titulo, `${f.fecha}${f.hora ? ' ' + f.hora : ''}${f.fechaFin ? ' → ' + f.fechaFin + (f.horaFin ? ' ' + f.horaFin : '') : ''} · ${f.descripcion || ''}`],
       ico: f => f.icono || '📅',
     },
     avisos: {
@@ -294,6 +303,9 @@
         const item = {};
         new FormData(form).forEach((v, k) => { if (k !== 'imagen' && k !== 'tipo') item[k] = v; });
         const t = tipo ? tipo.value : null;
+        if (seccion === 'fechas' && item.fechaFin && item.fechaFin < item.fecha) {
+          throw new Error('La fecha "Hasta" debe ser igual o posterior a "Desde"');
+        }
         if (t === 'video') {
           const id = UI.youtubeId(item.url);
           if (!id) throw new Error('El enlace no parece ser un video de YouTube');

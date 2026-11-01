@@ -302,11 +302,27 @@
     return `Faltan ${h} h${r ? ' ' + r + ' min' : ''}`;
   }
 
+  function minutosAhora() {
+    const t = new Date();
+    return t.getHours() * 60 + t.getMinutes();
+  }
+
+  // Estado de una actividad de hoy según su hora: { texto, clase }
+  // clase: 'hoy' (falta >1 h o sin hora) · 'pronto' (≤1 h) · 'ahora' (en curso) · 'fin' (terminó)
+  function estadoHoy(hora) {
+    const ini = minutosDelDia(hora);
+    const now = minutosAhora();
+    if (ini === null) return { texto: '📅 Durante el día', clase: 'hoy' };
+    if (now >= ini + DURACION_ACTIVIDAD_MIN) return { texto: '✓ Finalizada', clase: 'fin' };
+    if (now >= ini) return { texto: '🔴 AHORA · En este momento', clase: 'ahora' };
+    if (ini - now <= 60) return { texto: '⏰ ' + faltaTexto(ini - now), clase: 'pronto' };
+    return { texto: faltaTexto(ini - now), clase: 'hoy' };
+  }
+
   function avisoHoy(el, actividades) {
     el._acts = actividades;
     const pintar = () => {
-      const ahora = new Date();
-      const nowMin = ahora.getHours() * 60 + ahora.getMinutes();
+      const nowMin = minutosAhora();
       const hoyActs = (el._acts || [])
         .filter(a => diasHasta(a.fecha) === 0)
         .map(a => ({ ...a, ini: minutosDelDia(a.hora) }))
@@ -318,12 +334,9 @@
         return;
       }
       const a = hoyActs[0];
-      let estado;
-      let clase;
-      if (a.ini === null) { estado = 'Hoy'; clase = 'hoy'; }
-      else if (nowMin >= a.ini) { estado = '🔴 AHORA · En este momento'; clase = 'ahora'; }
-      else if (a.ini - nowMin <= 60) { estado = '⏰ ' + faltaTexto(a.ini - nowMin); clase = 'pronto'; }
-      else { estado = faltaTexto(a.ini - nowMin); clase = 'hoy'; }
+      const est = estadoHoy(a.hora);
+      const estado = a.ini === null ? 'Hoy' : est.texto;
+      const clase = est.clase;
       const mas = hoyActs.length - 1;
       el.hidden = false;
       el.className = 'aviso-hoy ' + clase;
@@ -386,5 +399,5 @@
     return m ? m[1] : null;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy, ICONOS, icono };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy, estadoHoy, minutosDelDia, ICONOS, icono };
 })();

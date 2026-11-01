@@ -32,6 +32,7 @@
     ],
     fechas: [
       { id: 'd1', titulo: 'Reunión de apoderados', fecha: hoyMas(3), descripcion: '19:00 hrs en cada sala', icono: 'insignia' },
+      { id: 'd5', titulo: 'Completar ficha de matrícula', fecha: hoyMas(-1), hora: '14:00', fechaFin: hoyMas(28), descripcion: 'En la página web del colegio', icono: '📝' },
       { id: 'd2', titulo: 'Jornada de vacunación', fecha: hoyMas(8), descripcion: 'Traer carnet de control', icono: '💉' },
       { id: 'd3', titulo: 'Fiesta de la Chilenidad', fecha: hoyMas(15), descripcion: 'Muestra folclórica en el gimnasio', icono: '🇨🇱' },
       { id: 'd4', titulo: 'Fin del semestre', fecha: hoyMas(40), descripcion: 'Entrega de informes', icono: '🎓' },
