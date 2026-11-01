@@ -1,0 +1,156 @@
+// Perfil Funcionarios: TV en vivo (mitad izquierda) + información (mitad derecha)
+(function () {
+  const CFG = window.APP_CONFIG;
+  const { esc, MESES, parseFecha, diasHasta } = UI;
+  // Dentro de la app Android TV existe el puente nativo window.AndroidTV
+  const NATIVE = window.AndroidTV || null;
+  const KEY_CANAL = 'cmch_canal';
+
+  document.getElementById('hdr').outerHTML = UI.header('Funcionarios');
+  UI.startClock();
+  UI.backToHome();
+
+  const player = document.getElementById('player');
+  const chList = document.getElementById('channels');
+  let canales = [];
+  let actual = 0;
+  try { actual = +localStorage.getItem(KEY_CANAL) || 0; } catch (e) {}
+
+  // ---------- Televisión ----------
+  function embedUrl(url) {
+    let m;
+    if ((m = url.match(/youtube\.com\/channel\/(UC[\w-]+)/))) return { type: 'iframe', src: `https://www.youtube.com/embed/live_stream?channel=${m[1]}&autoplay=1&mute=1` };
+    if ((m = url.match(/(?:youtu\.be\/|v=|\/live\/|\/embed\/)([\w-]{11})/))) return { type: 'iframe', src: `https://www.youtube.com/embed/${m[1]}?autoplay=1&mute=1` };
+    if (/\.(m3u8|mp4)(\?|$)/i.test(url)) return { type: 'video', src: url };
+    return { type: 'iframe', src: url, web: true };
+  }
+
+  function playerRect() {
+    const r = player.getBoundingClientRect();
+    return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)];
+  }
+
+  function sintonizar(i, osd) {
+    if (!canales.length) return;
+    actual = (i + canales.length) % canales.length;
+    try { localStorage.setItem(KEY_CANAL, actual); } catch (e) {}
+    const c = canales[actual];
+    chList.querySelectorAll('.channel-btn').forEach((b, k) => b.classList.toggle('active', k === actual));
+
+    if (!c.url) {
+      NATIVE && NATIVE.hideTv();
+      player.innerHTML = `<div class="empty"><img src="assets/insignia.png" alt=""><b>${esc(c.nombre)}</b>
+        Agregue el enlace de este canal en el panel Administrador.</div>`;
+      return;
+    }
+    if (NATIVE) {
+      // La app nativa dibuja la señal exactamente sobre este recuadro
+      player.innerHTML = `<div class="empty"><b>Cargando ${esc(c.nombre)}…</b></div>`;
+      NATIVE.showTv(c.url, ...playerRect());
+    } else {
+      const e = embedUrl(c.url);
+      player.innerHTML = e.type === 'video'
+        ? `<video src="${esc(e.src)}" autoplay muted controls playsinline></video>`
+        : `<iframe src="${esc(e.src)}" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
+      player.insertAdjacentHTML('beforeend', '<div class="live">EN VIVO</div>');
+      if (e.web) {
+        player.insertAdjacentHTML('beforeend', `<div class="osd show" style="top:auto;bottom:1.4vh;font-size:1.5vh;color:#fff">
+          Si la señal no aparece aquí, este canal se ve en la app Android TV</div>`);
+        setTimeout(() => player.querySelectorAll('.osd').forEach(o => o.classList.remove('show')), 8000);
+      }
+    }
+    if (osd) {
+      player.insertAdjacentHTML('beforeend', `<div class="osd show" id="osd">${actual + 1} · ${esc(c.nombre)}</div>`);
+      setTimeout(() => document.getElementById('osd')?.classList.remove('show'), 2500);
+    }
+  }
+
+  function renderCanales(lista) {
+    const nuevos = lista.slice().sort((a, b) => (+a.orden || 0) - (+b.orden || 0));
+    if (JSON.stringify(nuevos) === JSON.stringify(canales)) return; // sin cambios → no interrumpir
+    canales = nuevos;
+    chList.innerHTML = canales.map((c, i) =>
+      `<button class="channel-btn" data-i="${i}"><span class="num">${i + 1}</span>${esc(c.nombre)}</button>`).join('');
+    chList.querySelectorAll('.channel-btn').forEach(b => b.addEventListener('click', () => sintonizar(+b.dataset.i, true)));
+    sintonizar(actual < canales.length ? actual : 0);
+    chList.children[actual]?.focus();
+  }
+
+  // Control remoto
+  document.addEventListener('keydown', e => {
+    const btns = [...chList.querySelectorAll('.channel-btn')];
+    if (!btns.length) return;
+    let f = btns.indexOf(document.activeElement);
+    if (f < 0) f = actual;
+    const cols = 3;
+    const mover = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[e.key];
+    if (mover !== undefined) {
+      e.preventDefault();
+      btns[Math.min(Math.max(f + mover, 0), btns.length - 1)].focus();
+    } else if (e.key === 'ChannelUp' || e.key === 'PageUp' || e.keyCode === 166) {
+      e.preventDefault(); sintonizar(actual + 1, true); btns[actual].focus();
+    } else if (e.key === 'ChannelDown' || e.key === 'PageDown' || e.keyCode === 167) {
+      e.preventDefault(); sintonizar(actual - 1, true); btns[actual].focus();
+    } else if (/^[1-9]$/.test(e.key) && +e.key <= btns.length) {
+      sintonizar(+e.key - 1, true); btns[actual].focus();
+    }
+  });
+
+  window.addEventListener('resize', () => NATIVE && canales[actual]?.url && NATIVE.showTv(canales[actual].url, ...playerRect()));
+
+  // ---------- Panel informativo ----------
+  function renderAgenda(acts) {
+    const lista = acts
+      .map(a => ({ ...a, dias: diasHasta(a.fecha) }))
+      .filter(a => a.dias !== null && a.dias >= 0 && a.dias <= 7)
+      .sort((a, b) => a.dias - b.dias || String(a.hora).localeCompare(String(b.hora)))
+      .slice(0, 6);
+    document.getElementById('s-agenda').innerHTML = `
+      <div class="card-title"><span class="dot"></span>Actividades de funcionarios · próximos 7 días</div>
+      <div class="agenda">${lista.length ? lista.map((a, i) => {
+        const d = parseFecha(a.fecha);
+        return `<div class="event ${a.dias === 0 ? 'today' : ''}" style="animation-delay:${i * 0.08}s">
+          <div class="day"><div class="d">${d.getDate()}</div><div class="m">${a.dias === 0 ? 'HOY' : MESES[d.getMonth()]}</div></div>
+          <div><h3>${esc(a.titulo)}</h3>${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
+          <div class="meta">${a.hora ? '🕒 ' + esc(a.hora) + ' hrs' : ''} ${a.lugar ? ' · 📍 ' + esc(a.lugar) : ''}</div></div>
+        </div>`;
+      }).join('') : '<p class="empty-msg">No hay actividades programadas esta semana</p>'}</div>`;
+  }
+
+  function renderEdu(notas) {
+    const icons = ['💡', '🎯', '🧠', '🌱', '📖'];
+    document.getElementById('s-edu').innerHTML = `
+      <div class="card-title"><span class="dot"></span>Información de educación</div>
+      <div class="edu-grid">${notas.length ? notas.slice(0, 4).map((n, i) => `
+        <article class="edu" style="animation-delay:${i * 0.1}s">
+          <h3>${icons[i % icons.length]} ${esc(n.titulo)}</h3><p>${esc(n.texto)}</p>
+        </article>`).join('') : '<p class="empty-msg">Sin publicaciones</p>'}</div>`;
+  }
+
+  // Rotación de pestañas
+  const tabs = [...document.querySelectorAll('.tab')];
+  const slides = [...document.querySelectorAll('.slide')];
+  let s = 0;
+  function rotar() {
+    tabs.forEach((t, k) => {
+      t.classList.toggle('active', k === s);
+      const bar = t.querySelector('.bar');
+      bar.style.animation = 'none';
+      void bar.offsetWidth; // reinicia la barra de progreso
+      bar.style.animation = '';
+      bar.style.animationDuration = CFG.DURACION_SLIDE_SEG + 's';
+    });
+    slides.forEach((el, k) => el.classList.toggle('active', k === s));
+    s = (s + 1) % slides.length;
+  }
+  rotar();
+  setInterval(rotar, CFG.DURACION_SLIDE_SEG * 1000);
+
+  UI.autoData(data => {
+    renderCanales(data.canales || []);
+    renderAgenda(API.para(data.actividades, 'funcionarios'));
+    UI.gallery(document.getElementById('gal'), API.para(data.fotos, 'funcionarios'), CFG.DURACION_FOTO_SEG, 'Actividades del colegio');
+    renderEdu(API.para(data.noticias, 'funcionarios'));
+    UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'funcionarios'));
+  });
+})();
