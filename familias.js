@@ -86,7 +86,7 @@
     const el = document.getElementById('tip');
     el.hidden = !texto;
     el.innerHTML = texto ? `<div class="tip-wrap fade">
-      <div class="tip-badge">💬</div>
+      <img class="tip-logo" src="insignia-color.png" alt="Insignia Colegio Marina de Chile">
       <p class="tip-msg">${esc(texto)}</p></div>` : '';
   }
 

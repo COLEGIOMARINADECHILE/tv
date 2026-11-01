@@ -140,47 +140,92 @@
     const el = document.getElementById('agenda');
     const fechaHoy = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
 
-    const bloqueHoy = hoy.length ? `
-      <section class="hoy-bloque">
-        <div class="hoy-head"><span class="hoy-tag">⭐ HOY</span><span class="hoy-fecha">${esc(fechaHoy)}</span></div>
-        <div class="hoy-cards">${hoy.map((a, i) => `
-          <div class="hoy-card" data-hora="${esc(a.hora || '')}" style="animation-delay:${i * 0.08}s">
-            ${UI.icono(a.icono || '📅', 'hoy-ico')}
-            <div class="hoy-info">
-              <h3>${esc(a.titulo)}</h3>
-              <div class="hoy-meta">${a.hora ? `<span>🕒 ${esc(a.hora)} hrs</span>` : ''}${a.lugar ? `<span>📍 ${esc(a.lugar)}</span>` : ''}</div>
-              ${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
-            </div>
-            <div class="hoy-estado"></div>
-          </div>`).join('')}</div>
-      </section>` : '';
+    // HOY queda fijo arriba (si son más de 2, rotan de a 2).
+    // Los próximos días pasan por páginas, sin desplazarse, con tiempo para leerlos.
+    (el._pags || []).forEach(clearInterval);
+    el._pags = [];
+
+    const tarjetaHoy = a => `
+      <div class="hoy-card" data-hora="${esc(a.hora || '')}">
+        ${UI.icono(a.icono || '📅', 'hoy-ico')}
+        <div class="hoy-info">
+          <h3>${esc(a.titulo)}</h3>
+          <div class="hoy-meta">${a.hora ? `<span>🕒 ${esc(a.hora)} hrs</span>` : ''}${a.lugar ? `<span>📍 ${esc(a.lugar)}</span>` : ''}</div>
+          ${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
+        </div>
+        <div class="hoy-estado"></div>
+      </div>`;
 
     // Próximos días: tarjeta con el día de la semana destacado (un color por día),
     // hora y lugar en etiquetas, y cuánto falta.
     const DIAS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
-    const bloqueSemana = semana.length ? `
-      <div class="semana-head">📆 Próximos días</div>
-      <div class="sem-grid">${semana.map((a, i) => {
-        const d = parseFecha(a.fecha);
-        const falta = a.dias === 1 ? 'Mañana' : `En ${a.dias} días`;
-        return `<div class="sem-card dia-${d.getDay()}" style="animation-delay:${i * 0.06}s">
-          <div class="sem-fecha">
-            <span class="sem-dia">${DIAS[d.getDay()]}</span>
-            <span class="sem-num">${d.getDate()}</span>
-            <span class="sem-mes">${MESES[d.getMonth()]}</span>
-          </div>
-          <div class="sem-info">
-            <h3>${esc(a.titulo)}</h3>
-            ${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
-            <div class="sem-chips">${a.hora ? `<span>🕒 ${esc(a.hora)}</span>` : ''}${a.lugar ? `<span>📍 ${esc(a.lugar)}</span>` : ''}</div>
-          </div>
-          <div class="sem-lado">${UI.icono(a.icono || '📅', 'sem-ico')}<span class="sem-falta">${falta}</span></div>
-        </div>`;
-      }).join('')}</div>` : '';
+    const tarjetaSemana = a => {
+      const d = parseFecha(a.fecha);
+      const falta = a.dias === 1 ? 'Mañana' : `En ${a.dias} días`;
+      return `<div class="sem-card dia-${d.getDay()}">
+        <div class="sem-fecha">
+          <span class="sem-dia">${DIAS[d.getDay()]}</span>
+          <span class="sem-num">${d.getDate()}</span>
+          <span class="sem-mes">${MESES[d.getMonth()]}</span>
+        </div>
+        <div class="sem-info">
+          <h3>${esc(a.titulo)}</h3>
+          ${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
+          <div class="sem-chips">${a.hora ? `<span>🕒 ${esc(a.hora)}</span>` : ''}${a.lugar ? `<span>📍 ${esc(a.lugar)}</span>` : ''}</div>
+        </div>
+        <div class="sem-lado">${UI.icono(a.icono || '📅', 'sem-ico')}<span class="sem-falta">${falta}</span></div>
+      </div>`;
+    };
 
-    el.innerHTML = (bloqueHoy + bloqueSemana) || '<p class="empty-msg">No hay actividades programadas esta semana</p>';
-    actualizarEstadosHoy();
-    UI.autoScroll(el);
+    if (!lista.length) {
+      el.innerHTML = '<p class="empty-msg">No hay actividades programadas esta semana</p>';
+      return;
+    }
+    el.innerHTML = `
+      ${hoy.length ? `<section class="hoy-bloque">
+        <div class="hoy-head"><span class="hoy-tag">⭐ HOY</span><span class="hoy-fecha">${esc(fechaHoy)}</span>
+          <span class="pag" id="hoy-pag"></span></div>
+        <div class="hoy-cards" id="hoy-cards"></div>
+      </section>` : ''}
+      ${semana.length ? `<div class="semana-head">📆 Próximos días <span class="pag" id="sem-pag"></span></div>
+        <div class="sem-grid" id="sem-grid"></div>` : ''}`;
+
+    if (hoy.length) paginar('hoy-cards', 'hoy-pag', hoy.map(tarjetaHoy), 2, actualizarEstadosHoy);
+    if (semana.length) {
+      // cuántas tarjetas caben por página: se prueba con muchas y se reduce hasta que no se corten
+      const tarjetas = semana.map(tarjetaSemana);
+      const grid = document.getElementById('sem-grid');
+      const columnas = conTv ? 2 : 1;
+      let n = Math.min(tarjetas.length, columnas * 4);
+      const cabe = () => {
+        grid.innerHTML = tarjetas.slice(0, n).join('');
+        const ult = grid.lastElementChild;
+        return !ult || ult.getBoundingClientRect().bottom <= el.getBoundingClientRect().bottom + 1;
+      };
+      while (n > 1 && !cabe()) n -= (n > columnas ? columnas : 1);
+      paginar('sem-grid', 'sem-pag', tarjetas, Math.max(1, n));
+    }
+
+    function paginar(idCont, idPag, tarjetas, n, alMostrar) {
+      const paginas = [];
+      for (let k = 0; k < tarjetas.length; k += n) paginas.push(tarjetas.slice(k, k + n).join(''));
+      let p = 0;
+      const mostrar = () => {
+        const c = document.getElementById(idCont);
+        const ind = document.getElementById(idPag);
+        if (!c) return;
+        c.innerHTML = paginas[p];
+        c.classList.remove('pagina-nueva');
+        void c.offsetWidth; // reinicia la animación de entrada
+        c.classList.add('pagina-nueva');
+        if (ind) ind.innerHTML = paginas.length > 1 ? paginas.map((_, k) => `<i class="${k === p ? 'on' : ''}"></i>`).join('') : '';
+        alMostrar && alMostrar();
+      };
+      mostrar();
+      if (paginas.length > 1) {
+        el._pags.push(setInterval(() => { p = (p + 1) % paginas.length; mostrar(); }, CFG.DURACION_AGENDA_SEG * 1000));
+      }
+    }
   }
 
   // Estado en vivo de cada actividad de hoy (AHORA / En 25 min / Finalizada)

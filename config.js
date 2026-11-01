@@ -24,6 +24,8 @@ window.APP_CONFIG = {
   // Los videos de YouTube se ven COMPLETOS y pasan al siguiente al terminar.
   // Este es solo un tope de seguridad por si YouTube no avisa el final (en segundos).
   DURACION_VIDEO_MAX_SEG: 1800,
+  // Funcionarios: segundos que se ve cada página de "Próximos días" (HOY siempre queda fijo)
+  DURACION_AGENDA_SEG: 15,
   // Duración de la jornada (minutos) en la que se reparten los videos con sonido
   // "N veces al día" (600 = 10 horas: entre cada vez con sonido pasan 600/N minutos)
   JORNADA_MIN: 600,

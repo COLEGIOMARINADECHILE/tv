@@ -334,7 +334,10 @@ button { font: inherit; color: inherit; }
 .hoy-card .hoy-ico { width: 6.5vh; height: 6.5vh; font-size: 3.6vh; }
 .hoy-info h3 { font-size: 2.4vh; color: var(--white); line-height: 1.2; }
 .hoy-meta { display: flex; flex-wrap: wrap; gap: 0.4vh 1vw; margin-top: 0.4vh; font-size: 1.8vh; color: var(--gold-soft); font-weight: 700; }
-.hoy-info p { font-size: 1.6vh; color: var(--muted); margin-top: 0.3vh; }
+.hoy-info p {
+  font-size: 1.6vh; color: var(--muted); margin-top: 0.3vh;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
 .hoy-estado {
   font-weight: 800; font-size: 1.8vh; white-space: nowrap;
   padding: 0.7vh 1vw; border-radius: 99px;
@@ -393,8 +396,20 @@ button { font: inherit; color: inherit; }
 }
 .split.sin-tv .sem-grid { grid-template-columns: 1fr; }
 
+/* páginas de actividades: entrada suave e indicador de página */
+.pagina-nueva > * { animation: rise 0.7s backwards; }
+.pagina-nueva > *:nth-child(2) { animation-delay: 0.08s; }
+.pagina-nueva > *:nth-child(3) { animation-delay: 0.16s; }
+.pagina-nueva > *:nth-child(4) { animation-delay: 0.24s; }
+.pag { margin-left: auto; display: inline-flex; gap: 0.5vh; vertical-align: middle; }
+.pag i { width: 1vh; height: 1vh; border-radius: 50%; background: rgba(255, 255, 255, 0.3); transition: all 0.3s; }
+.pag i.on { width: 2.6vh; border-radius: 1vh; background: var(--gold); }
+.semana-head { display: flex; align-items: center; gap: 0.8vw; }
+.hoy-head .pag { margin-left: auto; }
+#agenda { overflow: hidden; }
+
 /* ---------- Funcionarios: carrusel arriba y actividades abajo (sin Educación) ---------- */
-.info3 { grid-template-rows: minmax(0, 1.05fr) minmax(0, 1fr); }
+.info3 { grid-template-rows: minmax(0, 0.8fr) minmax(0, 1.2fr); }
 .info3 #gal { aspect-ratio: auto; height: 100%; }
 .split.sin-tv .info3 {
   grid-template-columns: 1.5fr 1fr; grid-template-rows: minmax(0, 1fr);
@@ -613,12 +628,6 @@ button { font: inherit; color: inherit; }
   background: linear-gradient(135deg, #ffe27a 0%, #f6c90e 45%, #ffb703 100%);
   box-shadow: 0 1.5vh 3.5vh rgba(246, 201, 14, 0.25);
 }
-/* insignia de fondo, sutil */
-.family-side .tip::after {
-  content: ''; position: absolute; right: -2vh; bottom: -3.5vh; width: 15vh; height: 15vh;
-  background: url(insignia.png) center / contain no-repeat;
-  opacity: 0.14; transform: rotate(-12deg);
-}
 /* brillo que cruza lentamente */
 .family-side .tip::before {
   content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -50%;
@@ -627,13 +636,15 @@ button { font: inherit; color: inherit; }
 }
 @keyframes brillo { 0%, 60% { left: -50%; } 100% { left: 120%; } }
 .tip-wrap { position: relative; z-index: 1; display: flex; align-items: center; gap: 1.2vw; }
-.tip-badge {
-  flex: none; width: 6.5vh; height: 6.5vh; border-radius: 50%;
-  display: grid; place-items: center; font-size: 3.2vh;
-  background: var(--navy-800); box-shadow: 0 0.8vh 1.6vh rgba(6, 21, 58, 0.35);
-  border: 3px solid rgba(255, 255, 255, 0.6);
+/* insignia a color del colegio junto al mensaje */
+.tip-logo {
+  flex: none; height: 9vh; width: auto;
+  filter: drop-shadow(0 0.8vh 1.2vh rgba(6, 21, 58, 0.35));
 }
-.family-side .tip .tip-msg { color: var(--navy-900); font-size: 2.6vh !important; font-weight: 800 !important; line-height: 1.35; }
+.family-side .tip .tip-msg {
+  flex: 1; text-align: center;
+  color: var(--navy-900); font-size: 2.6vh !important; font-weight: 800 !important; line-height: 1.35;
+}
 .tip-msg { font-size: 2.4vh !important; font-weight: 700 !important; line-height: 1.4; }
 .dates { padding: 2.4vh 1.6vw; display: flex; flex-direction: column; gap: 1.6vh; min-height: 0; }
 .date-list { display: flex; flex-direction: column; gap: 1.2vh; overflow: hidden; }

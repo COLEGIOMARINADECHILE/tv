@@ -15,6 +15,8 @@
       { id: 'a2', titulo: 'Capacitación PIE', descripcion: 'Estrategias DUA para el aula.', fecha: hoyMas(1), hora: '15:30', lugar: 'Biblioteca CRA', publico: 'funcionarios' },
       { id: 'a3', titulo: 'Simulacro de evacuación', descripcion: 'Participa toda la comunidad educativa.', fecha: hoyMas(2), hora: '10:00', lugar: 'Todo el colegio', publico: 'ambos' },
       { id: 'a4', titulo: 'Reunión de apoderados', descripcion: 'Entrega de informes de notas parciales.', fecha: hoyMas(3), hora: '19:00', lugar: 'Salas de clases', publico: 'ambos' },
+      { id: 'a6', titulo: 'Jornada de reflexión', descripcion: 'Proyecto educativo institucional.', fecha: hoyMas(5), hora: '09:00', lugar: 'Gimnasio', publico: 'funcionarios', icono: '🤝' },
+      { id: 'a7', titulo: 'Entrega de planificaciones', descripcion: 'Plazo para unidad 4.', fecha: hoyMas(6), hora: '13:00', lugar: 'UTP', publico: 'funcionarios', icono: '📝' },
       { id: 'a5', titulo: 'Desayuno de funcionarios', descripcion: 'Celebración de cumpleaños del mes.', fecha: hoyMas(4), hora: '08:00', lugar: 'Comedor', publico: 'funcionarios' },
     ],
     fotos: [
