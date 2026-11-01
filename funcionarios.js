@@ -248,6 +248,6 @@
       'Actividades del colegio');
     const videosEdu = renderEdu(API.para(data.noticias, 'funcionarios'));
     if (fotos.concat(videosEdu).some(f => UI.youtubeId(f.url) && f.audioFunc === 'si')) UI.pedirSonido(activarSonido);
-    UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'funcionarios'));
+    UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'funcionarios'), aj.velocidadAvisos);
   });
 })();

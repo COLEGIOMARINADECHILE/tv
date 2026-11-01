@@ -49,13 +49,16 @@
     setInterval(tick, 10000);
   }
 
-  function renderTicker(el, avisos) {
+  // velocidad: 'lenta' | 'normal' | 'rapida' (Admin → Ajustes)
+  function renderTicker(el, avisos, velocidad) {
     const textos = avisos.length ? avisos.map(a => a.texto) : ['Bienvenidos al ' + CFG.NOMBRE];
     const html = textos.map(t => `<span>${esc(t)}</span>`).join('');
     el.innerHTML = `<div class="label">Avisos</div><div style="flex:1;overflow:hidden"><div class="track">${html}</div></div>`;
     const track = el.querySelector('.track');
     // velocidad constante según largo del texto
-    requestAnimationFrame(() => (track.style.animationDuration = Math.max(20, track.scrollWidth / 90) + 's'));
+    // velocidad constante (píxeles por segundo) según el ajuste elegido en el panel
+    const pxSeg = { lenta: 25, normal: 40, rapida: 65 }[velocidad] || 40;
+    requestAnimationFrame(() => (track.style.animationDuration = Math.max(25, track.scrollWidth / pxSeg) + 's'));
   }
 
   // Carga datos y los mantiene al día: cada pocos segundos consulta si el
@@ -411,6 +414,7 @@
       mensajeTexto: '¡Gracias por acompañar a sus hijos e hijas en su aprendizaje!',
       segFotosFamilias: CFG.DURACION_FOTO_SEG,
       segFotosFuncionarios: CFG.DURACION_FOTO_FUNCIONARIOS_SEG,
+      velocidadAvisos: 'normal',
     };
     (data.ajustes || []).forEach(r => { if (r.id) a[r.id] = r.valor; });
     a.segFotosFamilias = Math.max(3, +a.segFotosFamilias || CFG.DURACION_FOTO_SEG);

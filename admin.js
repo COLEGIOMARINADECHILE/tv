@@ -17,9 +17,31 @@
   const OPC_VECES = [['', 'Siempre'], ['1', '1 vez al día'], ['2', '2 veces al día'], ['3', '3 veces al día'],
     ['4', '4 veces al día'], ['6', '6 veces al día'], ['8', '8 veces al día']];
   const opcionesVeces = sel => OPC_VECES.map(([v, t]) => `<option value="${v}" ${String(sel || '') === v ? 'selected' : ''}>${t}</option>`).join('');
-  const VECES = attrs => `<label ${attrs || ''}>🔁 ¿Cuántas veces al día con sonido?
-    <select name="vecesAudio">${opcionesVeces('')}</select></label>
-    <p class="note" ${attrs || ''}>Las veces se reparten durante la jornada; el resto del tiempo el video se ve sin sonido.</p>`;
+  // Recuadro "Sonido del video" del formulario (Fotos y videos, y Educación)
+  const SONIDO = attrs => `<fieldset class="sonido" ${attrs || ''}>
+    <legend>🔊 Sonido del video</legend>
+    <label class="check"><input type="checkbox" name="audio" value="si" checked>
+      Con sonido en <b>Familias</b> (la música de fondo baja mientras suena)</label>
+    <label class="check"><input type="checkbox" name="audioFunc" value="si">
+      Con sonido en <b>Funcionarios</b> (la TV se pausa mientras suena y vuelve al terminar)</label>
+    <label>🔁 ¿Cuántas veces al día con sonido?
+      <select name="vecesAudio">${opcionesVeces('')}</select></label>
+    <p class="note">Las veces se reparten durante la jornada; el resto del tiempo el video se ve sin sonido.
+    Todo esto se puede cambiar después en la lista de la derecha.</p>
+  </fieldset>`;
+
+  // Fila "Sonido" editable de cada video ya publicado
+  const filaSonido = f => {
+    if (!UI.youtubeId(f.url)) return '';
+    const fam = f.audio !== 'no';
+    const fun = f.audioFunc === 'si';
+    return `<div class="sonido-fila">
+      <span class="sf-tit">🔊 Sonido:</span>
+      <button class="toggle ${fam ? 'on' : ''}" data-id="${esc(f.id)}" data-campo="audio" data-valor="${fam ? 'no' : 'si'}">${fam ? '🔊' : '🔇'} Familias</button>
+      <button class="toggle ${fun ? 'on' : ''}" data-id="${esc(f.id)}" data-campo="audioFunc" data-valor="${fun ? 'no' : 'si'}">${fun ? '🔊' : '🔇'} Funcionarios</button>
+      <label class="sf-veces">🔁 <select class="veces-sel" data-id="${esc(f.id)}">${opcionesVeces(f.vecesAudio)}</select></label>
+    </div>`;
+  };
 
   // Selector de íconos (incluye la insignia del colegio)
   const selectorIconos = def => `<div class="etiqueta">Ícono</div>
@@ -47,28 +69,16 @@
         <label data-tipo="imagen">Imágenes (puede elegir varias a la vez con Ctrl)<input type="file" name="imagen" accept="image/*" multiple></label>
         <p class="note cuantas" data-tipo="imagen" style="color:var(--gold)"></p>
         <label data-tipo="video" hidden>Enlace de YouTube<input name="url" placeholder="https://www.youtube.com/watch?v=..."></label>
-        <label data-tipo="video" hidden class="check"><input type="checkbox" name="audio" value="si" checked>
-          🔊 Con sonido en <b>Familias</b> (la música de fondo baja mientras suena)</label>
-        <label data-tipo="video" hidden class="check"><input type="checkbox" name="audioFunc" value="si">
-          🔊 Con sonido en <b>Funcionarios</b> (la TV se pausa mientras suena y vuelve al terminar)</label>
-        ${VECES('data-tipo="video" hidden')}
-        <img class="preview" id="preview" hidden alt="">${PUBLICO}
+        <img class="preview" id="preview" hidden alt="">
+        ${SONIDO('data-tipo="video" hidden')}
+        ${PUBLICO}
         <p class="note" data-tipo="imagen">La imagen se reduce automáticamente a 1920 px antes de subirla a Google Drive.</p>
         <p class="note" data-tipo="video" hidden>El video se reproduce completo y luego pasa al siguiente elemento del carrusel.
         Debe ser público o "no listado" y permitir insertarse en otros sitios.</p>`,
       linea: f => [(UI.youtubeId(f.url) ? '▶ ' : '') + f.titulo, f.publico],
       img: f => (UI.youtubeId(f.url) ? `https://img.youtube.com/vi/${UI.youtubeId(f.url)}/mqdefault.jpg` : f.url),
       // botones para cambiar el sonido de un video ya publicado, por perfil
-      extra: f => {
-        if (!UI.youtubeId(f.url)) return '';
-        const fam = f.audio !== 'no';
-        const fun = f.audioFunc === 'si';
-        return `<select class="veces-sel" data-id="${esc(f.id)}" title="Veces al día con sonido">${opcionesVeces(f.vecesAudio)}</select>
-          <button class="toggle ${fam ? 'on' : ''}" data-id="${esc(f.id)}" data-campo="audio" data-valor="${fam ? 'no' : 'si'}"
-            title="Sonido en Familias">${fam ? '🔊' : '🔇'} Familias</button>
-          <button class="toggle ${fun ? 'on' : ''}" data-id="${esc(f.id)}" data-campo="audioFunc" data-valor="${fun ? 'no' : 'si'}"
-            title="Sonido en Funcionarios">${fun ? '🔊' : '🔇'} Funcionarios</button>`;
-      },
+      extra: filaSonido,
     },
     musica: {
       nombre: '🎵 Música Familias',
@@ -89,13 +99,9 @@
         <label>Texto<textarea name="texto" maxlength="280" placeholder="Breve descripción (opcional si agrega un video)"></textarea></label>
         <label>Video de YouTube · experiencia educativa (opcional)<input name="url" placeholder="Pegue aquí el enlace (botón Compartir → Copiar): https://youtu.be/..."></label>
         <img class="preview" id="preview" hidden alt="">
-        <label class="check"><input type="checkbox" name="audio" value="si" checked>
-          🔊 Con sonido en <b>Familias</b> (la música de fondo baja mientras suena)</label>
-        <label class="check"><input type="checkbox" name="audioFunc" value="si">
-          🔊 Con sonido en <b>Funcionarios</b> (la TV se pausa mientras suena y vuelve al terminar)</label>
-        ${VECES()}
+        ${SONIDO()}
         ${PUBLICO}
-        <p class="note">El video se muestra completo en el carrusel de fotos y videos, con el rótulo "📚 Experiencia educativa".</p>`,
+        <p class="note">El video se reproduce completo en el recuadro de Educación (Funcionarios y Familias).</p>`,
       linea: n => [(UI.enlaceVideo(n) ? '▶ ' : '') + n.titulo, n.publico + ' · ' + UI.textoLimpio(n).slice(0, 80)],
       img: n => (UI.enlaceVideo(n) ? `https://img.youtube.com/vi/${UI.youtubeId(UI.enlaceVideo(n))}/mqdefault.jpg` : ''),
       extra: n => SECCIONES.fotos.extra(Object.assign({}, n, { url: UI.enlaceVideo(n) })),
@@ -215,6 +221,9 @@
         <label>Segundos que se ve cada foto · Familias<input type="number" name="segFotosFamilias" min="3" max="120" value="${esc(a.segFotosFamilias)}"></label>
         <label>Segundos que se ve cada foto · Funcionarios<input type="number" name="segFotosFuncionarios" min="3" max="120" value="${esc(a.segFotosFuncionarios)}"></label>
         <p class="note">Los videos siempre se muestran completos.</p>
+        <label>Velocidad de la cinta de avisos (abajo)
+          <select name="velocidadAvisos">${[['lenta', '🐢 Lenta'], ['normal', 'Normal'], ['rapida', '🐇 Rápida']]
+            .map(([v, t]) => `<option value="${v}" ${a.velocidadAvisos === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
         <button class="btn">Guardar ajustes</button>
       </form></div>`;
   }
@@ -230,8 +239,8 @@
             const [t, sub] = S.linea(it);
             return `<div class="item">${S.img && S.img(it) ? `<img src="${esc(S.img(it))}" alt="">` : ''}${S.ico ? UI.icono(S.ico(it), 'lista-ico') : ''}
               <div class="t"><b>${esc(t)}</b><small>${esc(sub)}</small></div>
-              ${S.extra ? S.extra(it) : ''}
-              <button class="del" data-id="${esc(it.id)}">Eliminar</button></div>`;
+              <button class="del" data-id="${esc(it.id)}">Eliminar</button>
+              ${S.extra ? S.extra(it) : ''}</div>`;
           }).join('') || '<p class="note">Nada publicado aún.</p>'}</div>
         </div>
       </div>`;

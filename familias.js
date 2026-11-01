@@ -265,6 +265,6 @@
     renderFechas(data.fechas || [], (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos'));
     UI.avisoHoy(document.getElementById('aviso-hoy'),
       (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos').concat(data.fechas || []));
-    UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'familias'));
+    UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'familias'), aj.velocidadAvisos);
   });
 })();
