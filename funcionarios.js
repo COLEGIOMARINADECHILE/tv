@@ -138,6 +138,7 @@
     el.innerHTML = lista.length ? `<div class="agenda-grid">${lista.map((a, i) => {
       const d = parseFecha(a.fecha);
       return `<div class="event ${a.dias === 0 ? 'today' : ''}" style="animation-delay:${i * 0.06}s">
+        ${a.icono ? UI.icono(a.icono, 'ev-ico') : ''}
         <div class="day"><div class="d">${d.getDate()}</div><div class="m">${a.dias === 0 ? 'HOY' : MESES[d.getMonth()]}</div></div>
         <div><h3>${esc(a.titulo)}</h3>${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
         <div class="meta">${a.hora ? '🕒 ' + esc(a.hora) + ' hrs' : ''}${a.lugar ? ' · 📍 ' + esc(a.lugar) : ''}</div></div>

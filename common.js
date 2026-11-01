@@ -270,6 +270,21 @@
     }, 40);
   }
 
+  // ---------- Íconos para fechas y actividades ----------
+  // 'insignia' = escudo del colegio; el resto son emojis agrupados por tema.
+  const ICONOS = [
+    'insignia', '📅', '⏰', '📣', '⭐', '🎉', '🎓', '🏫', '📚', '✏️', '📝', '🔬',
+    '💻', '🎨', '🎭', '🎵', '⚽', '🏆', '🏃', '🧘', '🩺', '💉', '🍎', '🥗',
+    '👨‍👩‍👧', '🤝', '❤️', '🙌', '🇨🇱', '⚓', '🌊', '🌱', '🌎', '🚌', '🗳️', '🎄',
+  ];
+
+  function icono(valor, clase) {
+    const v = valor || '📅';
+    return v === 'insignia'
+      ? `<div class="icon ${clase || ''}"><img src="insignia.png" alt="Insignia"></div>`
+      : `<div class="icon ${clase || ''}">${esc(v)}</div>`;
+  }
+
   // ---------- Recordatorio de las actividades de HOY ----------
   // Muestra la próxima actividad del día con hora, lugar y cuánto falta;
   // "AHORA" mientras está en curso (se considera 1 hora de duración).
@@ -314,7 +329,7 @@
       el.className = 'aviso-hoy ' + clase;
       el.innerHTML = `
         <div class="ah-estado">${estado}</div>
-        <div class="ah-cuerpo">
+        <div class="ah-cuerpo">${icono(a.icono || '📅', 'ah-ico')}
           <div class="ah-titulo">${esc(a.titulo)}</div>
           <div class="ah-meta">${a.hora ? '🕒 ' + esc(a.hora) + ' hrs' : '📅 Durante el día'}${a.lugar ? ' · 📍 ' + esc(a.lugar) : ''}</div>
         </div>
@@ -371,5 +386,5 @@
     return m ? m[1] : null;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy, ICONOS, icono };
 })();

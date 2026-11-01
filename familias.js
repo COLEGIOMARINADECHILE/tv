@@ -19,7 +19,7 @@
       titulo: a.titulo,
       fecha: a.fecha,
       descripcion: [a.hora && a.hora + ' hrs', a.lugar].filter(Boolean).join(' · ') || a.descripcion,
-      icono: '📌',
+      icono: a.icono || '📌',
     })));
     const vistos = new Set();
     const lista = todas
@@ -36,7 +36,7 @@
       return `<div class="date-item ${f.dias <= 3 ? 'soon' : ''}" style="animation-delay:${i * 0.08}s">
         <div class="cal"><div class="m">${MESES[d.getMonth()]}</div><div class="d">${d.getDate()}</div></div>
         <div><h3>${esc(f.titulo)}</h3>${f.descripcion ? `<p>${esc(f.descripcion)}</p>` : ''}<span class="left">${faltan(f.dias)}</span></div>
-        <div class="icon">${esc(f.icono || '📅')}</div>
+        ${UI.icono(f.icono || '📅')}
       </div>`;
     }).join('') : '<p class="empty-msg">No hay fechas próximas</p>';
   }
@@ -57,11 +57,11 @@
     const t = items[n % items.length];
     n++;
     if (t === mensaje) {
-      el.innerHTML = `<div class="fade"><div class="card-title"><span class="dot"></span>${esc(t.titulo)}</div>
-        <p style="margin-top:1vh">${esc(t.texto)}</p></div>`;
+      // solo el texto del mensaje, sin título
+      el.innerHTML = `<div class="fade"><p class="tip-msg">${esc(t.texto)}</p></div>`;
       return;
     }
-    el.innerHTML = `<div class="fade"><div class="card-title"><span class="dot"></span>Para las familias</div>
+    el.innerHTML = `<div class="fade">
       <h3>${UI.enlaceVideo(t) ? '▶ ' : ''}${esc(t.titulo)}</h3>
       <p>${esc(UI.textoLimpio(t) || (UI.enlaceVideo(t) ? 'Experiencia educativa: véala en el carrusel de videos.' : ''))}</p></div>`;
   }
@@ -196,7 +196,7 @@
 
   UI.autoData(data => {
     const aj = UI.ajustes(data);
-    mensaje = aj.mensajeTexto ? { titulo: aj.mensajeTitulo || 'Mensaje para las familias', texto: aj.mensajeTexto } : null;
+    mensaje = aj.mensajeTexto ? { texto: aj.mensajeTexto } : null;
     const fotos = UI.carrusel(data, 'familias');
     UI.gallery(document.getElementById('gal'), fotos,
       { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS, onCambio: onCambioVideo },

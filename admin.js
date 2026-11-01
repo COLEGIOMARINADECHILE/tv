@@ -13,6 +13,12 @@
     <select name="publico"><option value="ambos">Funcionarios y familias</option>
     <option value="funcionarios">Solo funcionarios</option><option value="familias">Solo familias</option></select></label>`;
 
+  // Selector de íconos (incluye la insignia del colegio)
+  const selectorIconos = def => `<div class="etiqueta">Ícono</div>
+    <input type="hidden" name="icono" value="${esc(def)}">
+    <div class="icon-picker">${UI.ICONOS.map(i => `<button type="button" data-ico="${esc(i)}" class="${i === def ? 'on' : ''}"
+      title="${i === 'insignia' ? 'Insignia del colegio' : ''}">${i === 'insignia' ? '<img src="insignia.png" alt="Insignia">' : i}</button>`).join('')}</div>`;
+
   // Definición de cada sección del panel
   const SECCIONES = {
     actividades: {
@@ -21,8 +27,9 @@
         <label>Descripción<textarea name="descripcion"></textarea></label>
         <label>Fecha<input type="date" name="fecha" required></label>
         <label>Hora<input type="time" name="hora"></label>
-        <label>Lugar<input name="lugar"></label>${PUBLICO}`,
+        <label>Lugar<input name="lugar"></label>${selectorIconos('📅')}${PUBLICO}`,
       linea: a => [a.titulo, `${a.fecha} ${a.hora || ''} · ${a.lugar || ''} · ${a.publico}`],
+      ico: a => a.icono || '📅',
     },
     fotos: {
       nombre: '📸 Fotos y videos',
@@ -87,8 +94,9 @@
       form: `<label>Título<input name="titulo" required></label>
         <label>Fecha<input type="date" name="fecha" required></label>
         <label>Detalle<input name="descripcion" placeholder="Ej: 19:00 hrs en cada sala"></label>
-        <label>Ícono (emoji)<input name="icono" placeholder="🎉" maxlength="4"></label>`,
-      linea: f => [`${f.icono || '📅'} ${f.titulo}`, `${f.fecha} · ${f.descripcion || ''}`],
+        ${selectorIconos('📅')}`,
+      linea: f => [f.titulo, `${f.fecha} · ${f.descripcion || ''}`],
+      ico: f => f.icono || '📅',
     },
     avisos: {
       nombre: '📢 Avisos (cinta)',
@@ -181,7 +189,6 @@
     return `<div class="panel" style="max-width:720px">
       <h2>⚙️ Ajustes de las pantallas</h2>
       <form id="f-ajustes">
-        <label>Título del mensaje para las familias<input name="mensajeTitulo" value="${esc(a.mensajeTitulo)}" maxlength="60"></label>
         <label>Mensaje para las familias<textarea name="mensajeTexto" maxlength="280">${esc(a.mensajeTexto)}</textarea></label>
         <p class="note">Aparece en el recuadro amarillo de la pantalla Familias (rota junto a las publicaciones de Educación).
         Déjelo vacío para no mostrarlo.</p>
@@ -201,7 +208,7 @@
         <div class="panel"><h2>Publicado (${lista.length})</h2>
           <div class="items">${lista.map(it => {
             const [t, sub] = S.linea(it);
-            return `<div class="item">${S.img && S.img(it) ? `<img src="${esc(S.img(it))}" alt="">` : ''}
+            return `<div class="item">${S.img && S.img(it) ? `<img src="${esc(S.img(it))}" alt="">` : ''}${S.ico ? UI.icono(S.ico(it), 'lista-ico') : ''}
               <div class="t"><b>${esc(t)}</b><small>${esc(sub)}</small></div>
               ${S.extra ? S.extra(it) : ''}
               <button class="del" data-id="${esc(it.id)}">Eliminar</button></div>`;
@@ -252,6 +259,10 @@
     }
 
     const form = document.getElementById('f-add');
+    form.querySelectorAll('.icon-picker button').forEach(b => (b.onclick = () => {
+      form.querySelectorAll('.icon-picker button').forEach(x => x.classList.toggle('on', x === b));
+      form.elements.icono.value = b.dataset.ico;
+    }));
     const file = form.querySelector('input[type=file]');
     const preview = document.getElementById('preview');
     const tipo = form.elements.tipo;

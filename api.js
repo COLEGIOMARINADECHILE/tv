@@ -11,7 +11,7 @@
 
   const DEMO = {
     actividades: [
-      { id: 'a1', titulo: 'Consejo de profesores', descripcion: 'Análisis de resultados del semestre y planificación.', fecha: hoyMas(0), hora: '16:00', lugar: 'Sala de profesores', publico: 'funcionarios' },
+      { id: 'a1', titulo: 'Consejo de profesores', descripcion: 'Análisis de resultados del semestre y planificación.', fecha: hoyMas(0), hora: '16:00', lugar: 'Sala de profesores', publico: 'funcionarios', icono: 'insignia' },
       { id: 'a2', titulo: 'Capacitación PIE', descripcion: 'Estrategias DUA para el aula.', fecha: hoyMas(1), hora: '15:30', lugar: 'Biblioteca CRA', publico: 'funcionarios' },
       { id: 'a3', titulo: 'Simulacro de evacuación', descripcion: 'Participa toda la comunidad educativa.', fecha: hoyMas(2), hora: '10:00', lugar: 'Todo el colegio', publico: 'ambos' },
       { id: 'a4', titulo: 'Reunión de apoderados', descripcion: 'Entrega de informes de notas parciales.', fecha: hoyMas(3), hora: '19:00', lugar: 'Salas de clases', publico: 'ambos' },
@@ -31,7 +31,7 @@
       { id: 'n3', titulo: 'Lectura en familia', texto: '15 minutos diarios de lectura compartida fortalecen el vocabulario y el vínculo familiar.', publico: 'familias' },
     ],
     fechas: [
-      { id: 'd1', titulo: 'Reunión de apoderados', fecha: hoyMas(3), descripcion: '19:00 hrs en cada sala', icono: '👨‍👩‍👧' },
+      { id: 'd1', titulo: 'Reunión de apoderados', fecha: hoyMas(3), descripcion: '19:00 hrs en cada sala', icono: 'insignia' },
       { id: 'd2', titulo: 'Jornada de vacunación', fecha: hoyMas(8), descripcion: 'Traer carnet de control', icono: '💉' },
       { id: 'd3', titulo: 'Fiesta de la Chilenidad', fecha: hoyMas(15), descripcion: 'Muestra folclórica en el gimnasio', icono: '🇨🇱' },
       { id: 'd4', titulo: 'Fin del semestre', fecha: hoyMas(40), descripcion: 'Entrega de informes', icono: '🎓' },
