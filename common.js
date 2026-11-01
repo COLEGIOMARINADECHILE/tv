@@ -26,7 +26,7 @@
     return `
       <header class="tv-header">
         <div class="brand">
-          <img src="assets/insignia.png" alt="Escudo ${esc(CFG.NOMBRE)}">
+          <img src="insignia.png" alt="Escudo ${esc(CFG.NOMBRE)}">
           <div class="brand-text">
             <div class="name">${esc(CFG.NOMBRE)}</div>
             <div class="city">${esc(CFG.CIUDAD)}</div>

@@ -66,7 +66,7 @@
 
     if (!c.url) {
       NATIVE && NATIVE.hideTv();
-      player.innerHTML = `<div class="empty"><img src="assets/insignia.png" alt=""><b>${esc(c.nombre)}</b>
+      player.innerHTML = `<div class="empty"><img src="insignia.png" alt=""><b>${esc(c.nombre)}</b>
         Agregue el enlace de este canal en el panel Administrador.</div>`;
       return;
     }
@@ -163,7 +163,7 @@
     tvPausada = conAudio;
     if (conAudio) {
       NATIVE && NATIVE.hideTv();
-      player.innerHTML = `<div class="empty"><img src="assets/insignia.png" alt="">
+      player.innerHTML = `<div class="empty"><img src="insignia.png" alt="">
         <b>TV en pausa</b>Se está reproduciendo un video del colegio con sonido.</div>`;
     } else {
       sintonizar(actual);

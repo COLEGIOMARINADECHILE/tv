@@ -87,7 +87,7 @@
 
   // POST sin preflight CORS (text/plain) → Apps Script
   async function admin(action, payload) {
-    if (!CFG.API_URL) throw new Error('Configure API_URL en js/config.js');
+    if (!CFG.API_URL) throw new Error('Configure API_URL en config.js');
     const r = await fetch(CFG.API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },

@@ -144,9 +144,9 @@
 
   function vistaLogin(error) {
     app.innerHTML = `<div class="panel login">
-      <img src="assets/insignia.png" alt="Escudo">
+      <img src="insignia.png" alt="Escudo">
       <h2>Panel Administrador</h2>
-      ${!CFG.API_URL ? '<div class="warn note">Falta configurar <b>API_URL</b> en <code>js/config.js</code>. Vea el README.</div>' : ''}
+      ${!CFG.API_URL ? '<div class="warn note">Falta configurar <b>API_URL</b> en <code>config.js</code>. Vea el README.</div>' : ''}
       <form id="f-login">
         <label>Contraseña<input type="password" name="pass" required autofocus></label>
         <button class="btn">Ingresar</button>
@@ -178,7 +178,7 @@
     const lista = (data[seccion] || []).slice().reverse();
     app.innerHTML = `
       <div class="top">
-        <img src="assets/insignia.png" alt="Escudo">
+        <img src="insignia.png" alt="Escudo">
         <div><h1>Panel Administrador</h1><p>${esc(CFG.NOMBRE)}</p></div>
         <div class="right">
           <a class="btn ghost" href="funcionarios.html" target="_blank">Ver Funcionarios</a>
