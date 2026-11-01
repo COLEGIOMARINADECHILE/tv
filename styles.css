@@ -373,6 +373,9 @@ button { font: inherit; color: inherit; }
 .tip p { font-size: 2vh; line-height: 1.4; font-weight: 500; }
 .fade { animation: rise 0.6s; }
 
+/* reproductor de YouTube de la música de fondo: presente pero invisible */
+.yt-musica { position: fixed; left: 0; bottom: 0; width: 200px; height: 200px; opacity: 0; pointer-events: none; z-index: -1; }
+.yt-musica iframe { width: 100%; height: 100%; border: 0; }
 .sound-pill {
   position: fixed; left: 50%; bottom: 9vh; transform: translateX(-50%); z-index: 60;
   background: var(--navy-900); color: var(--gold);

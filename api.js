@@ -26,7 +26,7 @@
     ],
     noticias: [
       { id: 'n1', titulo: 'Evaluación formativa', texto: 'La retroalimentación oportuna mejora el aprendizaje hasta en un 30%. Compartamos criterios de logro al inicio de cada clase.', publico: 'funcionarios' },
-      { id: 'n4', titulo: 'Experiencia: aprendizaje basado en proyectos', texto: '', url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ', publico: 'ambos', audio: 'si', audioFunc: 'no' },
+      { id: 'n4', titulo: 'Experiencia: aprendizaje basado en proyectos', texto: 'Mire esta experiencia https://youtu.be/aqz-KE-bpKQ?si=abc123', url: '', publico: 'ambos', audio: '', audioFunc: '' },
       { id: 'n2', titulo: 'Bienestar docente', texto: 'Recuerda tomar pausas activas. El autocuidado también es parte de nuestra labor educativa.', publico: 'funcionarios' },
       { id: 'n3', titulo: 'Lectura en familia', texto: '15 minutos diarios de lectura compartida fortalecen el vocabulario y el vínculo familiar.', publico: 'familias' },
     ],
@@ -47,7 +47,7 @@
       { id: 'v3', texto: 'Horario de atención de apoderados: lunes a viernes 8:00 a 13:00', publico: 'familias' },
     ],
     musica: [
-      { id: 'm1', titulo: 'Pista de ejemplo (libre)', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+      { id: 'm1', titulo: 'Lista de ejemplo', url: 'https://www.youtube.com/watch?v=CLeZyIID9Bo&list=PLhvRqWR6il6FAbhLWbHnEIVQErmpBRXCo' },
     ],
     demo: true,
   };

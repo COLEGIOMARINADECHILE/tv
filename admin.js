@@ -56,18 +56,20 @@
       nombre: '🎵 Música Familias',
       form: `<label>Nombre de la canción<input name="titulo" required></label>
         <label>Origen
-          <select name="tipo"><option value="archivo">📁 Subir archivo MP3</option><option value="enlace">🔗 Enlace directo a un MP3</option></select></label>
-        <label data-tipo="archivo">Archivo de audio (máx. 20 MB)<input type="file" name="imagen" accept="audio/*"></label>
-        <label data-tipo="enlace" hidden>Enlace (.mp3)<input name="url" placeholder="https://.../cancion.mp3"></label>
-        <p class="note">Suena de fondo en la pantalla Familias, en orden aleatorio, y baja de volumen cuando aparece un video con sonido.
-        Use música libre de derechos o con autorización. Los enlaces de YouTube no sirven como música (van en Fotos y videos).</p>`,
-      linea: m => ['🎵 ' + m.titulo, m.fileId ? 'Archivo en Google Drive' : m.url],
+          <select name="tipo"><option value="enlace">▶️ YouTube (video o lista de reproducción)</option><option value="archivo">📁 Subir archivo MP3</option></select></label>
+        <label data-tipo="enlace">Enlace de YouTube o de un .mp3<input name="url" placeholder="https://www.youtube.com/watch?v=...&list=... · https://youtu.be/..."></label>
+        <label data-tipo="archivo" hidden>Archivo de audio (máx. 20 MB)<input type="file" name="imagen" accept="audio/*"></label>
+        <p class="note">Suena de fondo en la pantalla Familias y baja de volumen cuando aparece un video con sonido.
+        Si pega una <b>lista de reproducción</b> de YouTube, se reproduce completa en orden aleatorio.
+        Use música libre de derechos o con autorización.</p>`,
+      linea: m => [(/youtu/.test(m.url) ? '▶ ' : '🎵 ') + m.titulo,
+        m.fileId ? 'Archivo en Google Drive' : (/[?&]list=/.test(m.url) ? 'Lista de YouTube · ' : '') + m.url],
     },
     noticias: {
       nombre: '📚 Educación',
       form: `<label>Título<input name="titulo" required></label>
         <label>Texto<textarea name="texto" maxlength="280" placeholder="Breve descripción (opcional si agrega un video)"></textarea></label>
-        <label>Video de YouTube · experiencia educativa (opcional)<input name="url" placeholder="https://www.youtube.com/watch?v=..."></label>
+        <label>Video de YouTube · experiencia educativa (opcional)<input name="url" placeholder="Pegue aquí el enlace (botón Compartir → Copiar): https://youtu.be/..."></label>
         <img class="preview" id="preview" hidden alt="">
         <label class="check"><input type="checkbox" name="audio" value="si" checked>
           🔊 Con sonido en <b>Familias</b> (la música de fondo baja mientras suena)</label>
@@ -75,9 +77,9 @@
           🔊 Con sonido en <b>Funcionarios</b> (la TV se pausa mientras suena y vuelve al terminar)</label>
         ${PUBLICO}
         <p class="note">El video se muestra completo en el carrusel de fotos y videos, con el rótulo "📚 Experiencia educativa".</p>`,
-      linea: n => [(UI.youtubeId(n.url) ? '▶ ' : '') + n.titulo, n.publico + ' · ' + String(n.texto || '').slice(0, 80)],
-      img: n => (UI.youtubeId(n.url) ? `https://img.youtube.com/vi/${UI.youtubeId(n.url)}/mqdefault.jpg` : ''),
-      extra: f => SECCIONES.fotos.extra(f),
+      linea: n => [(UI.enlaceVideo(n) ? '▶ ' : '') + n.titulo, n.publico + ' · ' + UI.textoLimpio(n).slice(0, 80)],
+      img: n => (UI.enlaceVideo(n) ? `https://img.youtube.com/vi/${UI.youtubeId(UI.enlaceVideo(n))}/mqdefault.jpg` : ''),
+      extra: n => SECCIONES.fotos.extra(Object.assign({}, n, { url: UI.enlaceVideo(n) })),
     },
     fechas: {
       nombre: '🗓️ Fechas familias',
@@ -242,7 +244,11 @@
           item.audio = item.audio === 'si' ? 'si' : 'no';
           item.audioFunc = item.audioFunc === 'si' ? 'si' : 'no';
         } else if (seccion === 'noticias') {
-          // Educación: texto y/o video
+          // Educación: texto y/o video. Si el enlace se pegó en el texto, se mueve a su campo.
+          if (!item.url && UI.youtubeId(item.texto)) {
+            item.url = UI.enlaceVideo(item);
+            item.texto = UI.textoLimpio(item);
+          }
           if (item.url) {
             const id = UI.youtubeId(item.url);
             if (!id) throw new Error('El enlace no parece ser un video de YouTube');

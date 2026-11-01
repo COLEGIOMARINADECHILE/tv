@@ -53,49 +53,107 @@
     const t = notas[n % notas.length];
     n++;
     el.innerHTML = `<div class="fade"><div class="card-title"><span class="dot"></span>Para las familias</div>
-      <h3>${UI.youtubeId(t.url) ? '▶ ' : ''}${esc(t.titulo)}</h3>
-      <p>${esc(t.texto || (UI.youtubeId(t.url) ? 'Experiencia educativa: véala en el carrusel de videos.' : ''))}</p></div>`;
+      <h3>${UI.enlaceVideo(t) ? '▶ ' : ''}${esc(t.titulo)}</h3>
+      <p>${esc(UI.textoLimpio(t) || (UI.enlaceVideo(t) ? 'Experiencia educativa: véala en el carrusel de videos.' : ''))}</p></div>`;
   }
   setInterval(rotarTip, CFG.DURACION_SLIDE_SEG * 1000);
 
-  // ---------- Música de fondo: baja de volumen mientras suena un video ----------
+  // ---------- Música de fondo: MP3 o YouTube (video o lista de reproducción) ----------
+  // Baja de volumen mientras suena un video del carrusel.
   const musica = new Audio();
   musica.preload = 'auto';
   musica.id = 'musica-fondo';
   musica.hidden = true;
   document.body.appendChild(musica);
+  const ytBox = document.createElement('div'); // reproductor de YouTube invisible
+  ytBox.className = 'yt-musica';
+  document.body.appendChild(ytBox);
+  let ytFrame = null;
   let pistas = [];
   let pista = 0;
   let firmaMusica = '';
   let videoSonando = false;
   let errores = 0;
+  let vol = 0; // volumen actual (0 a 1), para los fundidos
   let fadeTimer;
 
   const volObjetivo = () => (videoSonando ? CFG.MUSICA_VOLUMEN_CON_VIDEO : CFG.MUSICA_VOLUMEN);
+  const listaId = url => (String(url || '').match(/[?&]list=([\w-]+)/) || [])[1] || null;
+  const esYoutube = p => !!(UI.youtubeId(p.url) || listaId(p.url));
+
+  function ytCmd(func, args) {
+    ytFrame?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args: args || [] }), '*');
+  }
+
+  function aplicarVolumen(v) {
+    vol = v;
+    if (ytFrame) ytCmd('setVolume', [Math.round(v * 100)]);
+    else musica.volume = v;
+  }
 
   function fundido(destino, ms) {
     clearInterval(fadeTimer);
-    const desde = musica.volume;
+    const desde = vol;
     const t0 = performance.now();
     fadeTimer = setInterval(() => {
       const k = Math.min(1, (performance.now() - t0) / (ms || 1200));
-      musica.volume = desde + (destino - desde) * k;
+      aplicarVolumen(desde + (destino - desde) * k);
       if (k >= 1) clearInterval(fadeTimer);
-    }, 50);
+    }, 80);
+  }
+
+  function detener() {
+    musica.pause();
+    musica.removeAttribute('src');
+    ytBox.innerHTML = '';
+    ytFrame = null;
   }
 
   function tocar() {
-    if (!pistas.length) {
-      musica.pause();
-      return;
+    detener();
+    if (!pistas.length) return;
+    const p = pistas[pista % pistas.length];
+    const unica = pistas.length === 1;
+    vol = volObjetivo();
+    if (esYoutube(p)) {
+      const id = UI.youtubeId(p.url);
+      const lista = listaId(p.url);
+      const sonar = UI.sonidoPermitido(); // navegador sin clic: parte en silencio
+      let src = `https://www.youtube.com/embed/${id || 'videoseries'}?autoplay=1&controls=0&enablejsapi=1&mute=${sonar ? 0 : 1}`;
+      if (lista) src += '&list=' + lista;
+      if (unica) src += '&loop=1' + (lista ? '' : '&playlist=' + id);
+      if (location.protocol.startsWith('http')) src += '&origin=' + encodeURIComponent(location.origin);
+      ytBox.innerHTML = `<iframe allow="autoplay; encrypted-media" src="${src}"></iframe>`;
+      ytFrame = ytBox.querySelector('iframe');
+      ytFrame.onload = () => ytFrame.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 2 }), '*');
+      if (!sonar) UI.pedirSonido(activarSonido);
+    } else {
+      musica.src = p.url;
+      musica.loop = unica;
+      musica.volume = vol;
+      musica.play().catch(() => UI.pedirSonido(activarSonido)); // navegador: esperar un clic/OK
     }
-    musica.src = pistas[pista % pistas.length].url;
-    musica.volume = volObjetivo();
-    musica.play().catch(() => UI.pedirSonido(activarSonido)); // navegador: esperar un clic/OK
   }
+
+  // Avisos del reproductor de YouTube de la música
+  window.addEventListener('message', e => {
+    if (!ytFrame || e.source !== ytFrame.contentWindow) return;
+    let d;
+    try { d = JSON.parse(e.data); } catch (err) { return; }
+    if (d.event === 'onReady' || d.event === 'initialDelivery') {
+      aplicarVolumen(vol);
+      if (listaId(ytFrame.src) && !/embed\/[\w-]{11}\?/.test(ytFrame.src)) ytCmd('setShuffle', [true]);
+    }
+    const estado = d.event === 'onStateChange' ? d.info : d.info && d.info.playerState;
+    if (estado === 1) errores = 0;
+    if (estado === 0 && pistas.length > 1) { pista++; tocar(); } // terminó → siguiente
+    if (d.event === 'onError' && pistas.length > 1 && ++errores <= pistas.length) { pista++; setTimeout(tocar, 1000); }
+  });
+
   musica.onended = () => { pista++; tocar(); };
   musica.onplaying = () => (errores = 0);
   musica.onerror = () => {
+    if (!musica.getAttribute('src')) return;
     if (!pistas.length || ++errores > pistas.length) return; // ninguna pista se puede reproducir
     pista++;
     setTimeout(tocar, 1000);
@@ -105,21 +163,25 @@
     const f = JSON.stringify(lista.map(m => m.url));
     if (f === firmaMusica) return; // misma lista → seguir sonando sin cortar
     firmaMusica = f;
-    pistas = CFG.MUSICA_FAMILIAS ? lista.slice().sort(() => Math.random() - 0.5) : [];
+    pistas = CFG.MUSICA_FAMILIAS ? lista.filter(m => m.url).sort(() => Math.random() - 0.5) : [];
     pista = 0;
     errores = 0;
-    musica.loop = pistas.length === 1;
     tocar();
   }
 
   // La galería avisa si el elemento visible es un video con sonido
   function onCambioVideo(conAudio) {
     videoSonando = conAudio;
-    if (!musica.paused) fundido(volObjetivo());
+    if (pistas.length) fundido(volObjetivo());
   }
 
   function activarSonido() {
-    if (pistas.length && musica.paused) tocar();
+    if (ytFrame) {
+      ytCmd('unMute');
+      aplicarVolumen(volObjetivo());
+    } else if (pistas.length && musica.paused) {
+      tocar();
+    }
     document.getElementById('gal')._activarSonido();
   }
 

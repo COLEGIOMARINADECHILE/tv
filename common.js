@@ -213,6 +213,9 @@
       let host = '';
       try { host = new URL(e.origin).hostname; } catch (err) { return; }
       if (!/youtube\.com$/.test(host)) return;
+      // solo los avisos del video visible del carrusel (no los de la música de fondo)
+      const fr = phs[i] && phs[i].querySelector('iframe');
+      if (!fr || e.source !== fr.contentWindow) return;
       let d;
       try { d = JSON.parse(e.data); } catch (err) { return; }
       // Al conocer la duración, el video se muestra completo (+5 s de margen)
@@ -249,11 +252,22 @@
     }, 40);
   }
 
+  // Video de una publicación de Educación: en el campo del enlace o pegado en el texto
+  function enlaceVideo(n) {
+    const id = youtubeId(n.url) || youtubeId(n.texto);
+    return id ? 'https://www.youtube.com/watch?v=' + id : '';
+  }
+
+  // Texto sin enlaces pegados (para mostrarlo limpio en pantalla)
+  function textoLimpio(n) {
+    return String(n.texto || '').replace(/https?:\/\/\S+/g, '').trim();
+  }
+
   // Fotos y videos + videos de Educación (experiencias educativas), para el carrusel
   function carrusel(data, perfil) {
     const edu = API.para(data.noticias, perfil)
-      .filter(n => youtubeId(n.url))
-      .map(n => ({ titulo: n.titulo, url: n.url, audio: n.audio, audioFunc: n.audioFunc, etiqueta: '📚 Experiencia educativa' }));
+      .filter(n => enlaceVideo(n))
+      .map(n => ({ titulo: n.titulo, url: enlaceVideo(n), audio: n.audio, audioFunc: n.audioFunc, etiqueta: '📚 Experiencia educativa' }));
     return API.para(data.fotos, perfil).concat(edu);
   }
 
@@ -270,5 +284,5 @@
     return m ? m[1] : null;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio };
 })();

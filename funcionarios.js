@@ -151,8 +151,8 @@
     const el = document.getElementById('edu');
     el.innerHTML = notas.length ? notas.map((n, i) => `
       <article class="edu" style="animation-delay:${i * 0.1}s">
-        ${UI.miniaturaVideo(n.url)}
-        <h3>${icons[i % icons.length]} ${esc(n.titulo)}</h3>${n.texto ? `<p>${esc(n.texto)}</p>` : ''}
+        ${UI.miniaturaVideo(UI.enlaceVideo(n))}
+        <h3>${icons[i % icons.length]} ${esc(n.titulo)}</h3>${UI.textoLimpio(n) ? `<p>${esc(UI.textoLimpio(n))}</p>` : ''}
       </article>`).join('') : '<p class="empty-msg">Sin publicaciones</p>';
     UI.autoScroll(el);
   }
