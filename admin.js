@@ -212,18 +212,32 @@
   // Ajustes generales: mensaje para las familias y segundos de las fotos
   function formAjustes() {
     const a = UI.ajustes(data);
-    return `<div class="panel" style="max-width:720px">
+    return `<div class="panel" style="max-width:760px">
       <h2>⚙️ Ajustes de las pantallas</h2>
       <form id="f-ajustes">
-        <label>Mensaje para las familias<textarea name="mensajeTexto" maxlength="280">${esc(a.mensajeTexto)}</textarea></label>
-        <p class="note">Aparece en el recuadro amarillo de la pantalla Familias (rota junto a las publicaciones de Educación).
-        Déjelo vacío para no mostrarlo.</p>
-        <label>Segundos que se ve cada foto · Familias<input type="number" name="segFotosFamilias" min="3" max="120" value="${esc(a.segFotosFamilias)}"></label>
-        <label>Segundos que se ve cada foto · Funcionarios<input type="number" name="segFotosFuncionarios" min="3" max="120" value="${esc(a.segFotosFuncionarios)}"></label>
-        <p class="note">Los videos siempre se muestran completos.</p>
-        <label>Velocidad de la cinta de avisos (abajo)
-          <select name="velocidadAvisos">${[['lenta', '🐢 Lenta'], ['normal', 'Normal'], ['rapida', '🐇 Rápida']]
-            .map(([v, t]) => `<option value="${v}" ${a.velocidadAvisos === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        <fieldset class="grupo">
+          <legend>📢 Cinta de avisos (abajo, en ambas pantallas)</legend>
+          <label>Velocidad de la cinta
+            <select name="velocidadAvisos">${[['lenta', '🐢 Lenta'], ['normal', 'Normal'], ['rapida', '🐇 Rápida']]
+              .map(([v, t]) => `<option value="${v}" ${a.velocidadAvisos === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        </fieldset>
+
+        <fieldset class="grupo">
+          <legend>👨‍👩‍👧 Pantalla Familias</legend>
+          <label>Mensaje para las familias<textarea name="mensajeTexto" maxlength="280">${esc(a.mensajeTexto)}</textarea></label>
+          <p class="note">Aparece destacado en la pantalla Familias. Déjelo vacío para no mostrarlo.</p>
+          <label>📞 Teléfonos de contacto (siempre visibles, uno por línea)
+            <textarea name="telefonos" rows="3" placeholder="Secretaría: 41 234 5678&#10;Inspectoría: 41 234 5679&#10;WhatsApp: +56 9 1234 5678">${esc(a.telefonos)}</textarea></label>
+          <p class="note">Formato: <b>Nombre: número</b>. Se muestran en la parte superior de la pantalla Familias.</p>
+          <label>Segundos que se ve cada foto · Familias<input type="number" name="segFotosFamilias" min="3" max="120" value="${esc(a.segFotosFamilias)}"></label>
+        </fieldset>
+
+        <fieldset class="grupo">
+          <legend>📺 Pantalla Funcionarios</legend>
+          <label>Segundos que se ve cada foto · Funcionarios<input type="number" name="segFotosFuncionarios" min="3" max="120" value="${esc(a.segFotosFuncionarios)}"></label>
+          <p class="note">Los videos siempre se muestran completos.</p>
+        </fieldset>
+
         <button class="btn">Guardar ajustes</button>
       </form></div>`;
   }

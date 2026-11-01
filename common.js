@@ -415,6 +415,7 @@
       segFotosFamilias: CFG.DURACION_FOTO_SEG,
       segFotosFuncionarios: CFG.DURACION_FOTO_FUNCIONARIOS_SEG,
       velocidadAvisos: 'normal',
+      telefonos: '',
     };
     (data.ajustes || []).forEach(r => { if (r.id) a[r.id] = r.valor; });
     a.segFotosFamilias = Math.max(3, +a.segFotosFamilias || CFG.DURACION_FOTO_SEG);

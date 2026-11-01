@@ -81,11 +81,40 @@
     }).join('') : '<p class="empty-msg">No hay fechas próximas</p>';
   }
 
-  // Recuadro amarillo: solo el mensaje editable (Admin → Ajustes), sin título
+  // Mensaje destacado para las familias (Admin → Ajustes), sin título
   function renderMensaje(texto) {
     const el = document.getElementById('tip');
     el.hidden = !texto;
-    el.innerHTML = texto ? `<div class="fade"><p class="tip-msg">${esc(texto)}</p></div>` : '';
+    el.innerHTML = texto ? `<div class="tip-wrap fade">
+      <div class="tip-badge">💬</div>
+      <p class="tip-msg">${esc(texto)}</p></div>` : '';
+  }
+
+  // 📞 Teléfonos siempre visibles en el encabezado (Admin → Ajustes, "Nombre: número" por línea).
+  // Si hay más de 2, se muestran de a 2 rotando.
+  document.querySelector('.tv-header .clock').insertAdjacentHTML('beforebegin', '<div class="telefonos" id="telefonos"></div>');
+  let telTimer;
+  let telFirma = null;
+  function renderTelefonos(texto) {
+    if (texto === telFirma) return;
+    telFirma = texto;
+    const el = document.getElementById('telefonos');
+    const tels = String(texto || '').split(/\n+/).map(l => l.trim()).filter(Boolean).map(l => {
+      const k = l.indexOf(':');
+      return k > 0 ? { nombre: l.slice(0, k).trim(), numero: l.slice(k + 1).trim() } : { nombre: 'Contacto', numero: l };
+    });
+    clearInterval(telTimer);
+    const grupo = n => tels.slice(n, n + 2).map(t => `<div class="tel fade">
+      <span class="tel-ico">📞</span><div><small>${esc(t.nombre)}</small><b>${esc(t.numero)}</b></div></div>`).join('');
+    el.hidden = !tels.length;
+    let n = 0;
+    el.innerHTML = grupo(0);
+    if (tels.length > 2) {
+      telTimer = setInterval(() => {
+        n = n + 2 >= tels.length ? 0 : n + 2;
+        el.innerHTML = grupo(n);
+      }, 7000);
+    }
   }
 
   // Educación: recuadro propio (solo aparece si hay algo para familias).
@@ -252,6 +281,7 @@
   UI.autoData(data => {
     const aj = UI.ajustes(data);
     renderMensaje(aj.mensajeTexto);
+    renderTelefonos(aj.telefonos);
     const fotos = API.para(data.fotos, 'familias');
     UI.gallery(gal, fotos,
       { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,

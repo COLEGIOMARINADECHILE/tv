@@ -47,6 +47,9 @@
       { id: 'v2', texto: 'Recuerde revisar el correo institucional diariamente', publico: 'funcionarios' },
       { id: 'v3', texto: 'Horario de atención de apoderados: lunes a viernes 8:00 a 13:00', publico: 'familias' },
     ],
+    ajustes: [
+      { id: 'telefonos', valor: 'Secretaría: 41 234 5678\nInspectoría: 41 234 5679\nWhatsApp: +56 9 1234 5678' },
+    ],
     musica: [
       { id: 'm1', titulo: 'Lista de ejemplo', url: 'https://www.youtube.com/watch?v=CLeZyIID9Bo&list=PLhvRqWR6il6FAbhLWbHnEIVQErmpBRXCo' },
     ],

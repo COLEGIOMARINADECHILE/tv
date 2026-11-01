@@ -478,6 +478,52 @@ button { font: inherit; color: inherit; }
 .edu-fam .edu-video .caption { font-size: 2vh; padding: 3vh 1vw 1vh; }
 .edu-fam .slide-texto h3 { font-size: 2.6vh; }
 .edu-fam .slide-texto p { font-size: 2vh; }
+/* 📞 Teléfonos en el encabezado de Familias */
+.telefonos { margin-left: auto; display: flex; gap: 0.8vw; align-items: center; min-width: 0; overflow: hidden; }
+.telefonos[hidden] { display: none; }
+.telefonos + .clock { margin-left: 1.6vw; flex: none; }
+.tv-header .brand { flex: none; white-space: nowrap; }
+.tel {
+  display: flex; align-items: center; gap: 0.6vw;
+  padding: 0.7vh 1vw 0.7vh 0.7vw; border-radius: 99px;
+  background: rgba(6, 21, 58, 0.55); border: 2px solid var(--gold);
+  box-shadow: 0 0 1.5vh rgba(246, 201, 14, 0.2);
+}
+.tel-ico {
+  width: 4.4vh; height: 4.4vh; border-radius: 50%; display: grid; place-items: center;
+  background: var(--gold); font-size: 2.2vh;
+}
+.tel small { display: block; font-size: 1.3vh; color: var(--gold-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.tel b { display: block; font-size: 2.2vh; color: var(--white); font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; }
+
+/* 💬 Mensaje destacado para las familias */
+.family-side .tip {
+  position: relative; overflow: hidden;
+  padding: 2.2vh 1.6vw;
+  background: linear-gradient(135deg, #ffe27a 0%, #f6c90e 45%, #ffb703 100%);
+  box-shadow: 0 1.5vh 3.5vh rgba(246, 201, 14, 0.25);
+}
+/* insignia de fondo, sutil */
+.family-side .tip::after {
+  content: ''; position: absolute; right: -2vh; bottom: -3.5vh; width: 15vh; height: 15vh;
+  background: url(insignia.png) center / contain no-repeat;
+  opacity: 0.14; transform: rotate(-12deg);
+}
+/* brillo que cruza lentamente */
+.family-side .tip::before {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -50%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: brillo 6s ease-in-out infinite;
+}
+@keyframes brillo { 0%, 60% { left: -50%; } 100% { left: 120%; } }
+.tip-wrap { position: relative; z-index: 1; display: flex; align-items: center; gap: 1.2vw; }
+.tip-badge {
+  flex: none; width: 6.5vh; height: 6.5vh; border-radius: 50%;
+  display: grid; place-items: center; font-size: 3.2vh;
+  background: var(--navy-800); box-shadow: 0 0.8vh 1.6vh rgba(6, 21, 58, 0.35);
+  border: 3px solid rgba(255, 255, 255, 0.6);
+}
+.family-side .tip .tip-msg { color: var(--navy-900); font-size: 2.6vh !important; font-weight: 800 !important; line-height: 1.35; }
 .tip-msg { font-size: 2.4vh !important; font-weight: 700 !important; line-height: 1.4; }
 .dates { padding: 2.4vh 1.6vw; display: flex; flex-direction: column; gap: 1.6vh; min-height: 0; }
 .date-list { display: flex; flex-direction: column; gap: 1.2vh; overflow: hidden; }
