@@ -58,16 +58,42 @@
     requestAnimationFrame(() => (track.style.animationDuration = Math.max(20, track.scrollWidth / 90) + 's'));
   }
 
-  // Carga datos y refresca periódicamente; llama a onData(data) cada vez.
+  // Carga datos y los mantiene al día: cada pocos segundos consulta si el
+  // administrador publicó algo y solo entonces descarga y redibuja (onData).
   function autoData(onData) {
-    const run = async () => {
+    let firma = null;
+    let version = null;
+    let ocupado = false;
+
+    const cargar = async () => {
       const data = await API.cargarDatos();
+      const f = JSON.stringify(Object.assign({}, data, { actualizado: 0, version: 0 }));
+      if (f === firma) return; // nada cambió → no interrumpir animaciones ni videos
+      firma = f;
       document.querySelector('.demo-badge')?.remove();
       if (data.demo) document.body.insertAdjacentHTML('beforeend', '<div class="demo-badge">MODO DEMO</div>');
       onData(data);
     };
-    run();
-    setInterval(run, CFG.REFRESCO_DATOS_SEG * 1000);
+
+    const revisar = async () => {
+      if (ocupado) return;
+      ocupado = true;
+      try {
+        const v = await API.version();
+        if (v === undefined) return; // sin conexión
+        if (v === null || v !== version) {
+          // null = backend sin "version" → se compara el contenido completo
+          version = v;
+          await cargar();
+        }
+      } finally {
+        ocupado = false;
+      }
+    };
+
+    cargar();
+    setInterval(revisar, CFG.VERIFICAR_CAMBIOS_SEG * 1000);
+    setInterval(cargar, CFG.REFRESCO_DATOS_SEG * 1000); // por si se edita la hoja a mano
   }
 
   // Botón "Atrás" del control remoto → volver al inicio
@@ -80,17 +106,49 @@
     });
   }
 
+  // ¿Se puede reproducir audio sin que alguien toque la pantalla?
+  // En la app Android TV siempre; en un navegador, solo después de un clic o tecla.
+  function sonidoPermitido() {
+    return !!window.AndroidTV || !!(navigator.userActivation && navigator.userActivation.hasBeenActive);
+  }
+
+  // Muestra "Presione OK para activar el sonido" hasta el primer clic/tecla.
+  function pedirSonido(onActivar) {
+    if (sonidoPermitido() || document.getElementById('activar-sonido')) return;
+    document.body.insertAdjacentHTML('beforeend',
+      '<button class="sound-pill" id="activar-sonido">🔊 Presione OK o haga clic para activar el sonido</button>');
+    const activar = e => {
+      if (e.type === 'keydown' && (e.key === 'Escape' || e.keyCode === 4)) return;
+      document.removeEventListener('keydown', activar, true);
+      document.removeEventListener('click', activar, true);
+      document.getElementById('activar-sonido')?.remove();
+      onActivar();
+    };
+    document.addEventListener('keydown', activar, true);
+    document.addEventListener('click', activar, true);
+  }
+
+  function ytCmd(iframe, func, args) {
+    iframe?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args: args || [] }), '*');
+  }
+
   // Galería de fotos (transición tipo Ken Burns) y videos de YouTube.
-  // opts: { seg, maxVideo, sonido }
+  // opts: { seg, maxVideo, sonido, onCambio(videoConAudio) }
+  // Devuelve (en el elemento) el._activarSonido() para quitar el silencio al video actual.
   function gallery(el, fotos, opts, etiqueta) {
     // Al refrescar datos no reiniciar el carrusel (ni cortar un video) si nada cambió
-    const firma = JSON.stringify(fotos.map(f => f.url + '|' + f.titulo));
+    const firma = JSON.stringify(fotos.map(f => [f.url, f.titulo, f.audio, f.audioFunc].join('|')).concat(!!opts.sonido));
+    // qué videos llevan sonido en este perfil (por defecto: el campo "audio" de Familias)
+    const audioDe = opts.audioDe || (f => f.audio !== 'no');
     if (el._firma === firma) return;
     el._firma = firma;
     clearTimeout(el._timer);
     if (el._onMsg) window.removeEventListener('message', el._onMsg);
+    el._activarSonido = () => {};
+    const avisar = conAudio => opts.onCambio && opts.onCambio(conAudio);
     if (!fotos.length) {
       el.innerHTML = '<p class="empty-msg" style="padding-top:20vh">Aún no hay fotografías ni videos publicados</p>';
+      avisar(false);
       return;
     }
     el.innerHTML =
@@ -99,7 +157,9 @@
         const media = yt
           ? `<img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" alt="">` // portada mientras carga
           : `<img src="${esc(f.url)}" alt="${esc(f.titulo)}" loading="lazy">`;
-        return `<div class="ph ${yt ? 'video' : ''}" data-yt="${yt || ''}">${media}
+        // audio: 'no' lo silencia; vacío o 'si' suena (solo donde opts.sonido lo permite)
+        const audio = yt && opts.sonido && audioDe(f);
+        return `<div class="ph ${yt ? 'video' : ''}" data-yt="${yt || ''}" data-audio="${audio ? 1 : ''}">${media}
           <div class="caption"><small>${yt ? '▶ Video · ' : ''}${esc(etiqueta)}</small>${esc(f.titulo)}</div></div>`;
       }).join('') +
       `<div class="dots">${fotos.map(() => '<i></i>').join('')}</div>`;
@@ -114,27 +174,55 @@
       const ph = phs[i];
       // solo un video a la vez: se quita el reproductor del anterior
       if (prev && prev !== ph) prev.querySelector('iframe')?.remove();
+      ph._duracion = 0;
       phs.forEach(p => p.classList.toggle('active', p === ph));
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
+      const conAudio = !!ph.dataset.audio && sonidoPermitido();
       if (ph.dataset.yt) {
         if (!ph.querySelector('iframe')) {
           const origin = location.protocol.startsWith('http') ? '&origin=' + encodeURIComponent(location.origin) : '';
           ph.insertAdjacentHTML('afterbegin', `<iframe allow="autoplay; encrypted-media"
-            src="https://www.youtube.com/embed/${ph.dataset.yt}?autoplay=1&mute=${opts.sonido ? 0 : 1}&controls=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1${origin}"></iframe>`);
+            src="https://www.youtube.com/embed/${ph.dataset.yt}?autoplay=1&mute=${conAudio ? 0 : 1}&controls=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1${origin}"></iframe>`);
           const fr = ph.querySelector('iframe');
           // pedir a YouTube que avise cuando el video termine
-          fr.onload = () => fr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+          fr.onload = () => {
+            fr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+            if (conAudio) { ytCmd(fr, 'unMute'); ytCmd(fr, 'setVolume', [100]); }
+          };
         }
-        el._timer = setTimeout(siguiente, opts.maxVideo * 1000);
+        // Si en 30 s YouTube no informa la duración (video bloqueado o sin internet), se sigue
+        el._timer = setTimeout(siguiente, 30000);
       } else if (phs.length > 1) {
         el._timer = setTimeout(siguiente, opts.seg * 1000);
+      }
+      avisar(!!ph.dataset.yt && conAudio);
+    };
+
+    // tras el primer clic/OK en un navegador: dar sonido al video que se está viendo
+    el._activarSonido = () => {
+      const ph = phs[i];
+      if (ph && ph.dataset.audio) {
+        const fr = ph.querySelector('iframe');
+        ytCmd(fr, 'unMute');
+        ytCmd(fr, 'setVolume', [100]);
+        avisar(true);
       }
     };
 
     el._onMsg = e => {
-      if (!/youtube\.com$/.test(new URL(e.origin).hostname)) return;
+      let host = '';
+      try { host = new URL(e.origin).hostname; } catch (err) { return; }
+      if (!/youtube\.com$/.test(host)) return;
       let d;
       try { d = JSON.parse(e.data); } catch (err) { return; }
+      // Al conocer la duración, el video se muestra completo (+5 s de margen)
+      if (d.info && d.info.duration > 0 && phs[i] && phs[i].dataset.yt && !phs[i]._duracion) {
+        phs[i]._duracion = d.info.duration;
+        clearTimeout(el._timer);
+        const resta = Math.min(d.info.duration - (d.info.currentTime || 0) + 5, opts.maxVideo);
+        el._timer = setTimeout(siguiente, resta * 1000);
+      }
+      if (d.event === 'onError' && phs.length > 1) { setTimeout(siguiente, 3000); return; }
       const estado = d.event === 'onStateChange' ? d.info : d.info && d.info.playerState;
       if (estado === 0 && phs[i] && phs[i].dataset.yt) {
         if (phs.length > 1) siguiente();
@@ -145,11 +233,27 @@
     siguiente();
   }
 
+  // Si el contenido no cabe, se desplaza solo y lento hacia abajo y vuelve arriba.
+  function autoScroll(el) {
+    clearInterval(el._scroll);
+    el.scrollTop = 0;
+    let pausa = 120; // ~5 s quieto al inicio
+    el._scroll = setInterval(() => {
+      if (el.scrollHeight <= el.clientHeight + 2) return; // todo cabe
+      if (pausa > 0) { pausa--; return; }
+      el.scrollTop += 1;
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 1) {
+        pausa = 120;
+        setTimeout(() => el.scrollTo({ top: 0, behavior: 'smooth' }), 4000);
+      }
+    }, 40);
+  }
+
   // ID de un enlace de YouTube (watch, youtu.be, shorts, live, embed) o null
   function youtubeId(url) {
     const m = String(url || '').match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([\w-]{11})/);
     return m ? m[1] : null;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll };
 })();

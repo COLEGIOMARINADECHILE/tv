@@ -43,6 +43,10 @@
     .item .t { flex: 1; min-width: 0; }
     .item .t b { color: #fff; display: block; }
     .item .t small { color: var(--muted); }
+    .item .toggle { background: rgba(255,255,255,.06); border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 6px 8px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+    .item .toggle.on { border-color: var(--gold); color: var(--gold); }
+    label.check { flex-direction: row; align-items: flex-start; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--ink); font-weight: 500; }
+    label.check input { margin-top: 2px; accent-color: var(--gold); }
     .item .del { background: transparent; border: 1px solid var(--red); color: #ff8b8e; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
     .preview { max-height: 180px; border-radius: 10px; object-fit: cover; }
     .msg { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 10px; font-weight: 700; z-index: 99; }

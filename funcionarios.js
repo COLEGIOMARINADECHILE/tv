@@ -36,6 +36,7 @@
     try { localStorage.setItem(KEY_CANAL, actual); } catch (e) {}
     const c = canales[actual];
     chList.querySelectorAll('.channel-btn').forEach((b, k) => b.classList.toggle('active', k === actual));
+    if (tvPausada) return; // un video con sonido está sonando; la TV vuelve al terminar
 
     if (!c.url) {
       NATIVE && NATIVE.hideTv();
@@ -98,59 +99,61 @@
 
   window.addEventListener('resize', () => NATIVE && canales[actual]?.url && NATIVE.showTv(canales[actual].url, ...playerRect()));
 
-  // ---------- Panel informativo ----------
+  // ---------- Panel informativo (todo visible a la vez) ----------
   function renderAgenda(acts) {
     const lista = acts
       .map(a => ({ ...a, dias: diasHasta(a.fecha) }))
       .filter(a => a.dias !== null && a.dias >= 0 && a.dias <= 7)
-      .sort((a, b) => a.dias - b.dias || String(a.hora).localeCompare(String(b.hora)))
-      .slice(0, 6);
-    document.getElementById('s-agenda').innerHTML = `
-      <div class="card-title"><span class="dot"></span>Actividades de funcionarios · próximos 7 días</div>
-      <div class="agenda">${lista.length ? lista.map((a, i) => {
-        const d = parseFecha(a.fecha);
-        return `<div class="event ${a.dias === 0 ? 'today' : ''}" style="animation-delay:${i * 0.08}s">
-          <div class="day"><div class="d">${d.getDate()}</div><div class="m">${a.dias === 0 ? 'HOY' : MESES[d.getMonth()]}</div></div>
-          <div><h3>${esc(a.titulo)}</h3>${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
-          <div class="meta">${a.hora ? '🕒 ' + esc(a.hora) + ' hrs' : ''} ${a.lugar ? ' · 📍 ' + esc(a.lugar) : ''}</div></div>
-        </div>`;
-      }).join('') : '<p class="empty-msg">No hay actividades programadas esta semana</p>'}</div>`;
+      .sort((a, b) => a.dias - b.dias || String(a.hora).localeCompare(String(b.hora)));
+    const el = document.getElementById('agenda');
+    el.innerHTML = lista.length ? `<div class="agenda-grid">${lista.map((a, i) => {
+      const d = parseFecha(a.fecha);
+      return `<div class="event ${a.dias === 0 ? 'today' : ''}" style="animation-delay:${i * 0.06}s">
+        <div class="day"><div class="d">${d.getDate()}</div><div class="m">${a.dias === 0 ? 'HOY' : MESES[d.getMonth()]}</div></div>
+        <div><h3>${esc(a.titulo)}</h3>${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
+        <div class="meta">${a.hora ? '🕒 ' + esc(a.hora) + ' hrs' : ''}${a.lugar ? ' · 📍 ' + esc(a.lugar) : ''}</div></div>
+      </div>`;
+    }).join('')}</div>` : '<p class="empty-msg">No hay actividades programadas esta semana</p>';
+    UI.autoScroll(el);
   }
 
   function renderEdu(notas) {
     const icons = ['💡', '🎯', '🧠', '🌱', '📖'];
-    document.getElementById('s-edu').innerHTML = `
-      <div class="card-title"><span class="dot"></span>Información de educación</div>
-      <div class="edu-grid">${notas.length ? notas.slice(0, 4).map((n, i) => `
-        <article class="edu" style="animation-delay:${i * 0.1}s">
-          <h3>${icons[i % icons.length]} ${esc(n.titulo)}</h3><p>${esc(n.texto)}</p>
-        </article>`).join('') : '<p class="empty-msg">Sin publicaciones</p>'}</div>`;
+    const el = document.getElementById('edu');
+    el.innerHTML = notas.length ? notas.map((n, i) => `
+      <article class="edu" style="animation-delay:${i * 0.1}s">
+        <h3>${icons[i % icons.length]} ${esc(n.titulo)}</h3><p>${esc(n.texto)}</p>
+      </article>`).join('') : '<p class="empty-msg">Sin publicaciones</p>';
+    UI.autoScroll(el);
   }
 
-  // Rotación de pestañas
-  const tabs = [...document.querySelectorAll('.tab')];
-  const slides = [...document.querySelectorAll('.slide')];
-  let s = 0;
-  function rotar() {
-    tabs.forEach((t, k) => {
-      t.classList.toggle('active', k === s);
-      const bar = t.querySelector('.bar');
-      bar.style.animation = 'none';
-      void bar.offsetWidth; // reinicia la barra de progreso
-      bar.style.animation = '';
-      bar.style.animationDuration = CFG.DURACION_SLIDE_SEG + 's';
-    });
-    slides.forEach((el, k) => el.classList.toggle('active', k === s));
-    s = (s + 1) % slides.length;
+  // Si un video suena, la TV se pausa para que no se mezclen; vuelve al terminar
+  let tvPausada = false;
+  function onCambioVideo(conAudio) {
+    if (conAudio === tvPausada) return;
+    tvPausada = conAudio;
+    if (conAudio) {
+      NATIVE && NATIVE.hideTv();
+      player.innerHTML = `<div class="empty"><img src="assets/insignia.png" alt="">
+        <b>TV en pausa</b>Se está reproduciendo un video del colegio con sonido.</div>`;
+    } else {
+      sintonizar(actual);
+    }
   }
-  rotar();
-  setInterval(rotar, CFG.DURACION_SLIDE_SEG * 1000);
+
+  function activarSonido() {
+    document.getElementById('gal')._activarSonido();
+  }
 
   UI.autoData(data => {
     renderCanales(data.canales || []);
     renderAgenda(API.para(data.actividades, 'funcionarios'));
-    UI.gallery(document.getElementById('gal'), API.para(data.fotos, 'funcionarios'),
-      { seg: CFG.DURACION_FOTO_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: false },'Actividades del colegio');
+    const fotos = API.para(data.fotos, 'funcionarios');
+    UI.gallery(document.getElementById('gal'), fotos,
+      { seg: CFG.DURACION_FOTO_FUNCIONARIOS_SEG, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true,
+        audioDe: f => f.audioFunc === 'si', onCambio: onCambioVideo },
+      'Actividades del colegio');
+    if (fotos.some(f => UI.youtubeId(f.url) && f.audioFunc === 'si')) UI.pedirSonido(activarSonido);
     renderEdu(API.para(data.noticias, 'funcionarios'));
     UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'funcionarios'));
   });

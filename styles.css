@@ -221,6 +221,28 @@ button { font: inherit; color: inherit; }
 }
 .slide.active { opacity: 1; transform: none; }
 
+/* Panel derecho de Funcionarios: todo visible a la vez */
+.info2 { display: grid; grid-template-rows: auto 1fr; gap: 1.6vh; padding: 1.6vh 1vw; min-height: 0; }
+.info-top { display: grid; grid-template-columns: 1.55fr 1fr; gap: 1vw; min-height: 0; }
+.info2 .gallery { aspect-ratio: 16 / 9; width: 100%; flex: none; } /* video completo, sin recortes */
+.info2 .gallery .caption { font-size: 2.2vh; padding: 4vh 1.2vw 1.4vh; }
+.edu-box { contain: size; display: flex; flex-direction: column; gap: 1vh; min-height: 0; }
+.agenda-box { display: flex; flex-direction: column; gap: 1.2vh; min-height: 0; }
+.scroller { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 1vh; }
+.info2 .card-title { font-size: 2.2vh; }
+.edu-box .edu { padding: 1.4vh 1vw; animation: rise 0.6s backwards; }
+.edu-box .edu h3 { font-size: 2vh; }
+.edu-box .edu p { font-size: 1.75vh; line-height: 1.4; }
+.agenda-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1vh 0.8vw; }
+.agenda-grid .event { grid-template-columns: 7vh 1fr; padding: 1.1vh 0.8vw; gap: 0.8vw; }
+.agenda-grid .event .day .d { font-size: 3vh; }
+.agenda-grid .event h3 { font-size: 2vh; }
+.agenda-grid .event p {
+  font-size: 1.6vh;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.agenda-grid .event .meta { font-size: 1.5vh; }
+
 /* Lista de actividades */
 .agenda { display: flex; flex-direction: column; gap: 1.2vh; overflow: hidden; }
 .event {
@@ -314,6 +336,15 @@ button { font: inherit; color: inherit; }
 .tip p { font-size: 2vh; line-height: 1.4; font-weight: 500; }
 .fade { animation: rise 0.6s; }
 
+.sound-pill {
+  position: fixed; left: 50%; bottom: 9vh; transform: translateX(-50%); z-index: 60;
+  background: var(--navy-900); color: var(--gold);
+  border: 2px solid var(--gold); border-radius: 99px;
+  padding: 1.2vh 2vw; font-size: 2vh; font-weight: 800; cursor: pointer;
+  box-shadow: var(--shadow);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 50% { box-shadow: 0 0 0 1.2vh rgba(246, 201, 14, 0.15); } }
 .demo-badge {
   position: fixed; right: 1vw; bottom: 8vh; z-index: 50;
   background: var(--red); color: #fff; font-size: 1.4vh; font-weight: 800;

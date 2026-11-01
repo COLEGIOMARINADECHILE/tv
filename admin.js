@@ -31,12 +31,37 @@
           <select name="tipo"><option value="imagen">📷 Imagen</option><option value="video">▶️ Video de YouTube</option></select></label>
         <label data-tipo="imagen">Imagen<input type="file" name="imagen" accept="image/*"></label>
         <label data-tipo="video" hidden>Enlace de YouTube<input name="url" placeholder="https://www.youtube.com/watch?v=..."></label>
+        <label data-tipo="video" hidden class="check"><input type="checkbox" name="audio" value="si" checked>
+          🔊 Con sonido en <b>Familias</b> (la música de fondo baja mientras suena)</label>
+        <label data-tipo="video" hidden class="check"><input type="checkbox" name="audioFunc" value="si">
+          🔊 Con sonido en <b>Funcionarios</b> (la TV se pausa mientras suena y vuelve al terminar)</label>
         <img class="preview" id="preview" hidden alt="">${PUBLICO}
         <p class="note" data-tipo="imagen">La imagen se reduce automáticamente a 1920 px antes de subirla a Google Drive.</p>
         <p class="note" data-tipo="video" hidden>El video se reproduce completo y luego pasa al siguiente elemento del carrusel.
         Debe ser público o "no listado" y permitir insertarse en otros sitios.</p>`,
       linea: f => [(UI.youtubeId(f.url) ? '▶ ' : '') + f.titulo, f.publico],
       img: f => (UI.youtubeId(f.url) ? `https://img.youtube.com/vi/${UI.youtubeId(f.url)}/mqdefault.jpg` : f.url),
+      // botones para cambiar el sonido de un video ya publicado, por perfil
+      extra: f => {
+        if (!UI.youtubeId(f.url)) return '';
+        const fam = f.audio !== 'no';
+        const fun = f.audioFunc === 'si';
+        return `<button class="toggle ${fam ? 'on' : ''}" data-id="${esc(f.id)}" data-campo="audio" data-valor="${fam ? 'no' : 'si'}"
+            title="Sonido en Familias">${fam ? '🔊' : '🔇'} Familias</button>
+          <button class="toggle ${fun ? 'on' : ''}" data-id="${esc(f.id)}" data-campo="audioFunc" data-valor="${fun ? 'no' : 'si'}"
+            title="Sonido en Funcionarios">${fun ? '🔊' : '🔇'} Funcionarios</button>`;
+      },
+    },
+    musica: {
+      nombre: '🎵 Música Familias',
+      form: `<label>Nombre de la canción<input name="titulo" required></label>
+        <label>Origen
+          <select name="tipo"><option value="archivo">📁 Subir archivo MP3</option><option value="enlace">🔗 Enlace directo a un MP3</option></select></label>
+        <label data-tipo="archivo">Archivo de audio (máx. 20 MB)<input type="file" name="imagen" accept="audio/*"></label>
+        <label data-tipo="enlace" hidden>Enlace (.mp3)<input name="url" placeholder="https://.../cancion.mp3"></label>
+        <p class="note">Suena de fondo en la pantalla Familias, en orden aleatorio, y baja de volumen cuando aparece un video con sonido.
+        Use música libre de derechos o con autorización. Los enlaces de YouTube no sirven como música (van en Fotos y videos).</p>`,
+      linea: m => ['🎵 ' + m.titulo, m.fileId ? 'Archivo en Google Drive' : m.url],
     },
     noticias: {
       nombre: '📚 Educación',
@@ -74,6 +99,16 @@
     el.textContent = texto;
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 3500);
+  }
+
+  // Archivo completo → base64 (para la música)
+  function aBase64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(',')[1]);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
   }
 
   // Reduce imagen a máx. 1920px y devuelve base64 JPEG
@@ -148,6 +183,7 @@
             const [t, sub] = S.linea(it);
             return `<div class="item">${S.img ? `<img src="${esc(S.img(it))}" alt="">` : ''}
               <div class="t"><b>${esc(t)}</b><small>${esc(sub)}</small></div>
+              ${S.extra ? S.extra(it) : ''}
               <button class="del" data-id="${esc(it.id)}">Eliminar</button></div>`;
           }).join('') || '<p class="note">Nada publicado aún.</p>'}</div>
         </div>
@@ -168,13 +204,17 @@
       preview.src = URL.createObjectURL(file.files[0]);
       preview.hidden = false;
     };
+    if (file && preview) file.onchange = () => {
+      preview.src = URL.createObjectURL(file.files[0]);
+      preview.hidden = false;
+    };
     if (tipo) {
-      // mostrar campos de imagen o de video según el tipo elegido
+      // mostrar los campos que corresponden al tipo elegido
       tipo.onchange = () => {
         form.querySelectorAll('[data-tipo]').forEach(el => (el.hidden = el.dataset.tipo !== tipo.value));
-        preview.hidden = true;
+        if (preview) preview.hidden = true;
       };
-      form.elements.url.oninput = () => {
+      if (preview) form.elements.url.oninput = () => {
         const id = UI.youtubeId(form.elements.url.value);
         preview.hidden = !id;
         if (id) preview.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
@@ -187,19 +227,28 @@
       try {
         const item = {};
         new FormData(form).forEach((v, k) => { if (k !== 'imagen' && k !== 'tipo') item[k] = v; });
-        const esVideo = tipo && tipo.value === 'video';
-        if (tipo && esVideo) {
+        const t = tipo ? tipo.value : null;
+        if (t === 'video') {
           const id = UI.youtubeId(item.url);
           if (!id) throw new Error('El enlace no parece ser un video de YouTube');
           item.url = 'https://www.youtube.com/watch?v=' + id;
-        } else if (tipo) {
+          item.audio = item.audio === 'si' ? 'si' : 'no';
+          item.audioFunc = item.audioFunc === 'si' ? 'si' : 'no';
+        } else if (t === 'enlace') {
+          if (!/^https?:\/\//.test(item.url || '')) throw new Error('Escriba un enlace que empiece con https://');
+        } else if (t) {
           delete item.url;
-          if (!file.files[0]) throw new Error('Seleccione una imagen');
+          delete item.audio;
+          delete item.audioFunc;
+          if (!file.files[0]) throw new Error('Seleccione un archivo');
         }
+        const f = file && (t === 'imagen' || t === 'archivo') ? file.files[0] : null;
+        if (f && seccion === 'musica' && f.size > 20 * 1024 * 1024) throw new Error('El archivo supera 20 MB');
         btn.disabled = true;
-        btn.textContent = 'Publicando…';
+        btn.textContent = f && seccion === 'musica' ? 'Subiendo música… (puede tardar)' : 'Publicando…';
         let image = null;
-        if (file && !esVideo && file.files[0]) image ={ data: await comprimir(file.files[0]), mimeType: 'image/jpeg', name: file.files[0].name.replace(/\.\w+$/, '') + '.jpg' };
+        if (f && seccion === 'musica') image = { data: await aBase64(f), mimeType: f.type || 'audio/mpeg', name: f.name };
+        else if (f) image = { data: await comprimir(f), mimeType: 'image/jpeg', name: f.name.replace(/\.\w+$/, '') + '.jpg' };
         await API.admin('add', { password, sheet: seccion, item, image });
         toast('Publicado ✔');
         await recargar();
@@ -209,6 +258,18 @@
         btn.textContent = 'Publicar';
       }
     };
+
+    app.querySelectorAll('.toggle').forEach(b => (b.onclick = async () => {
+      b.disabled = true;
+      try {
+        await API.admin('update', { password, sheet: seccion, item: { id: b.dataset.id, [b.dataset.campo]: b.dataset.valor } });
+        toast('Actualizado ✔');
+        await recargar();
+      } catch (err) {
+        toast(err.message, 'err');
+        b.disabled = false;
+      }
+    }));
 
     app.querySelectorAll('.del').forEach(b => (b.onclick = async () => {
       if (!confirm('¿Eliminar este elemento?')) return;
