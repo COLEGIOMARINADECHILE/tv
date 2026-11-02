@@ -212,6 +212,19 @@
           return `<div class="ph texto"><div class="slide-texto">
             <h3>${esc(f.titulo)}</h3>${f.texto ? `<p>${esc(f.texto)}</p>` : ''}</div></div>`;
         }
+        // Publicación o reel de Instagram por enlace: tarjeta oficial de Instagram y el mensaje al lado
+        const ig = instagramRuta(f.url);
+        if (ig) {
+          const texto = String(f.texto || '').trim();
+          const tam = texto.length < 140 ? 'g' : texto.length < 380 ? 'm' : 'c';
+          return `<div class="ph insta enlace" data-ig="${ig}" data-cap="${texto ? '' : '1'}">
+            <div class="ig-marco"></div>
+            <div class="ig-resena">
+              <span class="ig-logo">📸 Instagram${ig.startsWith('reel/') ? ' · Reel' : ''}</span>
+              ${texto ? `<p class="ig-texto ${tam}">${esc(texto)}</p>` : `<b class="ig-titulo">${esc(f.titulo)}</b>`}
+              <small>${esc(f.etiqueta || etiqueta)}</small>
+            </div></div>`;
+        }
         // Instagram (publicación elegida o historia): foto destacada y la reseña al lado
         if (f.origen === 'instagram' || f.historia) {
           const texto = String(f.texto || '').trim();
@@ -279,6 +292,14 @@
         }
         // Si en 30 s YouTube no informa la duración (video bloqueado o sin internet), se sigue
         el._timer = setTimeout(siguiente, 30000);
+      } else if (ph.dataset.ig) {
+        // tarjeta oficial de Instagram: se carga al mostrarse y se ajusta al alto del recuadro
+        if (!ph.querySelector('iframe')) {
+          ph.querySelector('.ig-marco').innerHTML = `<iframe scrolling="no" allow="autoplay; encrypted-media"
+            src="https://www.instagram.com/${ph.dataset.ig}/embed/${ph.dataset.cap ? 'captioned/' : ''}"></iframe>`;
+          ajustarInsta(ph, ph.dataset.cap ? 760 : 560);
+        }
+        if (phs.length > 1) el._timer = setTimeout(siguiente, opts.seg * 1500);
       } else if (ph.classList.contains('insta') && phs.length > 1) {
         // un poco más que una foto, para alcanzar a leer la reseña
         el._timer = setTimeout(siguiente, opts.seg * 1500);
@@ -312,9 +333,32 @@
       avisar(suena);
     };
 
+    // La tarjeta de Instagram mide 400 px de ancho: se escala para caber completa en el recuadro
+    const ajustarInsta = (ph, alto) => {
+      const fr = ph.querySelector('.ig-marco iframe');
+      if (!fr) return;
+      const s = Math.min(1.8, (ph.clientHeight * 0.94) / alto);
+      fr.style.height = alto + 'px';
+      fr.style.transform = `scale(${s})`;
+      const marco = ph.querySelector('.ig-marco');
+      marco.style.width = 400 * s + 'px';
+      marco.style.height = alto * s + 'px';
+    };
+
     el._onMsg = e => {
       let host = '';
       try { host = new URL(e.origin).hostname; } catch (err) { return; }
+      if (/instagram\.com$/.test(host)) {
+        // Instagram informa el alto real de la tarjeta
+        const ph = phs[i];
+        const fr = ph && ph.querySelector('.ig-marco iframe');
+        if (!fr || e.source !== fr.contentWindow) return;
+        try {
+          const d = JSON.parse(e.data);
+          if (d.type === 'MEASURE' && d.details.height > 0) ajustarInsta(ph, d.details.height);
+        } catch (err) {}
+        return;
+      }
       if (!/youtube\.com$/.test(host)) return;
       // solo los avisos del video visible del carrusel (no los de la música de fondo)
       const fr = phs[i] && phs[i].querySelector('iframe');
@@ -529,7 +573,11 @@
   // Carrusel: fotos y videos con su categoría (Actividades del colegio o 📚 Educación).
   // También incluye los videos publicados antes en la antigua sección Educación.
   function carrusel(data, perfil) {
+    const ahora = Date.now();
     const fotos = API.para(data.fotos, perfil)
+      // historias subidas a mano: se ven 24 h (campo "vence") y luego desaparecen
+      .filter(f => !f.vence || Date.parse(f.vence) > ahora)
+      .map(f => (f.vence ? Object.assign({}, f, { historia: true, fecha: new Date(Date.parse(f.vence) - 864e5).toISOString(), etiqueta: 'Recién publicado' }) : f))
       .map(f => (f.categoria === 'educacion' ? Object.assign({}, f, { etiqueta: '📚 Educación' }) : f));
     const antiguos = API.para(data.noticias, perfil)
       .filter(n => enlaceVideo(n))
@@ -554,11 +602,17 @@
     return m ? m[1] : null;
   }
 
+  // Ruta de una publicación o reel de Instagram ("p/CODIGO" o "reel/CODIGO") o null
+  function instagramRuta(url) {
+    const m = String(url || '').match(/instagram\.com\/(?:[\w.]+\/)?(p|reels?|tv)\/([\w-]+)/);
+    return m ? (m[1] === 'p' ? 'p' : 'reel') + '/' + m[2] : null;
+  }
+
   // "Hace 3 h" desde una fecha ISO (historias de Instagram)
   function haceCuanto(iso) {
     const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
     return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

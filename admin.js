@@ -86,6 +86,8 @@
         <p class="note">📸 Las publicaciones de Instagram se eligen en la sección <b>📸 Instagram</b>.</p>
         <label data-tipo="imagen">Imágenes (puede elegir varias a la vez con Ctrl)<input type="file" name="imagen" accept="image/*" multiple></label>
         <p class="note cuantas" data-tipo="imagen" style="color:var(--gold)"></p>
+        <label class="check" data-tipo="imagen"><input type="checkbox" name="historia" value="si">
+          ⏱️ <b>Es una historia de Instagram</b>: se ve destacada y se quita sola a las 24 h</label>
         <label data-tipo="video" hidden>Enlace de YouTube<input name="url" placeholder="https://www.youtube.com/watch?v=..."></label>
         <img class="preview" id="preview" hidden alt="">
         ${SONIDO('data-tipo="video" hidden')}
@@ -95,8 +97,12 @@
         Debe ser público o "no listado" y permitir insertarse en otros sitios.</p>`,
       linea: f => [(UI.youtubeId(f.url) ? '▶ ' : f.origen === 'instagram' ? '📸 ' : '') + f.titulo,
         (f.categoria === 'educacion' ? '📚 Educación' : '🏫 Actividades') + ' · ' + f.publico +
-        (f.origen === 'instagram' ? ' · desde Instagram' : '')],
-      img: f => (UI.youtubeId(f.url) ? `https://img.youtube.com/vi/${UI.youtubeId(f.url)}/mqdefault.jpg` : f.url),
+        (f.origen === 'instagram' ? ' · desde Instagram' : '') +
+        (f.vence ? (Date.parse(f.vence) > Date.now()
+          ? ' · ⏱️ Historia hasta ' + new Date(f.vence).toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+          : ' · ⏱️ Historia vencida (ya no se muestra)') : '')],
+      img: f => (UI.youtubeId(f.url) ? `https://img.youtube.com/vi/${UI.youtubeId(f.url)}/mqdefault.jpg`
+        : UI.instagramRuta(f.url) ? '' : f.url),
       // categoría y sonido editables en cada publicación
       extra: f => filaCategoria(f) + filaSonido(f),
     },
@@ -294,6 +300,25 @@
     const historias = (data.historias || []).filter(h => new Date(h.vence).getTime() > Date.now());
     return `<div class="panel ig-panel">
       <h2>📸 Instagram del colegio</h2>
+      <form id="ig-enlace">
+        <fieldset class="grupo">
+          <legend>🔗 Compartir una publicación o reel (sin clave)</legend>
+          <label>Enlace de la publicación<input name="url" required placeholder="https://www.instagram.com/p/... o /reel/..."></label>
+          <label>Mensaje (opcional) · copie aquí el texto de la publicación
+            <textarea name="texto" rows="4" placeholder="Se mostrará destacado al lado de la foto o del reel"></textarea></label>
+          <div class="dos">${PUBLICO}
+            <label>🏷️ Categoría<select name="categoria">${opcionesCat('actividades')}</select></label></div>
+          <button class="btn">Publicar en las pantallas</button>
+          <p class="note">En Instagram abra la publicación → <b>⋯ → Copiar enlace</b>. Se muestra con la tarjeta oficial de
+          Instagram y, si escribe el mensaje, este aparece grande al lado. Los reels se ven con su portada
+          (Instagram no deja reproducirlos solos en otra página); para que un video se vea completo con sonido, súbalo también a YouTube.
+          Para quitar una publicación, use <b>📸 Fotos y videos</b>.</p>
+          <p class="note">⏱️ <b>Historias:</b> Instagram no permite mostrarlas desde un enlace. Guárdela desde Instagram
+          (en la historia: <b>⋯ → Guardar</b>) y súbala en <b>📸 Fotos y videos</b> marcando
+          <b>"Es una historia"</b>: se verá destacada y se quitará sola a las 24 h.</p>
+        </fieldset>
+      </form>
+      <details class="ig-ayuda"><summary>Opcional: conexión automática con token (elegir con casillas e historias automáticas)</summary>
       <p class="note" id="ig-estado">Revisando la conexión con Instagram…</p>
 
       <div id="ig-conectar" hidden>
@@ -332,10 +357,36 @@
           <button class="btn ghost" id="ig-cambiar">Cambiar token</button>
         </fieldset>
       </div>
+      </details>
     </div>`;
   }
 
   async function iniciarInstagram() {
+    // Publicar por enlace (no necesita clave ni token)
+    const fe = document.getElementById('ig-enlace');
+    fe.onsubmit = async e => {
+      e.preventDefault();
+      const btn = fe.querySelector('.btn');
+      try {
+        const ruta = UI.instagramRuta(fe.elements.url.value);
+        if (!ruta) throw new Error('El enlace no parece ser una publicación o reel de Instagram');
+        const texto = fe.elements.texto.value.trim();
+        btn.disabled = true;
+        btn.textContent = 'Publicando…';
+        await API.admin('add', { password, sheet: 'fotos', item: {
+          titulo: (texto.split('\n')[0] || (ruta.startsWith('reel/') ? 'Reel de Instagram' : 'Publicación de Instagram')).slice(0, 90),
+          url: `https://www.instagram.com/${ruta}/`, texto, origen: 'instagram',
+          publico: fe.elements.publico.value, categoria: fe.elements.categoria.value,
+        } });
+        toast('Publicado en las pantallas ✔');
+        await recargar();
+      } catch (err) {
+        toast(err.message, 'err');
+        btn.disabled = false;
+        btn.textContent = 'Publicar en las pantallas';
+      }
+    };
+
     const estado = document.getElementById('ig-estado');
     const conectar = document.getElementById('ig-conectar');
     const cuerpo = document.getElementById('ig-cuerpo');
@@ -537,6 +588,9 @@
         const item = {};
         new FormData(form).forEach((v, k) => { if (k !== 'imagen' && k !== 'tipo') item[k] = v; });
         const t = tipo ? tipo.value : null;
+        // historia: vence 24 h después de publicarla
+        if (item.historia === 'si' && t === 'imagen') item.vence = new Date(Date.now() + 864e5).toISOString();
+        delete item.historia;
         if (seccion === 'fechas' && item.fechaFin && item.fechaFin < item.fecha) {
           throw new Error('La fecha "Hasta" debe ser igual o posterior a "Desde"');
         }

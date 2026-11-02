@@ -491,6 +491,20 @@ button { font: inherit; color: inherit; }
 }
 .gallery .ph.insta.active .ig-foto img { animation: igEntrada 1s ease-out both; }
 @keyframes igEntrada { from { transform: scale(0.94); opacity: 0; } }
+/* Publicación por enlace: tarjeta oficial de Instagram sobre fondo con sus colores */
+.gallery .ph.insta.enlace {
+  justify-content: center;
+  background: radial-gradient(circle at 10% 110%, #feda75 0%, #fa7e1e 22%, #d62976 48%, #962fbf 72%, #4f5bd5 100%);
+}
+.ig-marco { position: relative; flex: none; border-radius: 1.2vh; overflow: hidden; background: #fff; box-shadow: 0 1.5vh 4vh rgba(0, 0, 0, 0.45); }
+.gallery .ph .ig-marco iframe {
+  inset: auto; top: 0; left: 0; width: 400px; height: 560px;
+  transform-origin: top left; background: #fff;
+}
+.ph.insta.enlace .ig-resena { max-width: 52%; text-shadow: 0 0.2vh 0.8vh rgba(0, 0, 0, 0.35); }
+.ph.insta.enlace .ig-logo { background: #fff; color: #c13584; text-shadow: none; }
+.ph.insta.enlace .ig-texto { border-left-color: #fff; }
+.ig-titulo { font-size: 3vh; line-height: 1.25; }
 .ig-resena { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.4vh; color: #fff; }
 .ig-logo {
   align-self: flex-start; font-size: 1.8vh; font-weight: 800; color: #fff; padding: 0.6vh 1vw; border-radius: 99px;
