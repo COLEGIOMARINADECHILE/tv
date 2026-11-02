@@ -83,6 +83,7 @@
         <label>🏷️ Categoría<select name="categoria">${opcionesCat('actividades')}</select></label>
         <label>Tipo
           <select name="tipo"><option value="imagen">📷 Imagen</option><option value="video">▶️ Video de YouTube</option></select></label>
+        <p class="note">📸 Las publicaciones de Instagram se eligen en la sección <b>📸 Instagram</b>.</p>
         <label data-tipo="imagen">Imágenes (puede elegir varias a la vez con Ctrl)<input type="file" name="imagen" accept="image/*" multiple></label>
         <p class="note cuantas" data-tipo="imagen" style="color:var(--gold)"></p>
         <label data-tipo="video" hidden>Enlace de YouTube<input name="url" placeholder="https://www.youtube.com/watch?v=..."></label>
@@ -92,8 +93,9 @@
         <p class="note" data-tipo="imagen">La imagen se reduce automáticamente a 1920 px antes de subirla a Google Drive.</p>
         <p class="note" data-tipo="video" hidden>El video se reproduce completo y luego pasa al siguiente elemento del carrusel.
         Debe ser público o "no listado" y permitir insertarse en otros sitios.</p>`,
-      linea: f => [(UI.youtubeId(f.url) ? '▶ ' : '') + f.titulo,
-        (f.categoria === 'educacion' ? '📚 Educación' : '🏫 Actividades') + ' · ' + f.publico],
+      linea: f => [(UI.youtubeId(f.url) ? '▶ ' : f.origen === 'instagram' ? '📸 ' : '') + f.titulo,
+        (f.categoria === 'educacion' ? '📚 Educación' : '🏫 Actividades') + ' · ' + f.publico +
+        (f.origen === 'instagram' ? ' · desde Instagram' : '')],
       img: f => (UI.youtubeId(f.url) ? `https://img.youtube.com/vi/${UI.youtubeId(f.url)}/mqdefault.jpg` : f.url),
       // categoría y sonido editables en cada publicación
       extra: f => filaCategoria(f) + filaSonido(f),
@@ -152,6 +154,7 @@
       form: `<label>Texto del aviso<input name="texto" required maxlength="140"></label>${PUBLICO}`,
       linea: a => [a.texto, a.publico],
     },
+    instagram: { nombre: '📸 Instagram' },
     ajustes: { nombre: '⚙️ Ajustes' },
     canales: {
       nombre: '📺 Canales TV',
@@ -286,10 +289,144 @@
       </form></div>`;
   }
 
+  // ---------- 📸 Instagram: elegir publicaciones (casillas) e historias automáticas ----------
+  function vistaInstagram() {
+    const historias = (data.historias || []).filter(h => new Date(h.vence).getTime() > Date.now());
+    return `<div class="panel ig-panel">
+      <h2>📸 Instagram del colegio</h2>
+      <p class="note" id="ig-estado">Revisando la conexión con Instagram…</p>
+
+      <div id="ig-conectar" hidden>
+        <label>Token de acceso de Instagram<input id="ig-token" type="password" autocomplete="off" placeholder="IGAA…"></label>
+        <button class="btn" id="ig-btn-conectar">🔗 Conectar Instagram</button>
+        <details class="ig-ayuda"><summary>¿Cómo obtengo el token? (se hace una sola vez)</summary>
+          <ol>
+            <li>En la app de Instagram del colegio: <b>Configuración → Tipo de cuenta → Cambiar a cuenta profesional → Empresa</b>.</li>
+            <li>En <b>developers.facebook.com</b> (con una cuenta de Facebook del colegio): <b>Mis apps → Crear app</b>,
+              elija el caso de uso <b>"Administrar mensajes y contenido en Instagram"</b>.</li>
+            <li>Dentro de la app: <b>Instagram → Configuración de la API con inicio de sesión de Instagram →
+              Generar tokens de acceso → Agregar cuenta</b> e inicie sesión con la cuenta del colegio.</li>
+            <li>Copie el token que aparece, péguelo arriba y pulse <b>Conectar</b>.</li>
+          </ol>
+          <p class="note">El token se guarda en Apps Script (no en la hoja pública) y se renueva solo cada semana.</p>
+        </details>
+      </div>
+
+      <div id="ig-cuerpo" hidden>
+        <fieldset class="grupo">
+          <legend>🖼️ Elija las publicaciones que se mostrarán en las pantallas</legend>
+          <form id="ig-opciones" class="dos">${PUBLICO}
+            <label>🏷️ Categoría<select name="categoria">${opcionesCat('actividades')}</select></label></form>
+          <div class="ig-grid" id="ig-grid"><p class="note">Cargando publicaciones…</p></div>
+          <button class="btn" id="ig-agregar" disabled>Agregar seleccionadas</button>
+          <p class="note">Se ven como <b>foto grande con la reseña al lado</b>. Para quitarlas, use
+          <b>📸 Fotos y videos</b>. Los reels se muestran con su portada.</p>
+        </fieldset>
+        <fieldset class="grupo">
+          <legend>⏱️ Historias (automáticas)</legend>
+          <p class="note">Cada 30 minutos se buscan historias nuevas: aparecen solas al comienzo del carrusel
+          y se quitan cuando cumplen 24 horas.</p>
+          <div class="ig-historias">${historias.map(h => `<img src="${esc(h.url)}" alt="Historia">`).join('')
+            || '<p class="note">No hay historias activas en este momento.</p>'}</div>
+          <button class="btn ghost" id="ig-buscar">🔄 Buscar historias ahora</button>
+          <button class="btn ghost" id="ig-cambiar">Cambiar token</button>
+        </fieldset>
+      </div>
+    </div>`;
+  }
+
+  async function iniciarInstagram() {
+    const estado = document.getElementById('ig-estado');
+    const conectar = document.getElementById('ig-conectar');
+    const cuerpo = document.getElementById('ig-cuerpo');
+    const mostrar = c => {
+      estado.innerHTML = c.conectado
+        ? `✅ Conectado a <b>@${esc(c.usuario)}</b>`
+        : '⚠️ Instagram aún no está conectado. Para elegir publicaciones y mostrar historias solas, conéctelo con un token.';
+      conectar.hidden = c.conectado;
+      cuerpo.hidden = !c.conectado;
+      if (c.conectado) cargarPublicaciones();
+    };
+
+    document.getElementById('ig-btn-conectar').onclick = async e => {
+      const b = e.target;
+      b.disabled = true;
+      b.textContent = 'Conectando…';
+      try {
+        const r = await API.admin('igConectar', { password, token: document.getElementById('ig-token').value });
+        toast('Instagram conectado ✔');
+        mostrar(r.cuenta);
+      } catch (err) {
+        toast(err.message, 'err');
+      }
+      b.disabled = false;
+      b.textContent = '🔗 Conectar Instagram';
+    };
+    document.getElementById('ig-cambiar').onclick = () => { conectar.hidden = false; };
+    document.getElementById('ig-buscar').onclick = async e => {
+      e.target.disabled = true;
+      try {
+        await API.admin('igHistorias', { password });
+        toast('Historias actualizadas ✔');
+        await recargar();
+      } catch (err) {
+        toast(err.message, 'err');
+        e.target.disabled = false;
+      }
+    };
+
+    const grid = document.getElementById('ig-grid');
+    const agregar = document.getElementById('ig-agregar');
+    const elegidas = () => [...grid.querySelectorAll('input:checked')].map(c => c.value);
+    grid.onchange = () => {
+      const n = elegidas().length;
+      agregar.disabled = !n;
+      agregar.textContent = n ? `Agregar ${n} seleccionada${n > 1 ? 's' : ''}` : 'Agregar seleccionadas';
+    };
+    agregar.onclick = async () => {
+      const ids = elegidas();
+      const op = document.getElementById('ig-opciones').elements;
+      agregar.disabled = true;
+      agregar.textContent = `Agregando ${ids.length}… (copiando las fotos)`;
+      try {
+        const r = await API.admin('igAgregar', { password, ids, item: { publico: op.publico.value, categoria: op.categoria.value } });
+        toast(`${r.agregadas} publicación(es) agregada(s) a las pantallas ✔`);
+        await recargar();
+      } catch (err) {
+        toast(err.message, 'err');
+        grid.onchange();
+      }
+    };
+
+    async function cargarPublicaciones() {
+      try {
+        const { lista } = await API.admin('igLista', { password });
+        const TIPO = { VIDEO: '🎬 Reel', CAROUSEL_ALBUM: '🗂️ Varias fotos' };
+        grid.innerHTML = lista.map(m => `<label class="ig-item ${m.agregada ? 'ya' : ''}">
+          <input type="checkbox" value="${esc(m.id)}" ${m.agregada ? 'disabled' : ''}>
+          <img src="${esc(m.img)}" alt="" loading="lazy">
+          ${TIPO[m.tipo] ? `<span class="ig-tipo">${TIPO[m.tipo]}</span>` : ''}
+          ${m.agregada ? '<span class="ig-ya">✔ En pantallas</span>' : ''}
+          <small>${esc(new Date(m.fecha).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' }))} · ${esc(m.texto.slice(0, 90))}</small>
+        </label>`).join('') || '<p class="note">La cuenta no tiene publicaciones.</p>';
+      } catch (err) {
+        grid.innerHTML = `<p class="note" style="color:#ff8b8e">${esc(err.message)}</p>`;
+      }
+    }
+
+    try {
+      mostrar((await API.admin('igEstado', { password })).cuenta);
+    } catch (err) {
+      estado.innerHTML = /desconocida/i.test(err.message)
+        ? '⚠️ Falta actualizar el <b>Code.gs</b> en Apps Script para usar Instagram.'
+        : esc(err.message);
+    }
+  }
+
   function vistaPanel() {
     const S = SECCIONES[seccion];
     const lista = (data[seccion] || []).slice().reverse();
-    const cuerpo = seccion === 'ajustes' ? formAjustes() : `
+    const cuerpo = seccion === 'ajustes' ? formAjustes() : seccion === 'instagram' ? vistaInstagram() : `
       <div class="grid">
         <div class="panel"><h2>Agregar</h2><form id="f-add">${S.form}<button class="btn">Publicar</button></form></div>
         <div class="panel"><h2>Publicado (${lista.length})</h2>
@@ -322,6 +459,11 @@
       password = '';
       vistaLogin();
     };
+
+    if (seccion === 'instagram') {
+      iniciarInstagram();
+      return;
+    }
 
     if (seccion === 'ajustes') {
       const fa = document.getElementById('f-ajustes');

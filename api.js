@@ -20,6 +20,8 @@
       { id: 'a5', titulo: 'Desayuno de funcionarios', descripcion: 'Celebración de cumpleaños del mes.', fecha: hoyMas(4), hora: '08:00', lugar: 'Comedor', publico: 'funcionarios' },
     ],
     fotos: [
+      { id: 'f9', titulo: 'Feria del libro', url: 'https://picsum.photos/seed/marina9/1080/1350', publico: 'ambos', origen: 'instagram',
+        texto: '📚 ¡Así vivimos nuestra Feria del Libro 2026! 🎉\nNuestros estudiantes compartieron lecturas, cuentacuentos y mucha creatividad.\nGracias a las familias que nos acompañaron 💙 #ColegioMarinaDeChile #Lectura' },
       { id: 'f0', titulo: 'Video de ejemplo', url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ', publico: 'ambos', audio: 'si', audioFunc: 'no' },
       { id: 'f1', titulo: 'Feria científica 2026', url: 'https://picsum.photos/seed/marina1/1280/720', publico: 'ambos' },
       { id: 'f5', titulo: 'Taller de lectura compartida', url: 'https://picsum.photos/seed/marina5/1280/720', publico: 'ambos', categoria: 'educacion' },
@@ -32,6 +34,10 @@
       { id: 'n4', titulo: 'Experiencia: aprendizaje basado en proyectos', texto: 'Mire esta experiencia https://youtu.be/aqz-KE-bpKQ?si=abc123', url: '', publico: 'ambos', audio: '', audioFunc: '', vecesAudio: '3' },
       { id: 'n2', titulo: 'Bienestar docente', texto: 'Recuerda tomar pausas activas. El autocuidado también es parte de nuestra labor educativa.', publico: 'funcionarios' },
       { id: 'n3', titulo: 'Lectura en familia', texto: '15 minutos diarios de lectura compartida fortalecen el vocabulario y el vínculo familiar.', publico: 'familias' },
+    ],
+    historias: [
+      { id: 'h1', url: 'https://picsum.photos/seed/marinah1/1080/1920', fecha: new Date(Date.now() - 3 * 3600e3).toISOString(),
+        vence: new Date(Date.now() + 21 * 3600e3).toISOString() },
     ],
     fechas: [
       { id: 'd1', titulo: 'Reunión de apoderados', fecha: hoyMas(3), descripcion: '19:00 hrs en cada sala', icono: 'insignia' },

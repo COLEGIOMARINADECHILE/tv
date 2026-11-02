@@ -130,10 +130,13 @@
 
   // ---------- Panel informativo (todo visible a la vez) ----------
   // Actividades: bloque destacado "HOY" (con estado en vivo) y, aparte, los próximos días
+  let ultimasActs = [];
   function renderAgenda(acts) {
+    ultimasActs = acts;
     const lista = acts
       .map(a => ({ ...a, dias: diasHasta(a.fecha) }))
-      .filter(a => a.dias !== null && a.dias >= 0 && a.dias <= 7)
+      // las que ya pasaron desaparecen (las de hoy, 1 h después de su hora de inicio)
+      .filter(a => !UI.yaPaso(a.fecha, a.hora) && a.dias <= 7)
       .sort((a, b) => a.dias - b.dias || String(a.hora).localeCompare(String(b.hora)));
     const hoy = lista.filter(a => a.dias === 0);
     const semana = lista.filter(a => a.dias > 0);
@@ -232,11 +235,16 @@
 
   // Estado en vivo de cada actividad de hoy (AHORA / En 25 min / Finalizada)
   function actualizarEstadosHoy() {
+    let terminada = false;
     document.querySelectorAll('.hoy-card').forEach(c => {
       const e = UI.estadoHoy(c.dataset.hora);
-      c.className = 'hoy-card ' + e.clase;
+      if (e.clase === 'fin') terminada = true;
+      c.classList.remove('hoy', 'pronto', 'ahora', 'fin');
+      c.classList.add(e.clase); // conserva "importante"
       c.querySelector('.hoy-estado').textContent = e.texto;
     });
+    // una actividad terminó: se vuelve a armar la agenda sin ella
+    if (terminada) setTimeout(() => renderAgenda(ultimasActs), 0);
   }
   setInterval(actualizarEstadosHoy, 30000);
 

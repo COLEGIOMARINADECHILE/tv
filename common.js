@@ -212,6 +212,20 @@
           return `<div class="ph texto"><div class="slide-texto">
             <h3>${esc(f.titulo)}</h3>${f.texto ? `<p>${esc(f.texto)}</p>` : ''}</div></div>`;
         }
+        // Instagram (publicación elegida o historia): foto destacada y la reseña al lado
+        if (f.origen === 'instagram' || f.historia) {
+          const texto = String(f.texto || '').trim();
+          const tam = texto.length < 140 ? 'g' : texto.length < 380 ? 'm' : 'c';
+          return `<div class="ph insta ${f.historia ? 'historia' : ''}">
+            <div class="ig-fondo" style="background-image:url('${esc(f.url)}')"></div>
+            <div class="ig-foto"><img src="${esc(f.url)}" alt="${esc(f.titulo)}" loading="lazy"></div>
+            <div class="ig-resena">
+              <span class="ig-logo">📸 ${f.historia ? 'Historia de Instagram' : 'Instagram'}</span>
+              ${f.historia ? `<b class="ig-hace">${esc(haceCuanto(f.fecha))}</b>`
+                : `<p class="ig-texto ${tam}">${esc(texto || f.titulo)}</p>`}
+              <small>${esc(f.etiqueta || etiqueta)}</small>
+            </div></div>`;
+        }
         const yt = youtubeId(f.url);
         const media = yt
           ? `<img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" alt="">` // portada mientras carga
@@ -265,6 +279,9 @@
         }
         // Si en 30 s YouTube no informa la duración (video bloqueado o sin internet), se sigue
         el._timer = setTimeout(siguiente, 30000);
+      } else if (ph.classList.contains('insta') && phs.length > 1) {
+        // un poco más que una foto, para alcanzar a leer la reseña
+        el._timer = setTimeout(siguiente, opts.seg * 1500);
       } else if (phs.length > 1) {
         el._timer = setTimeout(siguiente, opts.seg * 1000);
       }
@@ -398,6 +415,14 @@
     return { texto: faltaTexto(ini - now), clase: 'hoy' };
   }
 
+  // ¿Ya pasó? Un día anterior, o hoy cuando terminó (1 h después de su hora de inicio)
+  function yaPaso(fecha, hora) {
+    const d = diasHasta(fecha);
+    if (d === null || d < 0) return true;
+    const ini = minutosDelDia(hora);
+    return d === 0 && ini !== null && minutosAhora() >= ini + DURACION_ACTIVIDAD_MIN;
+  }
+
   function avisoHoy(el, actividades) {
     el._acts = actividades;
     const pintar = () => {
@@ -509,7 +534,11 @@
     const antiguos = API.para(data.noticias, perfil)
       .filter(n => enlaceVideo(n))
       .map(n => ({ titulo: n.titulo, url: enlaceVideo(n), audio: n.audio, audioFunc: n.audioFunc, vecesAudio: n.vecesAudio, etiqueta: '📚 Educación' }));
-    return fotos.concat(antiguos);
+    // historias de Instagram vigentes (24 h): van primero, en ambas pantallas
+    const historias = (data.historias || [])
+      .filter(h => new Date(h.vence).getTime() > Date.now())
+      .map(h => ({ titulo: 'Historia de Instagram', url: h.url, fecha: h.fecha, historia: true, etiqueta: 'Recién publicado' }));
+    return historias.concat(fotos, antiguos);
   }
 
   // Miniatura de video para tarjetas de Educación
@@ -525,5 +554,11 @@
     return m ? m[1] : null;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy, estadoHoy, minutosDelDia, ICONOS, icono, contactos, redes };
+  // "Hace 3 h" desde una fecha ISO (historias de Instagram)
+  function haceCuanto(iso) {
+    const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
+  }
+
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

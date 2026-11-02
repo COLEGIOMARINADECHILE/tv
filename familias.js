@@ -52,6 +52,7 @@
       fecha: a.fecha,
       descripcion: [a.hora && a.hora + ' hrs', a.lugar].filter(Boolean).join(' · ') || a.descripcion,
       icono: a.icono || '📌',
+      hora: a.hora,
       importante: a.importante,
     })));
     const imp = f => (f.importante === 'si' ? 0 : 1);
@@ -60,8 +61,7 @@
     const lista = todas
       .filter(f => {
         if (f.fechaFin) return momento(f.fechaFin, f.horaFin, true) >= ahora; // período aún no termina
-        const d = diasHasta(f.fecha);
-        return d !== null && d >= 0;
+        return !UI.yaPaso(f.fecha, f.hora); // desaparece al pasar (con hora: 1 h después de comenzar)
       })
       .filter(f => {
         const k = f.fecha + '|' + String(f.titulo).toLowerCase().trim();

@@ -481,6 +481,52 @@ button { font: inherit; color: inherit; }
   position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
   z-index: 1; pointer-events: none; background: #000;
 }
+/* Instagram: la foto destacada (completa, con marco) y la reseña al lado sobre la misma foto difuminada */
+.gallery .ph.insta { display: flex; align-items: center; gap: 2vw; padding: 3% 3%; background: #0b1530; }
+.ig-fondo { position: absolute; inset: -6%; background-size: cover; background-position: center; filter: blur(3vh) brightness(0.45) saturate(1.3); }
+.ig-foto { position: relative; flex: none; height: 100%; max-width: 58%; display: flex; align-items: center; }
+.gallery .ph .ig-foto img {
+  width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain;
+  border-radius: 1.4vh; border: 0.5vh solid #fff; box-shadow: 0 1.5vh 4vh rgba(0, 0, 0, 0.55);
+}
+.gallery .ph.insta.active .ig-foto img { animation: igEntrada 1s ease-out both; }
+@keyframes igEntrada { from { transform: scale(0.94); opacity: 0; } }
+.ig-resena { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.4vh; color: #fff; }
+.ig-logo {
+  align-self: flex-start; font-size: 1.8vh; font-weight: 800; color: #fff; padding: 0.6vh 1vw; border-radius: 99px;
+  background: linear-gradient(90deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5);
+}
+.ig-texto {
+  font-size: 2.2vh; line-height: 1.45; font-weight: 600; white-space: pre-line;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 11; overflow: hidden;
+  border-left: 0.5vh solid var(--gold); padding-left: 1vw;
+}
+.ig-texto.g { font-size: 3vh; font-weight: 700; }
+.ig-texto.c { font-size: 1.85vh; -webkit-line-clamp: 14; }
+.ig-hace { font-size: 3.4vh; color: var(--gold); }
+.ig-resena small { font-size: 1.5vh; font-weight: 800; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.08em; }
+/* Funcionarios (recuadro más chico): reseña más compacta */
+.info2 .ig-texto { font-size: 1.6vh; -webkit-line-clamp: 8; }
+.info2 .ig-texto.g { font-size: 2.1vh; }
+.info2 .ig-logo { font-size: 1.4vh; }
+/* historia: vertical, se destaca con el aro de colores de Instagram */
+.ph.historia .ig-foto img { border: 0.6vh solid transparent; background: linear-gradient(#000, #000) padding-box, linear-gradient(45deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5) border-box; }
+/* Panel: elegir publicaciones */
+.ig-panel { max-width: 1100px; }
+.ig-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 12px 0; }
+.ig-item { position: relative; display: flex; flex-direction: column; gap: 4px; cursor: pointer; border-radius: 10px; padding: 6px; background: rgba(255, 255, 255, 0.06); border: 2px solid transparent; }
+.ig-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+.ig-item input { position: absolute; top: 12px; left: 12px; width: 22px; height: 22px; accent-color: var(--gold); }
+.ig-item:has(input:checked) { border-color: var(--gold); background: rgba(246, 201, 14, 0.15); }
+.ig-item small { font-size: 12px; line-height: 1.3; color: var(--muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.ig-item.ya { opacity: 0.55; cursor: default; }
+.ig-tipo, .ig-ya { position: absolute; top: 12px; right: 12px; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 99px; background: rgba(0, 0, 0, 0.7); color: #fff; }
+.ig-ya { top: auto; bottom: 64px; background: #2fbf71; }
+.ig-historias { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.ig-historias img { height: 120px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 8px; border: 3px solid #d62976; }
+.ig-ayuda { margin-top: 12px; }
+.ig-ayuda summary { cursor: pointer; font-weight: 700; color: var(--gold); }
+.ig-ayuda ol { margin: 8px 0 0 20px; display: grid; gap: 6px; font-size: 14px; }
 .gallery .ph.video img { filter: brightness(0.6); }
 .gallery .ph.video.active img { animation: none; }
 /* en videos el título se muestra al inicio y luego se desvanece */
@@ -689,8 +735,8 @@ button { font: inherit; color: inherit; }
 /* ⭐ Fecha importante: tarjeta dorada con cinta y brillo que recorre */
 .date-item { position: relative; }
 .date-item.importante {
-  overflow: hidden; outline: none; margin-top: 1.2vh;
-  padding: 1.6vh 1vw 1.4vh;
+  overflow: hidden; outline: none; row-gap: 0.8vh;
+  padding: 1.2vh 1vw 1.4vh;
   background: linear-gradient(135deg, #ffe27a 0%, #f6c90e 45%, #e9a400 100%);
   box-shadow: 0 0 0 3px #fff6c7, 0 0 2.4vh rgba(246, 201, 14, 0.75);
   animation: rise 0.6s backwards, resplandor 2.4s ease-in-out infinite;
@@ -706,11 +752,12 @@ button { font: inherit; color: inherit; }
 .date-item.importante .left { background: var(--navy-900); color: var(--gold); }
 .date-item.importante.hoy .left { background: #d90429; color: #fff; }
 .date-item.importante .icon { background: rgba(255, 255, 255, 0.65); border-color: #fff; }
+/* La cinta ocupa su propia fila arriba de la tarjeta: nunca tapa el texto */
 .cinta-imp {
-  position: absolute; top: 0; right: 1vw; z-index: 1;
-  font-size: 1.3vh; font-weight: 900; letter-spacing: 0.12em;
-  background: #d90429; color: #fff; padding: 0.35vh 0.8vw; border-radius: 0 0 0.8vh 0.8vh;
-  box-shadow: 0 0.4vh 0.8vh rgba(0, 0, 0, 0.3);
+  grid-column: 1 / -1; justify-self: start; position: relative; z-index: 1;
+  font-size: 1.3vh; font-weight: 900; letter-spacing: 0.12em; line-height: 1.3;
+  background: #d90429; color: #fff; padding: 0.3vh 0.8vw; border-radius: 99px;
+  box-shadow: 0 0.3vh 0.8vh rgba(0, 0, 0, 0.3);
 }
 /* Funcionarios: actividades ⭐ importantes (borde dorado grueso, fondo dorado tenue y brillo) */
 .hoy-card, .sem-card { position: relative; }
@@ -718,7 +765,7 @@ button { font: inherit; color: inherit; }
   overflow: hidden; border: 3px solid var(--gold) !important;
   background: linear-gradient(120deg, rgba(246, 201, 14, 0.38), rgba(6, 21, 58, 0.75) 70%);
   box-shadow: 0 0 2.4vh rgba(246, 201, 14, 0.7);
-  padding-top: 2.2vh;
+  row-gap: 0.6vh;
 }
 .hoy-card.importante:not(.ahora):not(.pronto), .sem-card.importante { animation: rise 0.6s backwards, resplandorOscuro 2.4s ease-in-out infinite; }
 .hoy-card.importante::after, .sem-card.importante::after {
@@ -726,7 +773,9 @@ button { font: inherit; color: inherit; }
   background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.25) 50%, transparent 65%);
   transform: translateX(-100%); animation: barrido 4s ease-in-out infinite;
 }
-.sem-card.importante .sem-fecha { margin-top: -2.2vh; }
+.sem-card.importante { padding-top: 0.8vh; }
+.sem-card.importante .cinta-imp { margin-left: 0.9vw; }
+.sem-card.importante .sem-fecha { margin-top: 0; border-radius: 0 1vh 1vh 0; }
 @keyframes resplandorOscuro { 50% { box-shadow: 0 0 4.5vh rgba(246, 201, 14, 1); } }
 @keyframes resplandor { 50% { box-shadow: 0 0 0 3px #fff6c7, 0 0 4.5vh rgba(246, 201, 14, 1); } }
 @keyframes barrido { 0%, 55% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
