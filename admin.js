@@ -321,7 +321,7 @@
           <legend>🎬 Subir un reel para que se reproduzca solo (con sonido)</legend>
           <p class="note">Por enlace, Instagram solo deja mostrar la portada del reel. Para que se reproduzca solo y
           completo, descárguelo (en el reel: <b>⋯ → Descargar</b> o "Guardar en el teléfono") y súbalo aquí.</p>
-          <label>Archivo del reel (MP4, máx. 30 MB)<input type="file" name="video" accept="video/mp4,video/*" required></label>
+          <label>Archivo del reel (MP4, máx. 25 MB)<input type="file" name="video" accept="video/mp4,video/*" required></label>
           <label>Mensaje (opcional) · aparece grande al lado del video
             <textarea name="texto" rows="3" placeholder="Ej: ¡Así vivimos la Feria Científica! 🔬"></textarea></label>
           ${SONIDO()}
@@ -389,7 +389,7 @@
       try {
         const archivo = fr.elements.video.files[0];
         if (!archivo) throw new Error('Elija el archivo del reel');
-        if (archivo.size > 30 * 1024 * 1024) throw new Error('El video supera 30 MB. Use uno más corto o súbalo a YouTube.');
+        if (archivo.size > 25 * 1024 * 1024) throw new Error('El video supera 25 MB. Use uno más corto o súbalo a YouTube.');
         const el = fr.elements;
         const texto = el.texto.value.trim();
         btn.disabled = true;

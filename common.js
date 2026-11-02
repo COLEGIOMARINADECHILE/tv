@@ -229,9 +229,10 @@
           const texto = String(f.texto || '').trim();
           const tam = texto.length < 140 ? 'g' : texto.length < 380 ? 'm' : 'c';
           const audio = opts.sonido && audioDe(f);
+          // los subidos a Drive se descargan vía Apps Script (data-file); los demás se usan directo
           return `<div class="ph insta mp4 ${texto ? '' : 'solo'}" data-mp4="1" data-clave="${esc(f.fileId || f.id || f.url)}"
-              data-audio="${audio ? 1 : ''}" data-veces="${esc(f.vecesAudio || '')}">
-            <div class="ig-foto"><video src="${esc(f.url)}" muted playsinline preload="none"></video></div>
+              data-file="${esc(f.fileId || '')}" data-audio="${audio ? 1 : ''}" data-veces="${esc(f.vecesAudio || '')}">
+            <div class="ig-foto"><video ${f.fileId ? '' : `src="${esc(f.url)}"`} muted playsinline preload="none"></video></div>
             ${texto ? `<div class="ig-resena"><span class="ig-logo">🎬 Reel</span><p class="ig-texto ${tam}">${esc(texto)}</p></div>` : ''}
           </div>`;
         }
@@ -315,18 +316,29 @@
       } else if (ph.dataset.mp4) {
         // video MP4: se ve completo y pasa al siguiente al terminar
         const v = ph.querySelector('video');
-        v.preload = 'auto';
-        v.loop = phs.length === 1;
-        v.muted = !conAudio;
-        v.onended = () => phs.length > 1 && siguiente();
-        v.onerror = () => { if (phs.length > 1) el._timer = setTimeout(siguiente, 3000); };
-        try { v.currentTime = 0; } catch (e) {}
-        // si el navegador no deja sonar sin un clic, se reproduce en silencio
-        v.play().catch(() => {
-          v.muted = true;
-          avisar(false);
-          v.play().catch(() => {});
-        });
+        const reproducir = () => {
+          v.preload = 'auto';
+          v.loop = phs.length === 1;
+          v.muted = !conAudio;
+          v.onended = () => phs.length > 1 && siguiente();
+          v.onerror = () => { avisar(false); if (phs.length > 1) el._timer = setTimeout(siguiente, 3000); };
+          try { v.currentTime = 0; } catch (e) {}
+          avisar(conAudio); // la música baja solo cuando el video ya suena
+          // si el navegador no deja sonar sin un clic, se reproduce en silencio
+          v.play().catch(() => {
+            v.muted = true;
+            avisar(false);
+            v.play().catch(() => {});
+          });
+        };
+        avisar(false);
+        if (v.getAttribute('src')) reproducir();
+        else {
+          ph.classList.add('cargando');
+          API.video(ph.dataset.file)
+            .then(url => { v.src = url; ph.classList.remove('cargando'); if (phs[i] === ph) reproducir(); })
+            .catch(() => { ph.classList.remove('cargando'); if (phs[i] === ph && phs.length > 1) siguiente(); });
+        }
         if (phs.length > 1) el._timer = setTimeout(siguiente, opts.maxVideo * 1000); // tope de seguridad
       } else if (ph.classList.contains('insta') && phs.length > 1) {
         // un poco más que una foto, para alcanzar a leer la reseña
@@ -334,7 +346,7 @@
       } else if (phs.length > 1) {
         el._timer = setTimeout(siguiente, opts.seg * 1000);
       }
-      avisar((!!ph.dataset.yt || !!ph.dataset.mp4) && conAudio);
+      if (!ph.dataset.mp4) avisar(!!ph.dataset.yt && conAudio); // el MP4 avisa al comenzar a sonar
     };
 
     // tras el primer clic/OK en un navegador: dar sonido al video que se está viendo
@@ -432,6 +444,9 @@
     };
     window.addEventListener('message', el._onMsg);
     siguiente();
+    // los videos MP4 se van descargando de a uno, para que estén listos cuando les toque
+    phs.map(p => p.dataset.file).filter(Boolean)
+      .reduce((p, id) => p.then(() => API.video(id).catch(() => {})), Promise.resolve());
   }
 
   // Si el contenido no cabe, se desplaza solo y lento hacia abajo y vuelve arriba.

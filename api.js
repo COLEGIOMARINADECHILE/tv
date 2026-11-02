@@ -123,8 +123,26 @@
     return res;
   }
 
+  // Video MP4 publicado: se descarga una vez a través de Apps Script y queda en memoria
+  // (Drive no deja reproducir sus videos directamente en otra página). Devuelve una URL local.
+  const videos = {};
+  function video(fileId) {
+    if (!videos[fileId]) {
+      videos[fileId] = fetch(CFG.API_URL + '?accion=video&id=' + encodeURIComponent(fileId))
+        .then(r => r.json())
+        .then(d => {
+          if (!d.data) throw new Error(d.error || 'Video no disponible');
+          return fetch(`data:${d.tipo};base64,${d.data}`);
+        })
+        .then(r => r.blob())
+        .then(b => URL.createObjectURL(b))
+        .catch(err => { delete videos[fileId]; throw err; }); // se reintenta la próxima vez
+    }
+    return videos[fileId];
+  }
+
   const para = (lista, perfil) =>
     (lista || []).filter(x => !x.publico || x.publico === 'ambos' || x.publico === perfil);
 
-  window.API = { cargarDatos, version, admin, para, DEMO };
+  window.API = { cargarDatos, version, admin, para, video, DEMO };
 })();
