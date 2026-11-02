@@ -37,7 +37,7 @@
     let chip = dias === 0 ? '¡Hoy!' : dias === 1 ? 'Mañana' : `En ${dias} días`;
     if (f.hora && dias <= 1) chip += hora.replace(' desde las', ' ·');
     const sub = fin ? `Del ${diaMes(f.fecha)}${f.hora ? ' (' + f.hora + ' hrs)' : ''} al ${diaMes(f.fechaFin)}` : '';
-    return { chip, sub, clase: dias <= 3 ? 'soon' : '', orden: dias };
+    return { chip, sub, clase: dias === 0 ? 'soon hoy' : dias <= 3 ? 'soon' : '', orden: dias };
   }
 
   // Los estados cambian con la hora ("Mañana" → "¡Hoy!" → "Disponible ahora"): se recalculan cada minuto
@@ -52,7 +52,9 @@
       fecha: a.fecha,
       descripcion: [a.hora && a.hora + ' hrs', a.lugar].filter(Boolean).join(' · ') || a.descripcion,
       icono: a.icono || '📌',
+      importante: a.importante,
     })));
+    const imp = f => (f.importante === 'si' ? 0 : 1);
     const ahora = new Date();
     const vistos = new Set();
     const lista = todas
@@ -66,11 +68,14 @@
         return !vistos.has(k) && vistos.add(k);
       })
       .map(f => ({ ...f, est: estadoFecha(f) }))
-      .sort((a, b) => a.est.orden - b.est.orden)
+      // las ⭐ importantes primero (siempre visibles), luego por cercanía
+      .sort((a, b) => imp(a) - imp(b) || a.est.orden - b.est.orden)
       .slice(0, 4);
     document.getElementById('fechas').innerHTML = lista.length ? lista.map((f, i) => {
       const d = parseFecha(f.fecha);
-      return `<div class="date-item ${f.est.clase}" style="animation-delay:${i * 0.08}s">
+      const esImp = f.importante === 'si';
+      return `<div class="date-item ${f.est.clase}${esImp ? ' importante' : ''}" style="animation-delay:${i * 0.08}s">
+        ${esImp ? '<span class="cinta-imp">⭐ IMPORTANTE</span>' : ''}
         <div class="cal"><div class="m">${MESES[d.getMonth()]}</div><div class="d">${d.getDate()}</div>
           ${f.fechaFin ? `<div class="hasta">al ${esc(diaMes(f.fechaFin))}</div>` : ''}</div>
         <div><h3>${esc(f.titulo)}</h3>${f.descripcion ? `<p>${esc(f.descripcion)}</p>` : ''}

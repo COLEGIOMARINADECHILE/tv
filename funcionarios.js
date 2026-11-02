@@ -146,7 +146,8 @@
     el._pags = [];
 
     const tarjetaHoy = a => `
-      <div class="hoy-card" data-hora="${esc(a.hora || '')}">
+      <div class="hoy-card${a.importante === 'si' ? ' importante' : ''}" data-hora="${esc(a.hora || '')}">
+        ${a.importante === 'si' ? '<span class="cinta-imp">⭐ IMPORTANTE</span>' : ''}
         ${UI.icono(a.icono || '📅', 'hoy-ico')}
         <div class="hoy-info">
           <h3>${esc(a.titulo)}</h3>
@@ -162,7 +163,8 @@
     const tarjetaSemana = a => {
       const d = parseFecha(a.fecha);
       const falta = a.dias === 1 ? 'Mañana' : `En ${a.dias} días`;
-      return `<div class="sem-card dia-${d.getDay()}">
+      return `<div class="sem-card dia-${d.getDay()}${a.importante === 'si' ? ' importante' : ''}">
+        ${a.importante === 'si' ? '<span class="cinta-imp">⭐ IMPORTANTE</span>' : ''}
         <div class="sem-fecha">
           <span class="sem-dia">${DIAS[d.getDay()]}</span>
           <span class="sem-num">${d.getDate()}</span>

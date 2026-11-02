@@ -13,7 +13,7 @@
     actividades: [
       { id: 'a1', titulo: 'Consejo de profesores', descripcion: 'Análisis de resultados del semestre y planificación.', fecha: hoyMas(0), hora: '16:00', lugar: 'Sala de profesores', publico: 'funcionarios', icono: 'insignia' },
       { id: 'a2', titulo: 'Capacitación PIE', descripcion: 'Estrategias DUA para el aula.', fecha: hoyMas(1), hora: '15:30', lugar: 'Biblioteca CRA', publico: 'funcionarios' },
-      { id: 'a3', titulo: 'Simulacro de evacuación', descripcion: 'Participa toda la comunidad educativa.', fecha: hoyMas(2), hora: '10:00', lugar: 'Todo el colegio', publico: 'ambos' },
+      { id: 'a3', titulo: 'Simulacro de evacuación', descripcion: 'Participa toda la comunidad educativa.', fecha: hoyMas(2), hora: '10:00', lugar: 'Todo el colegio', publico: 'ambos', importante: 'si' },
       { id: 'a4', titulo: 'Reunión de apoderados', descripcion: 'Entrega de informes de notas parciales.', fecha: hoyMas(3), hora: '19:00', lugar: 'Salas de clases', publico: 'ambos' },
       { id: 'a6', titulo: 'Jornada de reflexión', descripcion: 'Proyecto educativo institucional.', fecha: hoyMas(5), hora: '09:00', lugar: 'Gimnasio', publico: 'funcionarios', icono: '🤝' },
       { id: 'a7', titulo: 'Entrega de planificaciones', descripcion: 'Plazo para unidad 4.', fecha: hoyMas(6), hora: '13:00', lugar: 'UTP', publico: 'funcionarios', icono: '📝' },
@@ -36,7 +36,7 @@
     fechas: [
       { id: 'd1', titulo: 'Reunión de apoderados', fecha: hoyMas(3), descripcion: '19:00 hrs en cada sala', icono: 'insignia' },
       { id: 'd5', titulo: 'Completar ficha de matrícula', fecha: hoyMas(-1), hora: '14:00', fechaFin: hoyMas(28), descripcion: 'En la página web del colegio', icono: '📝' },
-      { id: 'd2', titulo: 'Jornada de vacunación', fecha: hoyMas(8), descripcion: 'Traer carnet de control', icono: '💉' },
+      { id: 'd2', titulo: 'Jornada de vacunación', fecha: hoyMas(8), descripcion: 'Traer carnet de control', icono: '💉', importante: 'si' },
       { id: 'd3', titulo: 'Fiesta de la Chilenidad', fecha: hoyMas(15), descripcion: 'Muestra folclórica en el gimnasio', icono: '🇨🇱' },
       { id: 'd4', titulo: 'Fin del semestre', fecha: hoyMas(40), descripcion: 'Entrega de informes', icono: '🎓' },
     ],

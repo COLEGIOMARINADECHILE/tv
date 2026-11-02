@@ -683,6 +683,54 @@ button { font: inherit; color: inherit; }
 .date-item.vigente .left { background: #2fbf71; color: #fff; }
 .date-item .cal .hasta { font-size: 1.2vh; font-weight: 800; background: var(--navy-700); color: var(--gold); padding: 0.2vh 0; text-transform: uppercase; }
 .date-item .periodo { color: var(--gold-soft) !important; font-weight: 700; }
+/* ¡Hoy!: chip rojo que late */
+.date-item.hoy { outline: 3px solid #ff5a5f; background: linear-gradient(90deg, rgba(255, 90, 95, 0.25), rgba(6, 21, 58, 0.5)); }
+.date-item.hoy .left { background: #ff3b47; color: #fff; animation: pulsoChip 1.6s ease-in-out infinite; }
+/* ⭐ Fecha importante: tarjeta dorada con cinta y brillo que recorre */
+.date-item { position: relative; }
+.date-item.importante {
+  overflow: hidden; outline: none; margin-top: 1.2vh;
+  padding: 1.6vh 1vw 1.4vh;
+  background: linear-gradient(135deg, #ffe27a 0%, #f6c90e 45%, #e9a400 100%);
+  box-shadow: 0 0 0 3px #fff6c7, 0 0 2.4vh rgba(246, 201, 14, 0.75);
+  animation: rise 0.6s backwards, resplandor 2.4s ease-in-out infinite;
+}
+.date-item.importante::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
+  transform: translateX(-100%); animation: barrido 4s ease-in-out infinite;
+}
+.date-item.importante h3 { color: var(--navy-900); font-size: 2.6vh; }
+.date-item.importante p { color: #3b2a00; }
+.date-item.importante .periodo { color: #7a4b00 !important; }
+.date-item.importante .left { background: var(--navy-900); color: var(--gold); }
+.date-item.importante.hoy .left { background: #d90429; color: #fff; }
+.date-item.importante .icon { background: rgba(255, 255, 255, 0.65); border-color: #fff; }
+.cinta-imp {
+  position: absolute; top: 0; right: 1vw; z-index: 1;
+  font-size: 1.3vh; font-weight: 900; letter-spacing: 0.12em;
+  background: #d90429; color: #fff; padding: 0.35vh 0.8vw; border-radius: 0 0 0.8vh 0.8vh;
+  box-shadow: 0 0.4vh 0.8vh rgba(0, 0, 0, 0.3);
+}
+/* Funcionarios: actividades ⭐ importantes (borde dorado grueso, fondo dorado tenue y brillo) */
+.hoy-card, .sem-card { position: relative; }
+.hoy-card.importante, .sem-card.importante {
+  overflow: hidden; border: 3px solid var(--gold) !important;
+  background: linear-gradient(120deg, rgba(246, 201, 14, 0.38), rgba(6, 21, 58, 0.75) 70%);
+  box-shadow: 0 0 2.4vh rgba(246, 201, 14, 0.7);
+  padding-top: 2.2vh;
+}
+.hoy-card.importante:not(.ahora):not(.pronto), .sem-card.importante { animation: rise 0.6s backwards, resplandorOscuro 2.4s ease-in-out infinite; }
+.hoy-card.importante::after, .sem-card.importante::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.25) 50%, transparent 65%);
+  transform: translateX(-100%); animation: barrido 4s ease-in-out infinite;
+}
+.sem-card.importante .sem-fecha { margin-top: -2.2vh; }
+@keyframes resplandorOscuro { 50% { box-shadow: 0 0 4.5vh rgba(246, 201, 14, 1); } }
+@keyframes resplandor { 50% { box-shadow: 0 0 0 3px #fff6c7, 0 0 4.5vh rgba(246, 201, 14, 1); } }
+@keyframes barrido { 0%, 55% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@keyframes pulsoChip { 50% { transform: scale(1.08); } }
 
 .tip { padding: 2.2vh 1.6vw; background: linear-gradient(135deg, var(--gold), #ffb703); color: var(--navy-900); }
 .tip .card-title { color: var(--navy-900); font-size: 2.2vh; }

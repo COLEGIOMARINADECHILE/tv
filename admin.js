@@ -49,6 +49,15 @@
     </div>`;
   };
 
+  // Marca ⭐ Importante: la fecha se destaca en las pantallas (dorado, primero y con brillo)
+  const IMPORTANTE = `<label class="check importante-check"><input type="checkbox" name="importante" value="si">
+    ⭐ <b>Fecha importante</b>: se destaca en dorado en las pantallas y aparece primero</label>`;
+  const filaImportante = f => {
+    const on = f.importante === 'si';
+    return `<div class="sonido-fila"><span class="sf-tit">⭐ Destacar:</span>
+      <button class="toggle ${on ? 'on' : ''}" data-id="${esc(f.id)}" data-campo="importante" data-valor="${on ? '' : 'si'}">${on ? '⭐ Importante' : '☆ Normal'}</button></div>`;
+  };
+
   // Selector de íconos (incluye la insignia del colegio)
   const selectorIconos = def => `<div class="etiqueta">Ícono</div>
     <input type="hidden" name="icono" value="${esc(def)}">
@@ -63,9 +72,10 @@
         <label>Descripción<textarea name="descripcion"></textarea></label>
         <label>Fecha<input type="date" name="fecha" required></label>
         <label>Hora<input type="time" name="hora"></label>
-        <label>Lugar<input name="lugar"></label>${selectorIconos('📅')}${PUBLICO}`,
-      linea: a => [a.titulo, `${a.fecha} ${a.hora || ''} · ${a.lugar || ''} · ${a.publico}`],
+        <label>Lugar<input name="lugar"></label>${selectorIconos('📅')}${PUBLICO}${IMPORTANTE}`,
+      linea: a => [(a.importante === 'si' ? '⭐ ' : '') + a.titulo, `${a.fecha} ${a.hora || ''} · ${a.lugar || ''} · ${a.publico}`],
       ico: a => a.icono || '📅',
+      extra: filaImportante,
     },
     fotos: {
       nombre: '📸 Fotos y videos',
@@ -132,9 +142,10 @@
         <p class="note">Para un <b>período</b> (ej. del 2 de noviembre a las 14:00 hasta el 30 de noviembre) complete "Hasta".
         Mientras esté vigente se muestra "🟢 Disponible ahora" con los días que quedan, y desaparece al terminar.</p>
         <label>Detalle<input name="descripcion" placeholder="Ej: En la página del colegio o en secretaría"></label>
-        ${selectorIconos('📅')}`,
-      linea: f => [f.titulo, `${f.fecha}${f.hora ? ' ' + f.hora : ''}${f.fechaFin ? ' → ' + f.fechaFin + (f.horaFin ? ' ' + f.horaFin : '') : ''} · ${f.descripcion || ''}`],
+        ${selectorIconos('📅')}${IMPORTANTE}`,
+      linea: f => [(f.importante === 'si' ? '⭐ ' : '') + f.titulo, `${f.fecha}${f.hora ? ' ' + f.hora : ''}${f.fechaFin ? ' → ' + f.fechaFin + (f.horaFin ? ' ' + f.horaFin : '') : ''} · ${f.descripcion || ''}`],
       ico: f => f.icono || '📅',
+      extra: filaImportante,
     },
     avisos: {
       nombre: '📢 Avisos (cinta)',
