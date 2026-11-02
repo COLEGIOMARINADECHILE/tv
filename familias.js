@@ -227,10 +227,16 @@
       ytFrame.onload = () => ytFrame.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 2 }), '*');
       if (!sonar) UI.pedirSonido(activarSonido);
     } else {
-      musica.src = p.url;
-      musica.loop = unica;
-      musica.volume = vol;
-      musica.play().catch(() => UI.pedirSonido(activarSonido)); // navegador: esperar un clic/OK
+      const sonar = url => {
+        if (pistas[pista % pistas.length] !== p) return; // ya se cambió de canción
+        musica.src = url;
+        musica.loop = unica;
+        musica.volume = vol;
+        musica.play().catch(() => UI.pedirSonido(activarSonido)); // navegador: esperar un clic/OK
+      };
+      // MP3 subido a Drive: se descarga vía Apps Script (Drive ya no deja reproducirlo directo)
+      if (p.fileId) API.video(p.fileId).then(sonar).catch(() => sonar(p.url));
+      else sonar(p.url);
     }
   }
 

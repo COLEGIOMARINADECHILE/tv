@@ -521,6 +521,55 @@
     }
   }
 
+  // ¿YouTube permite reproducir este video fuera de su sitio? Muchos dueños (sellos de música) lo prohíben
+  // (error 150/101). Se prueba con un reproductor invisible y en silencio: true · false · null (no se supo).
+  const MSG_YT_BLOQUEADO = 'Este video de YouTube no permite reproducirse fuera de YouTube (lo decidió su dueño), ' +
+    'así que en las pantallas no se verá ni sonará. Elija otra versión (por ejemplo, "lyrics", "audio" o música libre).';
+  const revisadosYt = {};
+  function youtubeInsertable(id) {
+    if (revisadosYt[id] !== undefined) return Promise.resolve(revisadosYt[id]);
+    return new Promise(res => {
+      const f = document.createElement('iframe');
+      f.style.cssText = 'position:fixed;left:-9999px;width:320px;height:180px;opacity:0;pointer-events:none';
+      f.allow = 'autoplay; encrypted-media';
+      const fin = r => {
+        clearTimeout(t);
+        window.removeEventListener('message', oir);
+        f.remove();
+        if (r !== null) revisadosYt[id] = r;
+        res(r);
+      };
+      const t = setTimeout(() => fin(null), 15000);
+      const oir = e => {
+        if (e.source !== f.contentWindow) return;
+        let d;
+        try { d = JSON.parse(e.data); } catch (x) { return; }
+        if (d.event === 'onError') fin(!(d.info === 150 || d.info === 101 || d.info === 100));
+        const st = d.event === 'onStateChange' ? d.info : d.info && d.info.playerState;
+        if (st === 1 || st === 3) fin(true); // reproduciendo o cargando: se puede
+      };
+      window.addEventListener('message', oir);
+      f.onload = () => f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 7 }), '*');
+      f.src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
+      document.body.appendChild(f);
+    });
+  }
+
+  // Marca con ⚠️ los videos y canciones ya publicados que YouTube no deja reproducir (de a uno)
+  async function revisarPublicadosYt() {
+    const sec = seccion;
+    for (const it of (data[sec] || [])) {
+      const id = UI.youtubeId(it.url);
+      if (!id || await youtubeInsertable(id) !== false || seccion !== sec) continue;
+      const b = app.querySelector(`.del[data-id="${CSS.escape(String(it.id))}"]`);
+      const fila = b && b.closest('.item');
+      if (fila && !fila.querySelector('.aviso-yt')) {
+        fila.insertAdjacentHTML('beforeend', `<p class="aviso-yt">⚠️ YouTube no permite reproducir este video fuera de su sitio:
+          en las pantallas <b>no se verá ni sonará</b>. Elimínelo y publique otra versión.</p>`);
+      }
+    }
+  }
+
   function vistaPanel() {
     const S = SECCIONES[seccion];
     const lista = (data[seccion] || []).slice().reverse();
@@ -557,6 +606,8 @@
       password = '';
       vistaLogin();
     };
+
+    if (['fotos', 'musica', 'noticias'].includes(seccion)) revisarPublicadosYt();
 
     if (seccion === 'instagram') {
       iniciarInstagram();
@@ -677,6 +728,12 @@
         const f = file && (t === 'imagen' || t === 'archivo') ? file.files[0] : null;
         if (f && seccion === 'musica' && f.size > 20 * 1024 * 1024) throw new Error('El archivo supera 20 MB');
         btn.disabled = true;
+        // ¿YouTube deja reproducir este video fuera de su sitio? (si no, en las pantallas no se verá ni sonará)
+        const ytId = (t === 'video' || t === 'enlace' || seccion === 'noticias') && UI.youtubeId(item.url);
+        if (ytId) {
+          btn.textContent = 'Revisando el video en YouTube…';
+          if (await youtubeInsertable(ytId) === false) throw new Error(MSG_YT_BLOQUEADO);
+        }
         if (f && t === 'imagen') {
           // varias fotos con el mismo título: una publicación por foto
           const fotos = [...file.files];

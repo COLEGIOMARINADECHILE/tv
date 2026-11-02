@@ -286,6 +286,7 @@
         prev.querySelector('iframe')?.remove();
         prev.querySelector('video')?.pause();
       }
+      document.body.classList.remove('video-activo');
       ph._duracion = 0;
       ph._sonoEstaVez = false;
       phs.forEach(p => p.classList.toggle('active', p === ph));
@@ -321,8 +322,11 @@
           v.loop = phs.length === 1;
           v.muted = !conAudio;
           v.onended = () => phs.length > 1 && siguiente();
+          // al partir, un "salto" al mismo instante vuelve a alinear imagen y sonido
+          v.onplaying = () => { v.onplaying = null; setTimeout(() => { if (!v.paused) v.currentTime = v.currentTime; }, 700); };
           v.onerror = () => { avisar(false); if (phs.length > 1) el._timer = setTimeout(siguiente, 3000); };
           try { v.currentTime = 0; } catch (e) {}
+          document.body.classList.add('video-activo'); // pausa los efectos: el TV se dedica al video
           avisar(conAudio); // la música baja solo cuando el video ya suena
           // si el navegador no deja sonar sin un clic, se reproduce en silencio
           v.play().catch(() => {

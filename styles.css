@@ -508,10 +508,13 @@ button { font: inherit; color: inherit; }
 /* Reel subido (MP4): el video destacado con el mensaje al lado; sin mensaje, el video centrado */
 .gallery .ph.insta.mp4 { background: radial-gradient(circle at 10% 110%, #feda75 0%, #fa7e1e 22%, #d62976 48%, #962fbf 72%, #4f5bd5 100%); }
 .gallery .ph.insta.mp4.solo { justify-content: center; background: #000; padding: 0; }
-.gallery .ph .ig-foto video {
-  max-width: 100%; max-height: 100%; height: 100%; object-fit: contain; background: #000;
-  border-radius: 1.4vh; border: 0.5vh solid #fff; box-shadow: 0 1.5vh 4vh rgba(0, 0, 0, 0.55);
-}
+/* Video sin esquinas redondeadas, borde ni sombra: así el TV lo dibuja directo y el sonido no se adelanta */
+.gallery .ph .ig-foto video { max-width: 100%; max-height: 100%; height: 100%; object-fit: contain; background: #000; }
+.gallery .ph.mp4:not(.solo) .ig-foto { padding: 0.5vh; background: #fff; }
+/* Mientras suena un video se detienen los efectos decorativos (brillos, latidos), salvo la cinta de avisos */
+body.video-activo *:not(.track) { animation-play-state: paused !important; }
+body.video-activo .date-item.importante::after, body.video-activo .hoy-card.importante::after,
+body.video-activo .sem-card.importante::after { display: none; }
 .gallery .ph.mp4.solo .ig-foto { max-width: 100%; }
 .ph.mp4.cargando .ig-foto::after {
   content: '⏳ Cargando video…'; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
@@ -541,6 +544,7 @@ button { font: inherit; color: inherit; }
 .ph.historia .ig-foto img { border: 0.6vh solid transparent; background: linear-gradient(#000, #000) padding-box, linear-gradient(45deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5) border-box; }
 /* Panel: elegir publicaciones */
 .ig-panel { max-width: 1100px; }
+.aviso-yt { flex-basis: 100%; margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; font-size: 13px; line-height: 1.35; background: rgba(229, 72, 77, 0.18); border: 1px solid #e5484d; color: #ffd6d7; }
 .ig-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 12px 0; }
 .ig-item { position: relative; display: flex; flex-direction: column; gap: 4px; cursor: pointer; border-radius: 10px; padding: 6px; background: rgba(255, 255, 255, 0.06); border: 2px solid transparent; }
 .ig-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
