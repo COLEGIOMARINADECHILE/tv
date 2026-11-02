@@ -38,7 +38,7 @@
 
   // Fila "Sonido" editable de cada video ya publicado
   const filaSonido = f => {
-    if (!UI.youtubeId(f.url)) return '';
+    if (!UI.youtubeId(f.url) && f.formato !== 'video') return '';
     const fam = f.audio !== 'no';
     const fun = f.audioFunc === 'si';
     return `<div class="sonido-fila">
@@ -95,14 +95,14 @@
         <p class="note" data-tipo="imagen">La imagen se reduce automáticamente a 1920 px antes de subirla a Google Drive.</p>
         <p class="note" data-tipo="video" hidden>El video se reproduce completo y luego pasa al siguiente elemento del carrusel.
         Debe ser público o "no listado" y permitir insertarse en otros sitios.</p>`,
-      linea: f => [(UI.youtubeId(f.url) ? '▶ ' : f.origen === 'instagram' ? '📸 ' : '') + f.titulo,
+      linea: f => [(UI.youtubeId(f.url) ? '▶ ' : f.formato === 'video' ? '🎬 ' : f.origen === 'instagram' ? '📸 ' : '') + f.titulo,
         (f.categoria === 'educacion' ? '📚 Educación' : '🏫 Actividades') + ' · ' + f.publico +
         (f.origen === 'instagram' ? ' · desde Instagram' : '') +
         (f.vence ? (Date.parse(f.vence) > Date.now()
           ? ' · ⏱️ Historia hasta ' + new Date(f.vence).toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
           : ' · ⏱️ Historia vencida (ya no se muestra)') : '')],
       img: f => (UI.youtubeId(f.url) ? `https://img.youtube.com/vi/${UI.youtubeId(f.url)}/mqdefault.jpg`
-        : UI.instagramRuta(f.url) ? '' : f.url),
+        : UI.instagramRuta(f.url) || f.formato === 'video' ? '' : f.url),
       // categoría y sonido editables en cada publicación
       extra: f => filaCategoria(f) + filaSonido(f),
     },
@@ -303,16 +303,35 @@
       <form id="ig-enlace">
         <fieldset class="grupo">
           <legend>🔗 Compartir una publicación o reel (sin clave)</legend>
-          <label>Enlace de la publicación<input name="url" required placeholder="https://www.instagram.com/p/... o /reel/..."></label>
+          <label>Enlace o código de inserción de la publicación
+            <textarea name="url" rows="2" required placeholder="https://www.instagram.com/p/... · o pegue el código &lt;blockquote class=&quot;instagram-media&quot;…"></textarea></label>
           <label>Mensaje (opcional) · copie aquí el texto de la publicación
             <textarea name="texto" rows="4" placeholder="Se mostrará destacado al lado de la foto o del reel"></textarea></label>
           <div class="dos">${PUBLICO}
             <label>🏷️ Categoría<select name="categoria">${opcionesCat('actividades')}</select></label></div>
           <button class="btn">Publicar en las pantallas</button>
           <p class="note">En Instagram abra la publicación → <b>⋯ → Copiar enlace</b>. Se muestra con la tarjeta oficial de
-          Instagram y, si escribe el mensaje, este aparece grande al lado. Los reels se ven con su portada
-          (Instagram no deja reproducirlos solos en otra página); para que un video se vea completo con sonido, súbalo también a YouTube.
+          Instagram y, si escribe el mensaje, este aparece grande al lado.
+          <b>Los reels por enlace solo muestran su portada</b>: para que se reproduzcan, súbalos abajo.
           Para quitar una publicación, use <b>📸 Fotos y videos</b>.</p>
+        </fieldset>
+      </form>
+      <form id="ig-reel">
+        <fieldset class="grupo">
+          <legend>🎬 Subir un reel para que se reproduzca solo (con sonido)</legend>
+          <p class="note">Por enlace, Instagram solo deja mostrar la portada del reel. Para que se reproduzca solo y
+          completo, descárguelo (en el reel: <b>⋯ → Descargar</b> o "Guardar en el teléfono") y súbalo aquí.</p>
+          <label>Archivo del reel (MP4, máx. 30 MB)<input type="file" name="video" accept="video/mp4,video/*" required></label>
+          <label>Mensaje (opcional) · aparece grande al lado del video
+            <textarea name="texto" rows="3" placeholder="Ej: ¡Así vivimos la Feria Científica! 🔬"></textarea></label>
+          ${SONIDO()}
+          ${PUBLICO}
+          <button class="btn">Subir reel</button>
+        </fieldset>
+      </form>
+      <form>
+        <fieldset class="grupo">
+          <legend>⏱️ Historias</legend>
           <p class="note">⏱️ <b>Historias:</b> Instagram no permite mostrarlas desde un enlace. Guárdela desde Instagram
           (en la historia: <b>⋯ → Guardar</b>) y súbala en <b>📸 Fotos y videos</b> marcando
           <b>"Es una historia"</b>: se verá destacada y se quitará sola a las 24 h.</p>
@@ -362,6 +381,34 @@
   }
 
   async function iniciarInstagram() {
+    // Subir un reel (MP4): se guarda en Drive y se reproduce solo en el carrusel
+    const fr = document.getElementById('ig-reel');
+    fr.onsubmit = async e => {
+      e.preventDefault();
+      const btn = fr.querySelector('.btn');
+      try {
+        const archivo = fr.elements.video.files[0];
+        if (!archivo) throw new Error('Elija el archivo del reel');
+        if (archivo.size > 30 * 1024 * 1024) throw new Error('El video supera 30 MB. Use uno más corto o súbalo a YouTube.');
+        const el = fr.elements;
+        const texto = el.texto.value.trim();
+        btn.disabled = true;
+        btn.textContent = 'Subiendo reel… (puede tardar un minuto)';
+        await API.admin('add', { password, sheet: 'fotos', item: {
+          titulo: (texto.split('\n')[0] || 'Reel de Instagram').slice(0, 90), texto,
+          formato: 'video', origen: 'instagram', categoria: 'actividades',
+          audio: el.audio.checked ? 'si' : 'no', audioFunc: el.audioFunc.checked ? 'si' : 'no',
+          vecesAudio: el.vecesAudio.value, publico: el.publico.value,
+        }, image: { data: await aBase64(archivo), mimeType: archivo.type || 'video/mp4', name: archivo.name } });
+        toast('Reel publicado ✔');
+        await recargar();
+      } catch (err) {
+        toast(err.message, 'err');
+        btn.disabled = false;
+        btn.textContent = 'Subir reel';
+      }
+    };
+
     // Publicar por enlace (no necesita clave ni token)
     const fe = document.getElementById('ig-enlace');
     fe.onsubmit = async e => {

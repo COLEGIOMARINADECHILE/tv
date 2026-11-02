@@ -222,8 +222,18 @@
             <div class="ig-resena">
               <span class="ig-logo">📸 Instagram${ig.startsWith('reel/') ? ' · Reel' : ''}</span>
               ${texto ? `<p class="ig-texto ${tam}">${esc(texto)}</p>` : `<b class="ig-titulo">${esc(f.titulo)}</b>`}
-              <small>${esc(f.etiqueta || etiqueta)}</small>
             </div></div>`;
+        }
+        // Video MP4 subido (ej. un reel descargado de Instagram): se reproduce solo, completo y con su mensaje al lado
+        if (f.formato === 'video') {
+          const texto = String(f.texto || '').trim();
+          const tam = texto.length < 140 ? 'g' : texto.length < 380 ? 'm' : 'c';
+          const audio = opts.sonido && audioDe(f);
+          return `<div class="ph insta mp4 ${texto ? '' : 'solo'}" data-mp4="1" data-clave="${esc(f.fileId || f.id || f.url)}"
+              data-audio="${audio ? 1 : ''}" data-veces="${esc(f.vecesAudio || '')}">
+            <div class="ig-foto"><video src="${esc(f.url)}" muted playsinline preload="none"></video></div>
+            ${texto ? `<div class="ig-resena"><span class="ig-logo">🎬 Reel</span><p class="ig-texto ${tam}">${esc(texto)}</p></div>` : ''}
+          </div>`;
         }
         // Instagram (publicación elegida o historia): foto destacada y la reseña al lado
         if (f.origen === 'instagram' || f.historia) {
@@ -236,7 +246,6 @@
               <span class="ig-logo">📸 ${f.historia ? 'Historia de Instagram' : 'Instagram'}</span>
               ${f.historia ? `<b class="ig-hace">${esc(haceCuanto(f.fecha))}</b>`
                 : `<p class="ig-texto ${tam}">${esc(texto || f.titulo)}</p>`}
-              <small>${esc(f.etiqueta || etiqueta)}</small>
             </div></div>`;
         }
         const yt = youtubeId(f.url);
@@ -259,7 +268,7 @@
       if (!ph.dataset.audio || !sonidoPermitido() || el._mudo) return false;
       if (ph._sonoEstaVez) return true;
       const veces = +ph.dataset.veces || 0;
-      const clave = `cmch_snd_${opts.perfil || 'x'}_${ph.dataset.yt}`;
+      const clave = `cmch_snd_${opts.perfil || 'x'}_${ph.dataset.yt || ph.dataset.clave}`;
       if (!cuotaDisponible(clave, veces)) return false;
       cuotaRegistrar(clave, veces);
       ph._sonoEstaVez = true;
@@ -272,7 +281,10 @@
       i = (i + 1) % phs.length;
       const ph = phs[i];
       // solo un video a la vez: se quita el reproductor del anterior
-      if (prev && prev !== ph) prev.querySelector('iframe')?.remove();
+      if (prev && prev !== ph) {
+        prev.querySelector('iframe')?.remove();
+        prev.querySelector('video')?.pause();
+      }
       ph._duracion = 0;
       ph._sonoEstaVez = false;
       phs.forEach(p => p.classList.toggle('active', p === ph));
@@ -300,18 +312,40 @@
           ajustarInsta(ph, ph.dataset.cap ? 760 : 560);
         }
         if (phs.length > 1) el._timer = setTimeout(siguiente, opts.seg * 1500);
+      } else if (ph.dataset.mp4) {
+        // video MP4: se ve completo y pasa al siguiente al terminar
+        const v = ph.querySelector('video');
+        v.preload = 'auto';
+        v.loop = phs.length === 1;
+        v.muted = !conAudio;
+        v.onended = () => phs.length > 1 && siguiente();
+        v.onerror = () => { if (phs.length > 1) el._timer = setTimeout(siguiente, 3000); };
+        try { v.currentTime = 0; } catch (e) {}
+        // si el navegador no deja sonar sin un clic, se reproduce en silencio
+        v.play().catch(() => {
+          v.muted = true;
+          avisar(false);
+          v.play().catch(() => {});
+        });
+        if (phs.length > 1) el._timer = setTimeout(siguiente, opts.maxVideo * 1000); // tope de seguridad
       } else if (ph.classList.contains('insta') && phs.length > 1) {
         // un poco más que una foto, para alcanzar a leer la reseña
         el._timer = setTimeout(siguiente, opts.seg * 1500);
       } else if (phs.length > 1) {
         el._timer = setTimeout(siguiente, opts.seg * 1000);
       }
-      avisar(!!ph.dataset.yt && conAudio);
+      avisar((!!ph.dataset.yt || !!ph.dataset.mp4) && conAudio);
     };
 
     // tras el primer clic/OK en un navegador: dar sonido al video que se está viendo
     el._activarSonido = () => {
       const ph = phs[i];
+      if (ph && ph.dataset.mp4 && tocaSonido(ph)) {
+        const v = ph.querySelector('video');
+        v.muted = false;
+        v.play().catch(() => {});
+        avisar(true);
+      }
       if (ph && ph.dataset.yt && tocaSonido(ph)) {
         const fr = ph.querySelector('iframe');
         ytCmd(fr, 'unMute');
@@ -325,6 +359,12 @@
       if (!!el._mudo === !!mudo) return;
       el._mudo = mudo;
       const ph = phs[i];
+      if (ph && ph.dataset.mp4 && ph.dataset.audio) {
+        const suena = !mudo && tocaSonido(ph);
+        ph.querySelector('video').muted = !suena;
+        avisar(suena);
+        return;
+      }
       if (!ph || !ph.dataset.yt || !ph.dataset.audio) return;
       const fr = ph.querySelector('iframe');
       const suena = !mudo && tocaSonido(ph);

@@ -22,6 +22,8 @@
     fotos: [
       { id: 'f9', titulo: 'Feria del libro', url: 'https://picsum.photos/seed/marina9/1080/1350', publico: 'ambos', origen: 'instagram',
         texto: '📚 ¡Así vivimos nuestra Feria del Libro 2026! 🎉\nNuestros estudiantes compartieron lecturas, cuentacuentos y mucha creatividad.\nGracias a las familias que nos acompañaron 💙 #ColegioMarinaDeChile #Lectura' },
+      { id: 'f7', titulo: 'Reel de ejemplo', url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', publico: 'ambos',
+        formato: 'video', origen: 'instagram', audio: 'si', texto: '🌼 Así celebramos la primavera en nuestro colegio. ¡Gracias a todos los que participaron! 💙' },
       { id: 'f8', titulo: 'Feria científica', url: 'https://www.instagram.com/p/DfIf20tgQNx/', publico: 'ambos', origen: 'instagram',
         texto: '🔬 Nuestros estudiantes presentaron sus proyectos en la Feria de Andalién Sur. ¡Felicitaciones a todo el equipo! 💙' },
       { id: 'f0', titulo: 'Video de ejemplo', url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ', publico: 'ambos', audio: 'si', audioFunc: 'no' },
