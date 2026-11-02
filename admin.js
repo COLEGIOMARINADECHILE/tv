@@ -8,6 +8,7 @@
   try { password = sessionStorage.getItem(PASS_KEY) || ''; } catch (e) {}
   let data = null;
   let seccion = 'actividades';
+  let editando = null; // publicación que se está editando (o null = agregar nueva)
 
   const PUBLICO = `<label>Mostrar a
     <select name="publico"><option value="ambos">Funcionarios y familias</option>
@@ -89,6 +90,7 @@
         <label class="check" data-tipo="imagen"><input type="checkbox" name="historia" value="si">
           ⏱️ <b>Es una historia de Instagram</b>: se ve destacada y se quita sola a las 24 h</label>
         <label data-tipo="video" hidden>Enlace de YouTube<input name="url" placeholder="https://www.youtube.com/watch?v=..."></label>
+        <label data-editar-ig hidden>Mensaje (se muestra al lado de la publicación)<textarea name="texto" rows="4" disabled></textarea></label>
         <img class="preview" id="preview" hidden alt="">
         ${SONIDO('data-tipo="video" hidden')}
         ${PUBLICO}
@@ -570,17 +572,86 @@
     }
   }
 
+  // ---------- Editar una publicación: se carga en el mismo formulario y se guarda con "update" ----------
+  const CASILLAS_NO = ['audio', 'audioFunc']; // desmarcadas se guardan como 'no' (vacío = con sonido)
+
+  function cargarEdicion(form, it) {
+    const el = form.elements;
+    // tipo según lo publicado (no se puede cambiar al editar)
+    if (el.tipo) {
+      el.tipo.value = seccion === 'musica' ? (it.fileId ? 'archivo' : 'enlace') : UI.youtubeId(it.url) ? 'video' : 'imagen';
+      el.tipo.onchange && el.tipo.onchange();
+      el.tipo.disabled = true;
+    }
+    // los reels (MP4) también tienen sonido; las publicaciones de Instagram, su mensaje
+    if (it.formato === 'video') form.querySelectorAll('fieldset.sonido').forEach(f => (f.hidden = false));
+    form.querySelectorAll('[data-editar-ig]').forEach(f => (f.hidden = it.origen !== 'instagram'));
+    // lo que no corresponde a esta publicación no se envía (así no se borra, por ejemplo, la imagen)
+    form.querySelectorAll('input, select, textarea').forEach(c => {
+      if (c.name === 'tipo') return;
+      const oculto = !!c.closest('[hidden]');
+      c.disabled = oculto || c.type === 'file' || c.name === 'historia';
+      if (c.type === 'file') c.closest('label').hidden = true;
+      if (c.disabled || !c.name) return;
+      // sonido en Familias: vacío = con sonido · en Funcionarios: solo si dice 'si'
+      if (c.type === 'checkbox') c.checked = c.name === 'audio' ? it.audio !== 'no' : it[c.name] === 'si';
+      // en las listas solo se carga un valor que exista (si está vacío queda la opción por defecto)
+      else if (it[c.name] !== undefined && (c.tagName !== 'SELECT' || [...c.options].some(o => o.value === String(it[c.name])))) c.value = it[c.name];
+    });
+    form.querySelectorAll('.cuantas, [data-tipo="imagen"].note').forEach(n => (n.hidden = true));
+    // ícono elegido
+    if (el.icono) form.querySelectorAll('.icon-picker button').forEach(b => b.classList.toggle('on', b.dataset.ico === (it.icono || el.icono.value)));
+    const prev = document.getElementById('preview');
+    if (prev && UI.youtubeId(it.url)) { prev.src = `https://img.youtube.com/vi/${UI.youtubeId(it.url)}/hqdefault.jpg`; prev.hidden = false; }
+  }
+
+  async function guardarEdicion(form) {
+    const btn = form.querySelector('.btn');
+    try {
+      const item = { id: editando.id };
+      new FormData(form).forEach((v, k) => (item[k] = String(v)));
+      form.querySelectorAll('input[type=checkbox][name]:not(:disabled)').forEach(c => {
+        item[c.name] = c.checked ? 'si' : CASILLAS_NO.includes(c.name) ? 'no' : '';
+      });
+      if (seccion === 'fechas' && item.fechaFin && item.fechaFin < item.fecha) throw new Error('La fecha "Hasta" debe ser igual o posterior a "Desde"');
+      if (item.url !== undefined && UI.youtubeId(editando.url)) {
+        const id = UI.youtubeId(item.url);
+        if (!id) throw new Error('El enlace no parece ser un video de YouTube');
+        item.url = 'https://www.youtube.com/watch?v=' + id;
+      }
+      if (seccion === 'musica' && item.url !== undefined && !/^https?:\/\//.test(item.url)) throw new Error('Escriba un enlace que empiece con https://');
+      btn.disabled = true;
+      const ytId = item.url !== undefined && item.url !== editando.url && UI.youtubeId(item.url);
+      if (ytId) {
+        btn.textContent = 'Revisando el video en YouTube…';
+        if (await youtubeInsertable(ytId) === false) throw new Error(MSG_YT_BLOQUEADO);
+      }
+      btn.textContent = 'Guardando…';
+      await API.admin('update', { password, sheet: seccion, item });
+      toast('Cambios guardados ✔');
+      editando = null;
+      await recargar();
+    } catch (err) {
+      toast(err.message, 'err');
+      btn.disabled = false;
+      btn.textContent = '💾 Guardar cambios';
+    }
+  }
+
   function vistaPanel() {
     const S = SECCIONES[seccion];
     const lista = (data[seccion] || []).slice().reverse();
     const cuerpo = seccion === 'ajustes' ? formAjustes() : seccion === 'instagram' ? vistaInstagram() : `
       <div class="grid">
-        <div class="panel"><h2>Agregar</h2><form id="f-add">${S.form}<button class="btn">Publicar</button></form></div>
+        <div class="panel ${editando ? 'editando' : ''}"><h2>${editando ? '✏️ Editar publicación' : 'Agregar'}</h2>
+          <form id="f-add">${S.form}<button class="btn">${editando ? '💾 Guardar cambios' : 'Publicar'}</button>
+          ${editando ? '<button type="button" class="btn ghost" id="cancelar-edicion">Cancelar</button>' : ''}</form></div>
         <div class="panel"><h2>Publicado (${lista.length})</h2>
           <div class="items">${lista.map(it => {
             const [t, sub] = S.linea(it);
             return `<div class="item">${S.img && S.img(it) ? `<img src="${esc(S.img(it))}" alt="">` : ''}${S.ico ? UI.icono(S.ico(it), 'lista-ico') : ''}
               <div class="t"><b>${esc(t)}</b><small>${esc(sub)}</small></div>
+              <button class="edit" data-id="${esc(it.id)}">✏️ Editar</button>
               <button class="del" data-id="${esc(it.id)}">Eliminar</button>
               ${S.extra ? S.extra(it) : ''}</div>`;
           }).join('') || '<p class="note">Nada publicado aún.</p>'}</div>
@@ -600,7 +671,7 @@
         `<button data-k="${k}" class="${k === seccion ? 'on' : ''}">${SECCIONES[k].nombre}</button>`).join('')}</div>
       ${cuerpo}`;
 
-    app.querySelectorAll('.nav button').forEach(b => (b.onclick = () => { seccion = b.dataset.k; vistaPanel(); }));
+    app.querySelectorAll('.nav button').forEach(b => (b.onclick = () => { seccion = b.dataset.k; editando = null; vistaPanel(); }));
     document.getElementById('salir').onclick = () => {
       try { sessionStorage.removeItem(PASS_KEY); } catch (e) {}
       password = '';
@@ -679,8 +750,18 @@
       if (id) preview.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
     };
 
+    if (editando) cargarEdicion(form, editando);
+    app.querySelectorAll('.edit').forEach(b => (b.onclick = () => {
+      editando = (data[seccion] || []).find(x => String(x.id) === b.dataset.id) || null;
+      vistaPanel();
+      app.querySelector('.panel.editando')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+    const cancelar = document.getElementById('cancelar-edicion');
+    if (cancelar) cancelar.onclick = () => { editando = null; vistaPanel(); };
+
     form.onsubmit = async e => {
       e.preventDefault();
+      if (editando) return guardarEdicion(form);
       const btn = form.querySelector('.btn');
       try {
         const item = {};

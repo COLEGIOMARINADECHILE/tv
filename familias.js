@@ -43,6 +43,9 @@
   // Los estados cambian con la hora ("Mañana" → "¡Hoy!" → "Disponible ahora"): se recalculan cada minuto
   let ultimasFechas = null;
   setInterval(() => ultimasFechas && renderFechas(...ultimasFechas), 60000);
+  // al terminar de cargar las letras cambia el alto de las tarjetas: se vuelve a calcular cuántas caben
+  document.fonts?.ready.then(() => ultimasFechas && renderFechas(...ultimasFechas));
+  window.addEventListener('resize', () => ultimasFechas && renderFechas(...ultimasFechas));
 
   function renderFechas(fechas, acts) {
     ultimasFechas = [fechas, acts];
@@ -69,21 +72,57 @@
       })
       .map(f => ({ ...f, est: estadoFecha(f) }))
       // las ⭐ importantes primero (siempre visibles), luego por cercanía
-      .sort((a, b) => imp(a) - imp(b) || a.est.orden - b.est.orden)
-      .slice(0, 4);
-    document.getElementById('fechas').innerHTML = lista.length ? lista.map((f, i) => {
+      .sort((a, b) => imp(a) - imp(b) || a.est.orden - b.est.orden);
+    const cont = document.getElementById('fechas');
+    clearInterval(cont._pag);
+    if (!lista.length) {
+      cont.innerHTML = '<p class="empty-msg">No hay fechas próximas</p>';
+      paginasFechas(cont, 0, 0);
+      return;
+    }
+    const tarjetas = lista.map((f, i) => {
       const d = parseFecha(f.fecha);
       const esImp = f.importante === 'si';
-      return `<div class="date-item ${f.est.clase}${esImp ? ' importante' : ''}" style="animation-delay:${i * 0.08}s">
-        ${esImp ? '<span class="cinta-imp">⭐ IMPORTANTE</span>' : ''}
+      return `<div class="date-item ${f.est.clase}${esImp ? ' importante' : ''}" style="animation-delay:${(i % 4) * 0.08}s">
         <div class="cal"><div class="m">${MESES[d.getMonth()]}</div><div class="d">${d.getDate()}</div>
           ${f.fechaFin ? `<div class="hasta">al ${esc(diaMes(f.fechaFin))}</div>` : ''}</div>
-        <div><h3>${esc(f.titulo)}</h3>${f.descripcion ? `<p>${esc(f.descripcion)}</p>` : ''}
-          ${f.est.sub ? `<p class="periodo">${esc(f.est.sub)}</p>` : ''}
-          <span class="left">${esc(f.est.chip)}</span></div>
+        <div><h3>${esc(f.titulo)}</h3>
+          ${f.descripcion || f.est.sub ? `<p>${esc(f.descripcion || '')}${f.descripcion && f.est.sub ? ' · ' : ''}${f.est.sub ? `<span class="periodo">${esc(f.est.sub)}</span>` : ''}</p>` : ''}
+          <span class="left">${esc(f.est.chip)}</span>${esImp ? '<span class="cinta-imp">⭐ IMPORTANTE</span>' : ''}</div>
         ${UI.icono(f.icono || '📅')}
       </div>`;
-    }).join('') : '<p class="empty-msg">No hay fechas próximas</p>';
+    });
+
+    // Se muestran solo las que caben completas; si son más, avanzan por páginas
+    let n = tarjetas.length;
+    const cabe = () => {
+      cont.innerHTML = tarjetas.slice(0, n).join('');
+      return cont.lastElementChild.getBoundingClientRect().bottom <= cont.getBoundingClientRect().bottom + 1;
+    };
+    cont.classList.add('midiendo'); // sin animación de entrada, para medir la posición real
+    while (n > 1 && !cabe()) n--;
+    cont.classList.remove('midiendo');
+    const paginas = [];
+    for (let k = 0; k < tarjetas.length; k += n) paginas.push(tarjetas.slice(k, k + n).join(''));
+    let p = Math.min(cont._p || 0, paginas.length - 1); // al recalcular cada minuto se sigue en la misma página
+    const mostrar = () => {
+      cont._p = p;
+      cont.innerHTML = paginas[p];
+      cont.classList.remove('pagina-nueva');
+      void cont.offsetWidth; // reinicia la animación de entrada
+      cont.classList.add('pagina-nueva');
+      paginasFechas(cont, paginas.length, p);
+    };
+    mostrar();
+    if (paginas.length > 1) cont._pag = setInterval(() => { p = (p + 1) % paginas.length; mostrar(); }, CFG.DURACION_AGENDA_SEG * 1000);
+  }
+
+  // Puntos de página junto al título "Fechas importantes"
+  function paginasFechas(cont, total, actual) {
+    const titulo = cont.previousElementSibling;
+    let ind = titulo.querySelector('.pag');
+    if (!ind) titulo.insertAdjacentHTML('beforeend', '<span class="pag"></span>'), (ind = titulo.querySelector('.pag'));
+    ind.innerHTML = total > 1 ? Array.from({ length: total }, (_, k) => `<i class="${k === actual ? 'on' : ''}"></i>`).join('') : '';
   }
 
   // Mensaje destacado para las familias (Admin → Ajustes), sin título
@@ -306,9 +345,10 @@
     const videosConAudio = CFG.VIDEO_CON_SONIDO_FAMILIAS &&
       fotos.some(f => UI.youtubeId(f.url) && f.audio !== 'no');
     if (pistas.length || videosConAudio) UI.pedirSonido(activarSonido);
-    renderFechas(data.fechas || [], (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos'));
+    // primero el aviso de HOY: así las fechas se reparten en el espacio que realmente queda
     UI.avisoHoy(document.getElementById('aviso-hoy'),
       (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos').concat(data.fechas || []));
+    renderFechas(data.fechas || [], (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos'));
     UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'familias'), aj.velocidadAvisos);
   });
 })();

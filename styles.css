@@ -512,7 +512,10 @@ button { font: inherit; color: inherit; }
 .gallery .ph .ig-foto video { max-width: 100%; max-height: 100%; height: 100%; object-fit: contain; background: #000; }
 .gallery .ph.mp4:not(.solo) .ig-foto { padding: 0.5vh; background: #fff; }
 /* Mientras suena un video se detienen los efectos decorativos (brillos, latidos), salvo la cinta de avisos */
-body.video-activo *:not(.track) { animation-play-state: paused !important; }
+/* (solo los efectos que se repiten; las animaciones de entrada siguen normales) */
+body.video-activo .date-item.importante, body.video-activo .hoy-card.importante, body.video-activo .sem-card.importante,
+body.video-activo .date-item.hoy .left, body.video-activo .aviso-hoy, body.video-activo .hoy-card.pronto,
+body.video-activo .hoy-card.ahora, body.video-activo .side-logo img { animation: none !important; }
 body.video-activo .date-item.importante::after, body.video-activo .hoy-card.importante::after,
 body.video-activo .sem-card.importante::after { display: none; }
 .gallery .ph.mp4.solo .ig-foto { max-width: 100%; }
@@ -748,6 +751,15 @@ body.video-activo .sem-card.importante::after { display: none; }
   background: rgba(6, 21, 58, 0.5);
   animation: rise 0.6s backwards;
 }
+/* las tarjetas nunca se aplastan: si no caben, pasan a la página siguiente */
+.date-list > .date-item { flex: none; }
+.date-list.midiendo > * { animation: none !important; }
+.date-item h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.date-item p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.date-item > div:nth-child(2) { min-width: 0; }
+/* en Familias la cinta va junto al chip ("¡Hoy!", "En 2 días"): la tarjeta queda más baja */
+.date-item .cinta-imp { display: inline-block; vertical-align: middle; margin: 0.6vh 0 0 0.5vw; }
+.pagina-nueva > .date-item.importante { animation: rise 0.7s backwards, resplandor 2.4s ease-in-out infinite; }
 .date-item .cal { border-radius: 1vh; overflow: hidden; text-align: center; background: var(--white); color: var(--navy-900); }
 .date-item .cal .m { background: var(--red); color: #fff; font-size: 1.4vh; font-weight: 800; text-transform: uppercase; padding: 0.3vh 0; letter-spacing: 0.1em; }
 .date-item .cal .d { font-size: 3.8vh; font-weight: 800; line-height: 1.25; }
@@ -778,7 +790,7 @@ body.video-activo .sem-card.importante::after { display: none; }
   background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
   transform: translateX(-100%); animation: barrido 4s ease-in-out infinite;
 }
-.date-item.importante h3 { color: var(--navy-900); font-size: 2.6vh; }
+.date-item.importante h3 { color: var(--navy-900); font-size: 2.35vh; }
 .date-item.importante p { color: #3b2a00; }
 .date-item.importante .periodo { color: #7a4b00 !important; }
 .date-item.importante .left { background: var(--navy-900); color: var(--gold); }
