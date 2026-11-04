@@ -697,7 +697,26 @@ body.video-activo .sem-card.importante::after { display: none; }
 .modo-reunion .ct-tel b { font-size: 1.9vh; }
 .reu-head .reu-nota { flex-basis: 100%; }
 .modo-reunion .side-logo { display: none; }
-.family-side .mini-fotos { flex: none; aspect-ratio: 16 / 9; width: 100%; height: auto; }
+/* las fechas importantes siempre deben verse: se oculta el mensaje y las fotos chicas tienen alto fijo */
+.modo-reunion .family-side .tip { display: none; }
+.modo-reunion .family-side .dates { flex: none; }
+/* las fotos chicas usan el espacio que sobra (entre 12 y 26 % del alto): las fechas tienen prioridad */
+.family-side .mini-fotos { flex: 1 1 0; min-height: 12vh; max-height: 26vh; width: 100%; }
+
+/* Próxima reunión de apoderados (antes del día): cursos en rango, edificio y hora */
+.prox-reunion { padding: 1.4vh 1.2vw; background: linear-gradient(135deg, #1d4ed8, #0f2c72); border: 2px solid var(--gold); }
+.prox-reunion[hidden] { display: none; }
+.pr-head { display: flex; }
+.pr-tag { font-size: 1.9vh; font-weight: 800; color: var(--navy-900); background: var(--gold); padding: 0.4vh 0.9vw; border-radius: 99px; }
+.pr-dia { font-size: 2.4vh; font-weight: 800; color: #fff; margin: 0.9vh 0 0.7vh; }
+.pr-grupos { display: flex; flex-direction: column; gap: 0.6vh; }
+.pr-grupo { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3vh 0.7vw; padding: 0.7vh 0.8vw; border-radius: 1vh; background: rgba(255, 255, 255, 0.12); }
+.pr-grupo b { font-size: 2.1vh; color: #fff; flex-basis: 100%; }
+.pr-grupo span { font-size: 1.6vh; font-weight: 700; color: var(--gold-soft); }
+.pr-grupo .pr-hora { color: var(--navy-900); background: var(--gold); padding: 0.2vh 0.6vw; border-radius: 99px; }
+.pr-prebasica { border-left: 0.5vh solid #ff9ecf; }
+.pr-menor { border-left: 0.5vh solid #ffd166; }
+.pr-matriz { border-left: 0.5vh solid #7cc4ff; }
 .family-side .mini-fotos[hidden] { display: none; }
 .family .mini-fotos .caption { font-size: 2vh; padding: 4vh 1vw 1.2vh; }
 .family .mini-fotos .caption small { font-size: 1.3vh; }

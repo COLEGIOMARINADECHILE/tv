@@ -99,7 +99,9 @@
     let n = tarjetas.length;
     const cabe = () => {
       cont.innerHTML = tarjetas.slice(0, n).join('');
-      return cont.lastElementChild.getBoundingClientRect().bottom <= cont.getBoundingClientRect().bottom + 1;
+      // debe caber en su recuadro y también dentro de la columna (en modo reunión el recuadro crece con su contenido)
+      const lado = cont.closest('.family-side').getBoundingClientRect().bottom - 14;
+      return cont.lastElementChild.getBoundingClientRect().bottom <= Math.min(cont.getBoundingClientRect().bottom + 1, lado);
     };
     cont.classList.add('midiendo'); // sin animación de entrada, para medir la posición real
     while (n > 1 && !cabe()) n--;
@@ -341,6 +343,42 @@
   // ---------- Modo reunión de apoderados: primero, la sala de cada curso por edificio ----------
   let principal = () => {};
   setInterval(() => principal(), 30000); // se activa / desactiva solo según el horario elegido
+  let ultimoAj = null;
+  setInterval(() => ultimoAj && renderProximas(ultimoAj), 60000); // "Mañana" → "Hoy" → desaparece al empezar
+
+  // "Próxima reunión de apoderados": antes del día se anuncia qué cursos (en rango), en qué edificio y a qué hora.
+  // El día de la reunión aparece el tablero con las salas.
+  const DIAS_SEM = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  function cuandoReunion(fecha) {
+    const d = parseFecha(fecha);
+    const n = diasHasta(fecha);
+    const dia = `${DIAS_SEM[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+    return n === 0 ? 'Hoy, ' + dia : n === 1 ? 'Mañana, ' + dia : dia.charAt(0).toUpperCase() + dia.slice(1);
+  }
+  function renderProximas(aj) {
+    const box = document.getElementById('prox-reunion');
+    const lista = UI.proximasReuniones(aj)
+      .map(r => Object.assign({}, r, { grupos: r.grupos.filter(g => !ESPACIO || g.espacio === ESPACIO) }))
+      .filter(r => r.grupos.length);
+    const firma = JSON.stringify(lista.map(r => [r.fecha, r.grupos]));
+    if (box._firma === firma) return;
+    box._firma = firma;
+    clearInterval(box._rot);
+    box.hidden = !lista.length;
+    if (!lista.length) { box.innerHTML = ''; return; }
+    const tarjeta = r => `<div class="pr-head"><span class="pr-tag">👨‍👩‍👧 Próxima reunión de apoderados</span></div>
+      <div class="pr-dia">📅 ${esc(cuandoReunion(r.fecha))}</div>
+      <div class="pr-grupos">${r.grupos.map(g => `<div class="pr-grupo pr-${g.grupo}">
+        <b>${esc(g.cursos)}</b>
+        <span>${esc(g.espacio ? UI.ESPACIOS[g.espacio].nombre : UI.EDIFICIOS[g.grupo])}</span>
+        ${g.hora ? `<span class="pr-hora">🕒 ${esc(g.hora)} hrs</span>` : ''}
+      </div>`).join('')}</div>`;
+    // si hay más de una reunión próxima (ej. Básica y Media), se alternan
+    let k = 0;
+    const mostrar = () => { box.innerHTML = `<div class="fade">${tarjeta(lista[k])}</div>`; };
+    mostrar();
+    if (lista.length > 1) box._rot = setInterval(() => { k = (k + 1) % lista.length; mostrar(); }, 12000);
+  }
 
   // Devuelve true si el modo está activo (y lo muestra); false si hay que mostrar el carrusel.
   // Mientras está activo, las fotos siguen pasando en un recuadro más chico al costado.
@@ -464,6 +502,8 @@
     const videosConAudio = CFG.VIDEO_CON_SONIDO_FAMILIAS &&
       fotos.some(f => UI.youtubeId(f.url) && f.audio !== 'no');
     if (pistas.length || videosConAudio) UI.pedirSonido(activarSonido);
+    ultimoAj = aj;
+    renderProximas(aj);
     // primero el aviso de HOY: así las fechas se reparten en el espacio que realmente queda
     UI.avisoHoy(document.getElementById('aviso-hoy'),
       (data.actividades || []).filter(a => a.publico === 'familias' || a.publico === 'ambos').concat(data.fechas || []));

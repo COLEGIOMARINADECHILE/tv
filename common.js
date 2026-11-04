@@ -654,8 +654,56 @@
     const una = leerJSON(aj.reunion, null);
     return una && una.cursos ? [Object.assign({ id: 'r1', nombre: 'Reunión' }, una)] : [];
   }
-  const estaVigente = (r, ahora) => r.activo === 'si' &&
-    (!r.desde || Date.parse(r.desde) <= ahora) && (!r.hasta || Date.parse(r.hasta) >= ahora);
+  // El tablero de salas se muestra: en el horario Desde/Hasta si se indicó; si no, todo el día de la reunión
+  // (campo "fecha"); y si no tiene fecha ni horario, mientras esté activada.
+  const estaVigente = (r, ahora) => {
+    if (r.activo !== 'si') return false;
+    if (r.desde || r.hasta) return (!r.desde || Date.parse(r.desde) <= ahora) && (!r.hasta || Date.parse(r.hasta) >= ahora);
+    return r.fecha ? diasHasta(r.fecha) === 0 : true;
+  };
+  // Grupo de reunión → edificio donde está (Prebásica está en el Edificio Matriz)
+  const espacioDeGrupo = g => Object.keys(ESPACIOS).find(k => ESPACIOS[k].grupos.includes(g)) || '';
+  // Cursos de un grupo en pocas palabras: "Pre-Kínder y Kínder", "1° a 4° Básico", "5° a 8° Básico · 1° a 4° Medio"
+  function resumenCursos(cursos) {
+    const pre = new Set();
+    const basico = [];
+    const medio = [];
+    const otros = new Set();
+    cursos.forEach(c => {
+      const n = String(c.curso || '').trim();
+      if (/pre.?k/i.test(n)) pre.add('Pre-Kínder');
+      else if (/k[ií]nder/i.test(n)) pre.add('Kínder');
+      else {
+        // "5° Básico A", "1° Medio B" o simplemente "5° A" (sin la palabra, se entiende Básico)
+        const m = n.match(/^(\d+)\s*°?\s*(b[áa]sico|medio)?/i);
+        if (m) (m[2] && /^m/i.test(m[2]) ? medio : basico).push(+m[1]);
+        else if (n) otros.add(n);
+      }
+    });
+    const rango = (a, nombre) => {
+      if (!a.length) return '';
+      const mn = Math.min(...a), mx = Math.max(...a);
+      return mn === mx ? `${mn}° ${nombre}` : `${mn}° a ${mx}° ${nombre}`;
+    };
+    const ordenPre = ['Pre-Kínder', 'Kínder'].filter(x => pre.has(x));
+    return [ordenPre.join(' y '), rango(basico, 'Básico'), rango(medio, 'Medio'), ...otros].filter(Boolean).join(' · ');
+  }
+  // Próximas reuniones (activadas, con fecha de hoy en adelante y que aún no muestran sus salas):
+  // [{ id, titulo, fecha, grupos: [{ grupo, cursos (resumen), espacio, hora }] }]
+  function proximasReuniones(aj) {
+    const ahora = Date.now();
+    return reuniones(aj)
+      .filter(r => r.activo === 'si' && r.fecha && diasHasta(r.fecha) >= 0 && !estaVigente(r, ahora))
+      .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+      .map(r => Object.assign({}, r, {
+        grupos: Object.keys(EDIFICIOS).map(g => {
+          const conReunion = (r.cursos || []).filter(c => c.curso && c.edificio === g && !c.estado);
+          const texto = ((r.resumen || {})[g] || '').trim() || resumenCursos(conReunion);
+          return { grupo: g, cursos: texto, espacio: espacioDeGrupo(g), hora: (r.horas || {})[g] || '' };
+        }).filter(x => x.cursos),
+      }))
+      .filter(r => r.grupos.length);
+  }
   // La reunión que se muestra ahora (la primera activa dentro de su horario), con el piso de cada sala
   function reunion(aj) {
     const salas = leerJSON(aj.salas, []);
@@ -763,5 +811,5 @@
     return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

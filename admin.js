@@ -339,13 +339,19 @@
     <legend><input class="reu-nombre" value="${esc(r.nombre || '')}" placeholder="Nombre (ej. Básica)"></legend>
     <label class="check"><input type="checkbox" data-r="activo" ${r.activo === 'si' ? 'checked' : ''}>
       <b>Activar esta reunión</b> (la pantalla Familias la muestra en el horario indicado)</label>
-    <label>Título que se ve en pantalla<input data-r="titulo" value="${esc(r.titulo || '')}" placeholder="Ej: Martes 11 de noviembre"></label>
-    <div class="etiqueta">🕒 Horario de cada edificio (déjelo vacío si ese edificio no tiene reunión)</div>
-    <div class="reu-horas">${Object.entries(UI.EDIFICIOS).map(([e, nombre]) => `<label>${nombre}
-      <input type="time" data-hora="${e}" value="${esc((r.horas || {})[e] || '')}"></label>`).join('')}</div>
     <div class="dos">
-      <label>Mostrar desde (opcional)<input type="datetime-local" data-r="desde" value="${esc(r.desde || '')}"></label>
-      <label>Hasta (opcional)<input type="datetime-local" data-r="hasta" value="${esc(r.hasta || '')}"></label>
+      <label>📅 Fecha de la reunión<input type="date" data-r="fecha" value="${esc(r.fecha || '')}"></label>
+      <label>Título que se ve en pantalla<input data-r="titulo" value="${esc(r.titulo || '')}" placeholder="Ej: Reunión de apoderados 2° semestre"></label>
+    </div>
+    <p class="note">Antes de esa fecha, Familias muestra el aviso <b>"Próxima reunión de apoderados"</b> con los cursos
+    (en rango, ej. "1° a 4° Básico"), el edificio y la hora. <b>El día de la reunión</b> aparecen las salas de cada curso.</p>
+    <div class="etiqueta">🕒 Hora de inicio de cada grupo y cómo se anuncian sus cursos (vacío = se calcula solo)</div>
+    <div class="reu-horas">${Object.entries(UI.EDIFICIOS).map(([e, nombre]) => `<label>${nombre}
+      <input type="time" data-hora="${e}" value="${esc((r.horas || {})[e] || '')}">
+      <input data-resumen="${e}" value="${esc((r.resumen || {})[e] || '')}" placeholder="${esc(UI.resumenCursos((r.cursos || []).filter(c => c.edificio === e && !c.estado)) || 'Ej: 1° a 4° Básico')}"></label>`).join('')}</div>
+    <div class="dos">
+      <label>Mostrar las salas desde (opcional)<input type="datetime-local" data-r="desde" value="${esc(r.desde || '')}"></label>
+      <label>Hasta (opcional · vacío = todo el día de la reunión)<input type="datetime-local" data-r="hasta" value="${esc(r.hasta || '')}"></label>
     </div>
     <div class="etiqueta">📋 Cursos y salas</div>
     <div class="tel-filas reu-cursos">${(r.cursos && r.cursos.length ? r.cursos : [{}]).map(filaCurso).join('')}</div>
@@ -472,6 +478,9 @@
         activo: v('activo').checked ? 'si' : '', titulo: v('titulo').value.trim(), desde: v('desde').value, hasta: v('hasta').value,
         // hora de cada edificio (ej. Prebásica 17:30, Ciclo Menor 18:00, Matriz 19:00)
         horas: Object.fromEntries([...bloque.querySelectorAll('[data-hora]')].map(i => [i.dataset.hora, i.value]).filter(([, h]) => h)),
+        fecha: v('fecha').value,
+        // cómo se anuncian los cursos de cada grupo (si se deja vacío se calcula de la lista, ej. "1° a 4° Básico")
+        resumen: Object.fromEntries([...bloque.querySelectorAll('[data-resumen]')].map(i => [i.dataset.resumen, i.value.trim()]).filter(([, t]) => t)),
         cursos: leerFilas(bloque.querySelector('.reu-cursos')).filter(c => c.curso)
           .map(c => (c.estado === 'cambio' ? c : Object.assign(c, { cambio: '' }))),
       };

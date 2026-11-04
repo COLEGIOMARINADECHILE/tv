@@ -48,13 +48,13 @@
           .concat([11, 12, 13, 14, 21, 22, 23, 24, 31, 32, 33, 34].map(n => ['matriz', String(n), String(n)[0]]))
           .map(([edificio, sala, piso]) => ({ edificio, sala, piso }))) },
       { id: 'reuniones', valor: JSON.stringify([
-        { id: 'r1', nombre: 'Básica', activo: 'si', titulo: 'Hoy', horas: { prebasica: '17:30', menor: '18:00', matriz: '19:00' }, cursos:
+        { id: 'r1', nombre: 'Básica', activo: 'si', fecha: hoyMas(0), titulo: 'Hoy', horas: { prebasica: '17:30', menor: '18:00', matriz: '19:00' }, cursos:
           [{ curso: 'Pre-Kínder', edificio: 'prebasica', sala: 'Pre-Kínder' }, { curso: 'Kínder', edificio: 'prebasica', sala: 'Kínder' }]
             .concat([1, 2, 3, 4].flatMap((n, k) => ['A', 'B'].map((l, j) => ({ curso: `${n}° Básico ${l}`, edificio: 'menor', sala: String(k * 2 + j + 1) }))))
             .concat([5, 6, 7, 8].flatMap((n, k) => ['A', 'B'].map((l, j) => ({ curso: `${n}° Básico ${l}`, edificio: 'matriz', sala: String([11, 12, 13, 14, 21, 22, 23, 24][k * 2 + j]) }))))
             .map(c => (c.curso === '3° Básico B' ? Object.assign(c, { estado: 'sin' })
               : c.curso === '6° Básico A' ? Object.assign(c, { estado: 'cambio', cambio: 'jueves 6 nov · 19:00' }) : c)) },
-        { id: 'r2', nombre: 'Media', activo: '', titulo: 'Martes 11 de noviembre', horas: { matriz: '19:00' }, cursos:
+        { id: 'r2', nombre: 'Media', activo: 'si', fecha: hoyMas(7), titulo: 'Martes 11 de noviembre', horas: { matriz: '19:00' }, cursos:
           [1, 2, 3, 4].flatMap((n, k) => ['A', 'B', 'C'].map((l, j) => ({ curso: `${n}° Medio ${l}`, edificio: 'matriz', sala: String([21, 22, 23, 24, 31, 32, 33, 34, 11, 12, 13, 14][k * 3 + j]) }))) },
       ]) },
     ],
@@ -101,12 +101,14 @@
 
   async function cargarDatos() {
     if (MODO_DEMO) {
-      // ?reunion=1 → ejemplo "Básica" (3 edificios) · ?reunion=2 → ejemplo "Media" (12 cursos)
+      // ?reunion=1 → hoy "Básica" (salas) y próxima "Media" (aviso) · ?reunion=2 → hoy "Media" (12 cursos)
+      // ?reunion=3 → ninguna hoy: solo los avisos de las próximas reuniones
       const modo = (location.search.match(/[?&]reunion=(\d)/) || [])[1];
       if (!modo) return DEMO;
       const aj = DEMO.ajustesReunion.map(a => {
-        if (a.id !== 'reuniones' || modo !== '2') return a;
-        return { id: a.id, valor: JSON.stringify(JSON.parse(a.valor).map(r => Object.assign({}, r, { activo: r.id === 'r2' ? 'si' : '' }))) };
+        if (a.id !== 'reuniones' || modo === '1') return a;
+        return { id: a.id, valor: JSON.stringify(JSON.parse(a.valor).map(r => Object.assign({}, r,
+          modo === '2' ? { activo: r.id === 'r2' ? 'si' : '', fecha: hoyMas(0) } : { fecha: r.id === 'r1' ? hoyMas(2) : r.fecha }))) };
       });
       return Object.assign({}, DEMO, { ajustes: (DEMO.ajustes || []).concat(aj) });
     }
