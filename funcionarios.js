@@ -271,6 +271,8 @@
     renderAgenda(API.para(data.actividades, 'funcionarios'));
     // Actividades del colegio + Educación en el mismo carrusel (el rótulo indica la categoría)
     const fotos = UI.carrusel(data, 'funcionarios');
+    // en el equipo quedan guardados solo los videos que siguen publicados
+    API.limpiarMedios((data.fotos || []).filter(f => f.formato === 'video' && f.fileId).map(f => f.fileId));
     UI.gallery(document.getElementById('gal'), fotos,
       { seg: aj.segFotosFuncionarios, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true, perfil: 'funcionarios',
         audioDe: f => f.audioFunc === 'si', onCambio: onCambioVideo },

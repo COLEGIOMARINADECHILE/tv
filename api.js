@@ -39,6 +39,20 @@
       { id: 'n2', titulo: 'Bienestar docente', texto: 'Recuerda tomar pausas activas. El autocuidado también es parte de nuestra labor educativa.', publico: 'funcionarios' },
       { id: 'n3', titulo: 'Lectura en familia', texto: '15 minutos diarios de lectura compartida fortalecen el vocabulario y el vínculo familiar.', publico: 'familias' },
     ],
+    // ?demo=1&reunion=1 muestra el modo reunión de apoderados de ejemplo
+    ajustesReunion: [
+      { id: 'salas', valor: JSON.stringify([
+        { edificio: 'matriz', sala: '11', piso: '1' }, { edificio: 'matriz', sala: '21', piso: '2' },
+        { edificio: 'matriz', sala: '22', piso: '2' }, { edificio: 'matriz', sala: '31', piso: '3' },
+        { edificio: 'matriz', sala: 'Laboratorio', piso: '3' }, { edificio: 'menor', sala: '1', piso: '' },
+        { edificio: 'menor', sala: '2', piso: '' }, { edificio: 'menor', sala: '3', piso: '' }]) },
+      { id: 'reunion', valor: JSON.stringify({ activo: 'si', titulo: 'Hoy 19:00 hrs', cursos: [
+        { curso: '7° Básico A', edificio: 'matriz', sala: '11' }, { curso: '8° Básico A', edificio: 'matriz', sala: '21' },
+        { curso: '1° Medio A', edificio: 'matriz', sala: '22' }, { curso: '2° Medio A', edificio: 'matriz', sala: '31' },
+        { curso: '3° Medio A', edificio: 'matriz', sala: 'Laboratorio' }, { curso: '4° Medio A', edificio: 'matriz', sala: '31' },
+        { curso: 'Pre-Kínder', edificio: 'menor', sala: '1' }, { curso: 'Kínder', edificio: 'menor', sala: '2' },
+        { curso: '1° Básico A', edificio: 'menor', sala: '3' }] }) },
+    ],
     historias: [
       { id: 'h1', url: 'https://picsum.photos/seed/marinah1/1080/1920', fecha: new Date(Date.now() - 3 * 3600e3).toISOString(),
         vence: new Date(Date.now() + 21 * 3600e3).toISOString() },
@@ -81,7 +95,10 @@
   const MODO_DEMO = !CFG.API_URL || /[?&]demo=1/.test(location.search);
 
   async function cargarDatos() {
-    if (MODO_DEMO) return DEMO;
+    if (MODO_DEMO) {
+      return /[?&]reunion=1/.test(location.search)
+        ? Object.assign({}, DEMO, { ajustes: (DEMO.ajustes || []).concat(DEMO.ajustesReunion) }) : DEMO;
+    }
     try {
       const r = await fetch(CFG.API_URL + '?t=' + Date.now());
       const data = await r.json();
@@ -123,26 +140,83 @@
     return res;
   }
 
-  // Video MP4 publicado: se descarga una vez a través de Apps Script y queda en memoria
-  // (Drive no deja reproducir sus videos directamente en otra página). Devuelve una URL local.
+  // Video MP4 o canción MP3 publicada: se descarga a través de Apps Script por partes de 8 MB
+  // (Drive no deja reproducirlos directamente en otra página) y se guarda en el equipo,
+  // así al recargar la pantalla no se vuelve a descargar. Devuelve una URL local.
   const videos = {};
+  const CACHE = 'cmch-medios';
+  const claveCache = id => new Request(location.origin + '/__medio/' + encodeURIComponent(id));
+
+  async function descargarMedio(fileId) {
+    try {
+      const guardado = await (await caches.open(CACHE)).match(claveCache(fileId));
+      if (guardado) return await guardado.blob();
+    } catch (e) {} // sin almacenamiento disponible: se descarga igual
+    const partes = [];
+    let total = 1;
+    let tipo = '';
+    for (let k = 0; k < total; k++) {
+      const d = await (await fetch(CFG.API_URL + '?accion=video&id=' + encodeURIComponent(fileId) + '&parte=' + k)).json();
+      if (!d.data) throw new Error(d.error || 'Archivo no disponible');
+      tipo = d.tipo;
+      total = d.partes || 1; // un Code.gs anterior entrega todo de una vez
+      partes.push(await (await fetch(`data:${d.tipo};base64,${d.data}`)).blob());
+    }
+    const blob = new Blob(partes, { type: tipo });
+    try { await (await caches.open(CACHE)).put(claveCache(fileId), new Response(blob)); } catch (e) {}
+    return blob;
+  }
+
   function video(fileId) {
     if (!videos[fileId]) {
-      videos[fileId] = fetch(CFG.API_URL + '?accion=video&id=' + encodeURIComponent(fileId))
-        .then(r => r.json())
-        .then(d => {
-          if (!d.data) throw new Error(d.error || 'Video no disponible');
-          return fetch(`data:${d.tipo};base64,${d.data}`);
-        })
-        .then(r => r.blob())
+      videos[fileId] = descargarMedio(fileId)
         .then(b => URL.createObjectURL(b))
         .catch(err => { delete videos[fileId]; throw err; }); // se reintenta la próxima vez
     }
     return videos[fileId];
   }
 
+  // Borra del equipo los videos y canciones que ya no están publicados
+  async function limpiarMedios(vigentes) {
+    try {
+      const c = await caches.open(CACHE);
+      const ok = new Set(vigentes.map(id => claveCache(id).url));
+      for (const req of await c.keys()) if (!ok.has(req.url)) await c.delete(req);
+    } catch (e) {}
+  }
+
   const para = (lista, perfil) =>
     (lista || []).filter(x => !x.publico || x.publico === 'ambos' || x.publico === perfil);
 
-  window.API = { cargarDatos, version, admin, para, video, DEMO };
+  // Sube un archivo grande a Drive por partes de 8 MB (sin el límite de tamaño de una sola subida).
+  // alAvanzar(0..1) informa el progreso. Devuelve el id del archivo en Drive.
+  async function subirArchivo(password, archivo, alAvanzar) {
+    const PARTE = 8 * 1024 * 1024;
+    const admin = window.API.admin; // (permite simular la subida en pruebas)
+    const { sesion } = await admin('subidaIniciar', { password, nombre: archivo.name, tipo: archivo.type || 'application/octet-stream', tamano: archivo.size });
+    for (let inicio = 0; inicio < archivo.size; inicio += PARTE) {
+      const trozo = archivo.slice(inicio, Math.min(inicio + PARTE, archivo.size));
+      const data = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result).split(',')[1]);
+        r.onerror = rej;
+        r.readAsDataURL(trozo);
+      });
+      let res;
+      for (let intento = 1; ; intento++) { // cada parte se reintenta hasta 3 veces si falla la red
+        try {
+          res = await admin('subidaParte', { password, sesion, inicio, total: archivo.size, tipo: archivo.type, data });
+          break;
+        } catch (e) {
+          if (intento >= 3) throw e;
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+      alAvanzar && alAvanzar(Math.min(1, (inicio + trozo.size) / archivo.size));
+      if (res.fileId) return res.fileId;
+    }
+    throw new Error('La subida no terminó, intente de nuevo');
+  }
+
+  window.API = { cargarDatos, version, admin, para, video, limpiarMedios, subirArchivo, DEMO };
 })();

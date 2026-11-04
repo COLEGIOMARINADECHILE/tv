@@ -9,6 +9,9 @@
   let data = null;
   let seccion = 'actividades';
   let editando = null; // publicación que se está editando (o null = agregar nueva)
+  // Tamaño máximo de archivos (se suben por partes de 8 MB; cada pantalla los descarga una vez y los guarda)
+  const MAX_VIDEO_MB = 200;
+  const MAX_AUDIO_MB = 100;
 
   const PUBLICO = `<label>Mostrar a
     <select name="publico"><option value="ambos">Funcionarios y familias</option>
@@ -114,7 +117,7 @@
         <label>Origen
           <select name="tipo"><option value="enlace">▶️ YouTube (video o lista de reproducción)</option><option value="archivo">📁 Subir archivo MP3</option></select></label>
         <label data-tipo="enlace">Enlace de YouTube o de un .mp3<input name="url" placeholder="https://www.youtube.com/watch?v=...&list=... · https://youtu.be/..."></label>
-        <label data-tipo="archivo" hidden>Archivo de audio (máx. 20 MB)<input type="file" name="imagen" accept="audio/*"></label>
+        <label data-tipo="archivo" hidden>Archivo de audio (MP3, máx. ${MAX_AUDIO_MB} MB · se sube por partes)<input type="file" name="imagen" accept="audio/*"></label>
         <p class="note">Suena de fondo en la pantalla Familias y baja de volumen cuando aparece un video con sonido.
         Si pega una <b>lista de reproducción</b> de YouTube, se reproduce completa en orden aleatorio.
         Use música libre de derechos o con autorización.</p>`,
@@ -163,6 +166,7 @@
       linea: a => [a.texto, a.publico],
     },
     instagram: { nombre: '📸 Instagram' },
+    reunion: { nombre: '👨‍👩‍👧 Reunión apoderados' },
     ajustes: { nombre: '⚙️ Ajustes' },
     canales: {
       nombre: '📺 Canales TV',
@@ -297,6 +301,122 @@
       </form></div>`;
   }
 
+  // ---------- 👨‍👩‍👧 Modo reunión de apoderados: salas por edificio y sala de cada curso ----------
+  const opcEdificio = sel => Object.entries(UI.EDIFICIOS)
+    .map(([v, t]) => `<option value="${v}" ${(sel || 'matriz') === v ? 'selected' : ''}>${t}</option>`).join('');
+  const filaSala = s => `<div class="tel-fila reu-sala-fila">
+    <select data-campo="edificio">${opcEdificio(s.edificio)}</select>
+    <input data-campo="sala" placeholder="Sala (ej. 12 o Laboratorio)" value="${esc(s.sala || '')}">
+    <select data-campo="piso"><option value="">Piso: no aplica</option>${[1, 2, 3].map(p =>
+      `<option value="${p}" ${String(s.piso) === String(p) ? 'selected' : ''}>${p}° piso</option>`).join('')}</select>
+    <button type="button" class="tel-quitar" title="Quitar">✕</button>
+  </div>`;
+  const filaCurso = c => `<div class="tel-fila reu-curso-fila">
+    <input data-campo="curso" placeholder="Curso (ej. 1° Básico A)" value="${esc(c.curso || '')}">
+    <select data-campo="edificio">${opcEdificio(c.edificio)}</select>
+    <select data-campo="sala" data-valor="${esc(c.sala || '')}"></select>
+    <button type="button" class="tel-quitar" title="Quitar">✕</button>
+  </div>`;
+  // los datos de una lista de filas → [{campo: valor}]
+  const leerFilas = cont => [...cont.children].map(f => {
+    const o = {};
+    f.querySelectorAll('[data-campo]').forEach(c => (o[c.dataset.campo] = c.value.trim()));
+    return o;
+  });
+
+  function formReunion() {
+    const r = UI.reunion(UI.ajustes(data));
+    const estado = r.vigente ? '🟢 <b>Se está mostrando ahora</b> en la pantalla Familias.'
+      : r.activo === 'si' ? '🕒 Activado: se mostrará en el horario indicado.' : '⚪ Desactivado: la pantalla Familias muestra lo de siempre.';
+    return `<div class="panel" style="max-width:980px">
+      <h2>👨‍👩‍👧 Modo reunión de apoderados</h2>
+      <p class="note">${estado}</p>
+      <form id="f-reunion">
+        <fieldset class="grupo">
+          <legend>▶️ Activar</legend>
+          <label class="check"><input type="checkbox" name="activo" value="si" ${r.activo === 'si' ? 'checked' : ''}>
+            <b>Mostrar el modo reunión en la pantalla Familias</b> (en lugar de las fotos; lo demás se mantiene)</label>
+          <label>Título / horario<input name="titulo" value="${esc(r.titulo || '')}" placeholder="Ej: Hoy 19:00 hrs"></label>
+          <div class="dos">
+            <label>Desde (opcional)<input type="datetime-local" name="desde" value="${esc(r.desde || '')}"></label>
+            <label>Hasta (opcional)<input type="datetime-local" name="hasta" value="${esc(r.hasta || '')}"></label>
+          </div>
+          <p class="note">Con "Desde" y "Hasta" se muestra solo en ese horario y luego vuelve todo a lo normal (la casilla debe estar marcada).</p>
+        </fieldset>
+        <fieldset class="grupo">
+          <legend>🏫 Salas de cada edificio (se ingresan una vez)</legend>
+          <div class="tel-filas" id="reu-salas">${(r.salas.length ? r.salas : [{}]).map(filaSala).join('')}</div>
+          <button type="button" class="btn ghost" id="reu-sala-agregar">➕ Agregar sala</button>
+          <p class="note">Indique el piso cuando el edificio tiene más de uno (algunos tienen 3 pisos, otros solo 1).</p>
+        </fieldset>
+        <fieldset class="grupo">
+          <legend>📋 Sala de cada curso</legend>
+          <div class="tel-filas" id="reu-cursos">${(r.cursos.length ? r.cursos : [{}]).map(filaCurso).join('')}</div>
+          <button type="button" class="btn ghost" id="reu-curso-agregar">➕ Agregar curso</button>
+          <p class="note">Elija el edificio (Matriz o Ciclo Menor) y luego una de sus salas; el piso se muestra solo.</p>
+        </fieldset>
+        <button class="btn">Guardar</button>
+      </form></div>`;
+  }
+
+  function iniciarReunion() {
+    const fr = document.getElementById('f-reunion');
+    const salas = document.getElementById('reu-salas');
+    const cursos = document.getElementById('reu-cursos');
+    // cada curso solo puede elegir salas del edificio que se le asignó
+    const actualizarSalas = () => {
+      const lista = leerFilas(salas).filter(s => s.sala);
+      cursos.querySelectorAll('.reu-curso-fila').forEach(f => {
+        const ed = f.querySelector('[data-campo="edificio"]').value;
+        const sel = f.querySelector('[data-campo="sala"]');
+        const valor = sel.value || sel.dataset.valor || '';
+        const propias = lista.filter(s => s.edificio === ed);
+        sel.innerHTML = `<option value="">${propias.length ? 'Elija la sala…' : 'Primero agregue salas de este edificio'}</option>` +
+          propias.map(s => `<option value="${esc(s.sala)}">${esc(UI.nombreSala(s.sala))}${s.piso ? ` · ${s.piso}° piso` : ''}</option>`).join('');
+        sel.value = propias.some(s => s.sala === valor) ? valor : '';
+        sel.dataset.valor = sel.value;
+      });
+    };
+    const quitar = (cont, fila) => e => {
+      if (!e.target.classList.contains('tel-quitar')) return;
+      e.target.closest('.tel-fila').remove();
+      if (!cont.children.length) cont.insertAdjacentHTML('beforeend', fila({}));
+      actualizarSalas();
+    };
+    salas.onclick = quitar(salas, filaSala);
+    cursos.onclick = quitar(cursos, filaCurso);
+    salas.oninput = salas.onchange = actualizarSalas;
+    cursos.onchange = e => { if (e.target.dataset.campo === 'edificio') actualizarSalas(); };
+    document.getElementById('reu-sala-agregar').onclick = () => { salas.insertAdjacentHTML('beforeend', filaSala({})); actualizarSalas(); };
+    document.getElementById('reu-curso-agregar').onclick = () => { cursos.insertAdjacentHTML('beforeend', filaCurso({})); actualizarSalas(); };
+    actualizarSalas();
+
+    fr.onsubmit = async e => {
+      e.preventDefault();
+      const btn = fr.querySelector('.btn:not(.ghost)');
+      try {
+        const el = fr.elements;
+        if (el.desde.value && el.hasta.value && el.hasta.value < el.desde.value) throw new Error('"Hasta" debe ser después de "Desde"');
+        const reunion = {
+          activo: el.activo.checked ? 'si' : '', titulo: el.titulo.value.trim(), desde: el.desde.value, hasta: el.hasta.value,
+          cursos: leerFilas(cursos).filter(c => c.curso),
+        };
+        if (reunion.activo && !reunion.cursos.length) throw new Error('Agregue al menos un curso con su sala');
+        btn.disabled = true;
+        btn.textContent = 'Guardando…';
+        await API.admin('ajustes', { password, valores: {
+          reunion: JSON.stringify(reunion), salas: JSON.stringify(leerFilas(salas).filter(s => s.sala)),
+        } });
+        toast(reunion.activo ? 'Guardado ✔ · Modo reunión activado' : 'Guardado ✔');
+        await recargar();
+      } catch (err) {
+        toast(err.message, 'err');
+        btn.disabled = false;
+        btn.textContent = 'Guardar';
+      }
+    };
+  }
+
   // ---------- 📸 Instagram: elegir publicaciones (casillas) e historias automáticas ----------
   function vistaInstagram() {
     const historias = (data.historias || []).filter(h => new Date(h.vence).getTime() > Date.now());
@@ -323,7 +443,7 @@
           <legend>🎬 Subir un reel para que se reproduzca solo (con sonido)</legend>
           <p class="note">Por enlace, Instagram solo deja mostrar la portada del reel. Para que se reproduzca solo y
           completo, descárguelo (en el reel: <b>⋯ → Descargar</b> o "Guardar en el teléfono") y súbalo aquí.</p>
-          <label>Archivo del reel (MP4, máx. 25 MB)<input type="file" name="video" accept="video/mp4,video/*" required></label>
+          <label>Archivo del reel (MP4, máx. ${MAX_VIDEO_MB} MB · se sube por partes)<input type="file" name="video" accept="video/mp4,video/*" required></label>
           <label>Mensaje (opcional) · aparece grande al lado del video
             <textarea name="texto" rows="3" placeholder="Ej: ¡Así vivimos la Feria Científica! 🔬"></textarea></label>
           ${SONIDO()}
@@ -391,17 +511,18 @@
       try {
         const archivo = fr.elements.video.files[0];
         if (!archivo) throw new Error('Elija el archivo del reel');
-        if (archivo.size > 25 * 1024 * 1024) throw new Error('El video supera 25 MB. Use uno más corto o súbalo a YouTube.');
+        if (archivo.size > MAX_VIDEO_MB * 1024 * 1024) throw new Error(`El video supera ${MAX_VIDEO_MB} MB. Use uno más corto o súbalo a YouTube.`);
         const el = fr.elements;
         const texto = el.texto.value.trim();
         btn.disabled = true;
-        btn.textContent = 'Subiendo reel… (puede tardar un minuto)';
+        const fileId = await API.subirArchivo(password, archivo, p => (btn.textContent = `Subiendo reel… ${Math.round(p * 100)}%`));
+        btn.textContent = 'Publicando…';
         await API.admin('add', { password, sheet: 'fotos', item: {
           titulo: (texto.split('\n')[0] || 'Reel de Instagram').slice(0, 90), texto,
           formato: 'video', origen: 'instagram', categoria: 'actividades',
           audio: el.audio.checked ? 'si' : 'no', audioFunc: el.audioFunc.checked ? 'si' : 'no',
           vecesAudio: el.vecesAudio.value, publico: el.publico.value,
-        }, image: { data: await aBase64(archivo), mimeType: archivo.type || 'video/mp4', name: archivo.name } });
+        }, image: { fileId, mimeType: archivo.type || 'video/mp4' } });
         toast('Reel publicado ✔');
         await recargar();
       } catch (err) {
@@ -641,7 +762,8 @@
   function vistaPanel() {
     const S = SECCIONES[seccion];
     const lista = (data[seccion] || []).slice().reverse();
-    const cuerpo = seccion === 'ajustes' ? formAjustes() : seccion === 'instagram' ? vistaInstagram() : `
+    const cuerpo = seccion === 'ajustes' ? formAjustes() : seccion === 'instagram' ? vistaInstagram()
+      : seccion === 'reunion' ? formReunion() : `
       <div class="grid">
         <div class="panel ${editando ? 'editando' : ''}"><h2>${editando ? '✏️ Editar publicación' : 'Agregar'}</h2>
           <form id="f-add">${S.form}<button class="btn">${editando ? '💾 Guardar cambios' : 'Publicar'}</button>
@@ -682,6 +804,10 @@
 
     if (seccion === 'instagram') {
       iniciarInstagram();
+      return;
+    }
+    if (seccion === 'reunion') {
+      iniciarReunion();
       return;
     }
 
@@ -807,7 +933,7 @@
           if (!file.files[0]) throw new Error('Seleccione un archivo');
         }
         const f = file && (t === 'imagen' || t === 'archivo') ? file.files[0] : null;
-        if (f && seccion === 'musica' && f.size > 20 * 1024 * 1024) throw new Error('El archivo supera 20 MB');
+        if (f && seccion === 'musica' && f.size > MAX_AUDIO_MB * 1024 * 1024) throw new Error(`El archivo supera ${MAX_AUDIO_MB} MB`);
         btn.disabled = true;
         // ¿YouTube deja reproducir este video fuera de su sitio? (si no, en las pantallas no se verá ni sonará)
         const ytId = (t === 'video' || t === 'enlace' || seccion === 'noticias') && UI.youtubeId(item.url);
@@ -827,9 +953,13 @@
           await recargar();
           return;
         }
-        btn.textContent = f && seccion === 'musica' ? 'Subiendo música… (puede tardar)' : 'Publicando…';
         let image = null;
-        if (f) image = { data: await aBase64(f), mimeType: f.type || 'audio/mpeg', name: f.name };
+        if (f) {
+          // canción MP3: se sube por partes (sirve para archivos grandes)
+          const fileId = await API.subirArchivo(password, f, p => (btn.textContent = `Subiendo música… ${Math.round(p * 100)}%`));
+          image = { fileId, mimeType: f.type || 'audio/mpeg' };
+        }
+        btn.textContent = 'Publicando…';
         await API.admin('add', { password, sheet: seccion, item, image });
         toast('Publicado ✔');
         await recargar();

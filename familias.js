@@ -284,6 +284,11 @@
     if (!ytFrame || e.source !== ytFrame.contentWindow) return;
     let d;
     try { d = JSON.parse(e.data); } catch (err) { return; }
+    // si el reproductor partió en silencio y ya se puede sonar, se le devuelve el sonido
+    if (UI.sonidoPermitido() && (d.event === 'onReady' || (d.info && d.info.muted === true)) && (ytFrame._reintentos = (ytFrame._reintentos || 0) + 1) <= 8) {
+      ytCmd('unMute');
+      aplicarVolumen(vol);
+    }
     if (d.event === 'onReady' || d.event === 'initialDelivery') {
       aplicarVolumen(vol);
       if (listaId(ytFrame.src) && !/embed\/[\w-]{11}\?/.test(ytFrame.src)) ytCmd('setShuffle', [true]);
@@ -331,17 +336,99 @@
     gal._activarSonido();
   }
 
+  // ---------- Modo reunión de apoderados: primero, la sala de cada curso por edificio ----------
+  let principal = () => {};
+  setInterval(() => principal(), 30000); // se activa / desactiva solo según el horario elegido
+
+  // Devuelve true si el modo está activo (y lo muestra); false si hay que mostrar el carrusel
+  function renderReunion(aj) {
+    const r = UI.reunion(aj);
+    const box = document.getElementById('reunion');
+    if (!r.vigente || !r.cursos.length) {
+      if (!box.hidden) {
+        box.hidden = true;
+        box.innerHTML = '';
+        box._firma = '';
+        clearInterval(box._pag);
+        gal.hidden = false;
+      }
+      return false;
+    }
+    if (gal._detener) gal._detener(); // el carrusel se detiene (videos y su sonido)
+    gal.hidden = true;
+    box.hidden = false;
+    const firma = JSON.stringify([r.titulo, r.cursos]);
+    if (box._firma === firma) return true;
+    box._firma = firma;
+    clearInterval(box._pag);
+
+    const edificios = Object.keys(UI.EDIFICIOS).filter(e => r.cursos.some(c => c.edificio === e));
+    const fila = c => `<div class="reu-fila">
+      <b class="reu-curso">${esc(c.curso)}</b>
+      <span class="reu-sala">${esc(UI.nombreSala(c.sala) || 'Sala por confirmar')}</span>
+      ${c.piso ? `<span class="reu-piso">${esc(c.piso)}° piso</span>` : ''}
+    </div>`;
+    box.innerHTML = `
+      <div class="reu-head">
+        <span class="reu-tag">👨‍👩‍👧 Reunión de apoderados</span>
+        ${r.titulo ? `<span class="reu-titulo">${esc(r.titulo)}</span>` : ''}
+      </div>
+      <p class="reu-nota">Busque el curso de su hijo o hija y diríjase a la sala indicada</p>
+      <div class="reu-cols ${edificios.length === 1 ? 'una' : ''}">
+        ${edificios.map(e => `<div class="reu-col reu-${e}">
+          <h3>${UI.EDIFICIOS[e]} <span class="pag"></span></h3>
+          <div class="reu-lista"></div></div>`).join('')}
+      </div>`;
+
+    // cada edificio muestra los cursos que caben y, si son más, avanzan por páginas
+    const cols = [...box.querySelectorAll('.reu-col')].map((col, k) => {
+      const lista = col.querySelector('.reu-lista');
+      const filas = r.cursos.filter(c => c.edificio === edificios[k]).map(fila);
+      let n = filas.length;
+      lista.classList.add('midiendo');
+      const cabe = () => {
+        lista.innerHTML = filas.slice(0, n).join('');
+        return lista.lastElementChild.getBoundingClientRect().bottom <= lista.getBoundingClientRect().bottom + 1;
+      };
+      while (n > 1 && !cabe()) n--;
+      lista.classList.remove('midiendo');
+      const paginas = [];
+      for (let j = 0; j < filas.length; j += n) paginas.push(filas.slice(j, j + n).join(''));
+      return { lista, ind: col.querySelector('.pag'), paginas, p: 0 };
+    });
+    const mostrar = () => cols.forEach(c => {
+      c.lista.innerHTML = c.paginas[c.p];
+      c.lista.classList.remove('pagina-nueva');
+      void c.lista.offsetWidth;
+      c.lista.classList.add('pagina-nueva');
+      c.ind.innerHTML = c.paginas.length > 1 ? c.paginas.map((_, j) => `<i class="${j === c.p ? 'on' : ''}"></i>`).join('') : '';
+    });
+    mostrar();
+    if (cols.some(c => c.paginas.length > 1)) {
+      box._pag = setInterval(() => { cols.forEach(c => (c.p = (c.p + 1) % c.paginas.length)); mostrar(); }, 12000);
+    }
+    return true;
+  }
+
   UI.autoData(data => {
     const aj = UI.ajustes(data);
     renderMensaje(aj.mensajeTexto);
     renderContacto(aj);
     // Actividades del colegio + Educación en el mismo carrusel (el rótulo indica la categoría)
     const fotos = UI.carrusel(data, 'familias');
-    UI.gallery(gal, fotos,
-      { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,
-        perfil: 'familias', onCambio: onCambioVideo },
-      'Actividades del colegio');
+    principal = () => {
+      // Modo reunión de apoderados: ocupa el lugar del carrusel mientras esté activo
+      if (renderReunion(aj)) return;
+      UI.gallery(gal, fotos,
+        { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,
+          perfil: 'familias', onCambio: onCambioVideo },
+        'Actividades del colegio');
+    };
+    principal();
     setMusica(data.musica || []);
+    // en el equipo quedan guardados solo los videos y canciones que siguen publicados
+    API.limpiarMedios((data.fotos || []).filter(f => f.formato === 'video' && f.fileId).map(f => f.fileId)
+      .concat((data.musica || []).filter(m => m.fileId).map(m => m.fileId)));
     const videosConAudio = CFG.VIDEO_CON_SONIDO_FAMILIAS &&
       fotos.some(f => UI.youtubeId(f.url) && f.audio !== 'no');
     if (pistas.length || videosConAudio) UI.pedirSonido(activarSonido);

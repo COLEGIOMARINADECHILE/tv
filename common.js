@@ -242,7 +242,7 @@
           const tam = texto.length < 140 ? 'g' : texto.length < 380 ? 'm' : 'c';
           return `<div class="ph insta ${f.historia ? 'historia' : ''}">
             <div class="ig-fondo" style="background-image:url('${esc(f.url)}')"></div>
-            <div class="ig-foto"><img src="${esc(f.url)}" alt="${esc(f.titulo)}" loading="lazy"></div>
+            <div class="ig-foto"><img src="${esc(f.url)}" alt="${esc(f.titulo)}"></div>
             <div class="ig-resena">
               <span class="ig-logo">📸 ${f.historia ? 'Historia de Instagram' : 'Instagram'}</span>
               ${f.historia ? `<b class="ig-hace">${esc(haceCuanto(f.fecha))}</b>`
@@ -252,7 +252,7 @@
         const yt = youtubeId(f.url);
         const media = yt
           ? `<img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" alt="">` // portada mientras carga
-          : `<img src="${esc(f.url)}" alt="${esc(f.titulo)}" loading="lazy">`;
+          : `<img src="${esc(f.url)}" alt="${esc(f.titulo)}">`; // se cargan todas desde el inicio
         // audio: 'no' lo silencia; vacío o 'si' suena (solo donde opts.sonido lo permite)
         const audio = yt && opts.sonido && audioDe(f);
         return `<div class="ph ${yt ? 'video' : ''}" data-yt="${yt || ''}" data-audio="${audio ? 1 : ''}" data-veces="${esc(f.vecesAudio || '')}">${media}
@@ -276,10 +276,22 @@
       return true;
     };
 
+    // ¿Está lista para mostrarse? (así nunca aparece un recuadro vacío)
+    // - foto: ya cargó · video MP4: ya se descargó · la que falló hace poco se salta un rato
+    const listo = p => {
+      if (p._falla && Date.now() - p._falla < 20 * 60000) return false;
+      if (p.dataset.mp4 && p.dataset.file) return !!p._url;
+      const img = !p.dataset.yt && p.querySelector('.ig-foto img, :scope > img');
+      return !img || (img.complete && img.naturalWidth > 0);
+    };
+    el.querySelectorAll('img').forEach(im => (im.onerror = () => { const p = im.closest('.ph'); if (p) p._falla = Date.now(); }));
+
     const siguiente = () => {
       clearTimeout(el._timer);
       const prev = phs[i];
-      i = (i + 1) % phs.length;
+      // la próxima que esté lista (si ninguna lo está, se sigue con la que corresponde)
+      let saltos = 0;
+      do { i = (i + 1) % phs.length; } while (++saltos < phs.length && !listo(phs[i]));
       const ph = phs[i];
       // solo un video a la vez: se quita el reproductor del anterior
       if (prev && prev !== ph) {
@@ -289,10 +301,12 @@
       document.body.classList.remove('video-activo');
       ph._duracion = 0;
       ph._sonoEstaVez = false;
+      ph._reintentos = 0;
       phs.forEach(p => p.classList.toggle('active', p === ph));
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
       const conAudio = tocaSonido(ph);
       if (ph.dataset.yt) {
+        document.body.classList.add('video-activo'); // pausa los efectos: el TV se dedica al video
         if (!ph.querySelector('iframe')) {
           const origin = location.protocol.startsWith('http') ? '&origin=' + encodeURIComponent(location.origin) : '';
           ph.insertAdjacentHTML('afterbegin', `<iframe allow="autoplay; encrypted-media"
@@ -313,6 +327,14 @@
             src="https://www.instagram.com/${ph.dataset.ig}/embed/${ph.dataset.cap ? 'captioned/' : ''}"></iframe>`;
           ajustarInsta(ph, ph.dataset.cap ? 760 : 560);
         }
+        // si Instagram no responde en 10 s (sin internet, bloqueo), se salta para no mostrar un recuadro vacío
+        ph._medido = false;
+        clearTimeout(ph._igTimer);
+        ph._igTimer = setTimeout(() => {
+          if (ph._medido || phs[i] !== ph) return;
+          ph._falla = Date.now();
+          if (phs.length > 1) siguiente();
+        }, 10000);
         if (phs.length > 1) el._timer = setTimeout(siguiente, opts.seg * 1500);
       } else if (ph.dataset.mp4) {
         // video MP4: se ve completo y pasa al siguiente al terminar
@@ -322,8 +344,6 @@
           v.loop = phs.length === 1;
           v.muted = !conAudio;
           v.onended = () => phs.length > 1 && siguiente();
-          // al partir, un "salto" al mismo instante vuelve a alinear imagen y sonido
-          v.onplaying = () => { v.onplaying = null; setTimeout(() => { if (!v.paused) v.currentTime = v.currentTime; }, 700); };
           v.onerror = () => { avisar(false); if (phs.length > 1) el._timer = setTimeout(siguiente, 3000); };
           try { v.currentTime = 0; } catch (e) {}
           document.body.classList.add('video-activo'); // pausa los efectos: el TV se dedica al video
@@ -336,6 +356,7 @@
           });
         };
         avisar(false);
+        if (!v.getAttribute('src') && ph._url) v.src = ph._url; // ya descargado en segundo plano
         if (v.getAttribute('src')) reproducir();
         else {
           ph.classList.add('cargando');
@@ -411,7 +432,7 @@
         if (!fr || e.source !== fr.contentWindow) return;
         try {
           const d = JSON.parse(e.data);
-          if (d.type === 'MEASURE' && d.details.height > 0) ajustarInsta(ph, d.details.height);
+          if (d.type === 'MEASURE' && d.details.height > 0) { ph._medido = true; ajustarInsta(ph, d.details.height); }
         } catch (err) {}
         return;
       }
@@ -421,6 +442,13 @@
       if (!fr || e.source !== fr.contentWindow) return;
       let d;
       try { d = JSON.parse(e.data); } catch (err) { return; }
+      // Si YouTube partió en silencio (algunos equipos lo hacen) y este video debe sonar, se le devuelve el sonido
+      const actual = phs[i];
+      if (actual._sonoEstaVez && !el._mudo && (d.event === 'onReady' || (d.info && d.info.muted === true)) &&
+          (actual._reintentos = (actual._reintentos || 0) + 1) <= 8) {
+        ytCmd(fr, 'unMute');
+        ytCmd(fr, 'setVolume', [100]);
+      }
       // Al conocer la duración, el video se muestra completo (+5 s de margen)
       if (d.info && d.info.duration > 0 && phs[i] && phs[i].dataset.yt && !phs[i]._duracion) {
         phs[i]._duracion = d.info.duration;
@@ -448,9 +476,21 @@
     };
     window.addEventListener('message', el._onMsg);
     siguiente();
-    // los videos MP4 se van descargando de a uno, para que estén listos cuando les toque
-    phs.map(p => p.dataset.file).filter(Boolean)
-      .reduce((p, id) => p.then(() => API.video(id).catch(() => {})), Promise.resolve());
+    // los videos MP4 se van descargando de a uno; mientras no estén listos, el carrusel los salta
+    phs.filter(p => p.dataset.file)
+      .reduce((cadena, p) => cadena.then(() => API.video(p.dataset.file)
+        .then(url => { p._url = url; p._falla = 0; })
+        .catch(() => { p._falla = Date.now(); })), Promise.resolve());
+
+    // Detener todo (videos, sonido) cuando otra cosa ocupa el recuadro, p. ej. el modo reunión
+    el._detener = () => {
+      clearTimeout(el._timer);
+      el.querySelectorAll('iframe').forEach(f => f.remove());
+      el.querySelectorAll('video').forEach(v => v.pause());
+      document.body.classList.remove('video-activo');
+      avisar(false);
+      el._firma = null; // al volver se arma de nuevo
+    };
   }
 
   // Si el contenido no cabe, se desplaza solo y lento hacia abajo y vuelve arriba.
@@ -579,6 +619,25 @@
     return a;
   }
 
+  // Modo reunión de apoderados (Admin → 👨‍👩‍👧 Reunión): salas de cada edificio y sala de cada curso.
+  // Ajustes "salas" = [{edificio, sala, piso}] · "reunion" = {activo, titulo, desde, hasta, cursos:[{curso, edificio, sala}]}
+  const EDIFICIOS = { matriz: '🏫 Colegio Matriz', menor: '🧒 Ciclo Menor' };
+  const leerJSON = (s, def) => { try { const v = JSON.parse(s); return v && typeof v === 'object' ? v : def; } catch (e) { return def; } };
+  function reunion(aj) {
+    const r = leerJSON(aj.reunion, {});
+    const salas = leerJSON(aj.salas, []);
+    const ahora = Date.now();
+    // activo y, si tiene horario, dentro de él ("desde" / "hasta" opcionales)
+    const vigente = r.activo === 'si' && (!r.desde || Date.parse(r.desde) <= ahora) && (!r.hasta || Date.parse(r.hasta) >= ahora);
+    const cursos = (r.cursos || []).filter(c => c && c.curso).map(c => {
+      const s = salas.find(x => x.edificio === c.edificio && String(x.sala) === String(c.sala));
+      return Object.assign({}, c, { piso: s ? s.piso : '' });
+    });
+    return Object.assign({}, r, { salas, cursos, vigente });
+  }
+  // "12" → "Sala 12" · "Laboratorio" queda igual
+  const nombreSala = s => (/^\d+\s*[A-Za-z]?$/.test(String(s).trim()) ? 'Sala ' + String(s).trim() : String(s || ''));
+
   // Teléfonos guardados en Ajustes: lista JSON [{tipo, nombre, numero}]
   // (acepta también el formato antiguo "Nombre: número" por línea)
   function contactos(valor) {
@@ -673,5 +732,5 @@
     return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, EDIFICIOS, nombreSala, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();
