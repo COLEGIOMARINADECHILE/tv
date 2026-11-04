@@ -38,7 +38,11 @@ public class MainActivity extends Activity {
         "z-index:2147483647!important;background:#000!important;border:0!important';" +
         "document.documentElement.style.overflow='hidden';document.body.style.overflow='hidden';" +
         "if(best.tagName==='VIDEO'&&best.paused){best.play&&best.play().catch(function(){});}}" +
-        "if(n>20)clearInterval(t);},1500);})();";
+        "if(n>20)clearInterval(t);},1500);" +
+        // la señal suele partir en silencio: se le da sonido (y se revisa cada 3 s, p. ej. tras un corte)
+        "setInterval(function(){document.querySelectorAll('video').forEach(function(v){" +
+        "if(v.muted||v.volume<1){v.muted=false;v.volume=1;}if(v.paused&&v.readyState>2){v.play&&v.play().catch(function(){});}});},3000);" +
+        "})();";
 
     private WebView mainWeb;
     private WebView tvWeb;
@@ -95,7 +99,8 @@ public class MainActivity extends Activity {
         WebSettings s = w.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
-        s.setMediaPlaybackRequiresUserGesture(false);
+        s.setMediaPlaybackRequiresUserGesture(false); // videos y música suenan sin tocar nada
+        s.setTextZoom(100); // ignora el "tamaño de letra" del TV: así nada se corta ni se amontona
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
