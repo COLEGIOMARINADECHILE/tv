@@ -641,7 +641,7 @@ body.video-activo .sem-card.importante::after { display: none; }
 .reu-tag { font-size: 3.4vh; font-weight: 800; color: var(--navy-900); background: var(--gold); padding: 0.6vh 1.4vw; border-radius: 99px; }
 .reu-titulo { font-size: 3vh; font-weight: 800; color: #fff; }
 .reu-nota { font-size: 2vh; color: var(--gold-soft); font-weight: 700; }
-.reu-cols { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1.4vw; }
+.reu-cols { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); gap: 1.4vw; }
 .reu-col { min-height: 0; display: flex; flex-direction: column; gap: 1vh; padding: 1.4vh 1vw; border-radius: 1.6vh; background: rgba(255, 255, 255, 0.06); }
 .reu-col h3 { display: flex; align-items: center; gap: 0.8vw; font-size: 2.6vh; color: #fff; padding-bottom: 0.8vh; border-bottom: 2px solid rgba(255, 255, 255, 0.15); }
 .reu-matriz h3 { color: #7cc4ff; }
@@ -655,6 +655,45 @@ body.video-activo .sem-card.importante::after { display: none; }
 .reu-sala { flex: 1; min-width: 0; font-size: 2.6vh; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .reu-piso { flex: none; font-size: 1.9vh; font-weight: 800; padding: 0.4vh 0.8vw; border-radius: 99px; background: #e8eefc; color: #1d4ed8; }
 .reu-menor .reu-piso { background: #fff1d6; color: #b45309; }
+.reu-prebasica h3 { color: #ff9ecf; }
+.reu-prebasica .reu-curso { background: #db2777; }
+.reu-prebasica .reu-piso { background: #ffe4f1; color: #be185d; }
+/* curso sin reunión o cambiado de día: se avisa en lugar de la sala */
+.reu-fila.est-sin { background: #e5e7eb; }
+.reu-fila.est-sin .reu-curso { background: #6b7280; }
+.reu-fila.est-sin .reu-sala { color: #4b5563; }
+.reu-fila.est-cambio { background: #fff4d6; outline: 2px solid #f59e0b; }
+.reu-fila.est-cambio .reu-sala { color: #b45309; white-space: normal; font-size: 2.1vh; line-height: 1.2; }
+/* tres edificios: filas más compactas para que quepan 8 cursos por columna */
+.reu-cols.tres { gap: 0.8vw; }
+.reu-cols.tres .reu-col { padding: 1.1vh 0.6vw; }
+.reu-cols.tres .reu-col h3 { font-size: 2.2vh; }
+.reu-cols.tres .reu-lista { gap: 0.7vh; }
+.reu-cols.tres .reu-fila { gap: 0.5vw; padding: 0.7vh 0.5vw; }
+.reu-cols.tres .reu-curso { min-width: 0; font-size: 1.9vh; padding: 0.5vh 0.5vw; }
+.reu-cols.tres .reu-sala { font-size: 2.1vh; }
+.reu-cols.tres .reu-piso { font-size: 1.6vh; padding: 0.3vh 0.5vw; }
+.reu-cols.tres .est-cambio .reu-sala { font-size: 1.7vh; }
+
+/* En modo reunión: el tablero usa todo el lado izquierdo, la franja de contacto queda solo con teléfonos
+   y las fotos siguen pasando en un recuadro chico a la derecha */
+.modo-reunion .contacto .ct-qrs { display: none; }
+/* teléfonos en una sola franja delgada */
+.modo-reunion .contacto { padding: 0.8vh 1vw; gap: 0.8vw; }
+.modo-reunion .ct-tels { flex-direction: row; align-items: center; gap: 0.8vw; width: 100%; }
+.modo-reunion .ct-titulo { align-self: center; flex: none; }
+.modo-reunion .ct-lista { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6vw; flex: 1; }
+.modo-reunion .ct-tel { padding: 0.5vh 0.5vw; gap: 0.4vw; }
+.modo-reunion .ct-ico { width: 3.4vh; height: 3.4vh; font-size: 1.8vh; }
+.modo-reunion .ct-tel small { font-size: 1.1vh; }
+.modo-reunion .ct-tel b { font-size: 1.9vh; }
+.reu-head .reu-nota { flex-basis: 100%; }
+.modo-reunion .side-logo { display: none; }
+.family-side .mini-fotos { flex: none; aspect-ratio: 16 / 9; width: 100%; height: auto; }
+.family-side .mini-fotos[hidden] { display: none; }
+.family .mini-fotos .caption { font-size: 2vh; padding: 4vh 1vw 1.2vh; }
+.family .mini-fotos .caption small { font-size: 1.3vh; }
+.mini-fotos .dots { display: none; }
 .contacto {
   flex: none; display: flex; align-items: stretch; gap: 1.4vw;
   padding: 1.4vh 1.2vw;

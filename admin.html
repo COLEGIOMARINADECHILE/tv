@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261103b">
+  <link rel="stylesheet" href="styles.css?v=20261103e">
   <style>
     body { overflow: auto; font-size: 15px; }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -68,7 +68,18 @@
     .tel-filas { display: flex; flex-direction: column; gap: 8px; }
     .tel-fila { display: grid; grid-template-columns: 140px 1fr 1fr 40px; gap: 8px; }
     .tel-fila.reu-sala-fila { grid-template-columns: 200px 1fr 160px 40px; }
-    .tel-fila.reu-curso-fila { grid-template-columns: 1fr 200px 1fr 40px; }
+    .tel-fila.reu-curso-fila { grid-template-columns: 1.1fr 170px 1fr 190px 1fr 40px; }
+    /* "¿Cuándo?" oculto conserva su lugar, así las columnas quedan alineadas */
+    .reu-curso-fila [data-campo="cambio"][hidden] { display: block; visibility: hidden; }
+    .reu-bloque { border-color: var(--gold); }
+    .reu-bloque legend { padding: 0 6px; }
+    .reu-nombre { font-weight: 800; font-size: 16px; color: var(--gold); background: transparent; border: 1px dashed var(--gold); border-radius: 8px; padding: 4px 8px; width: 240px; }
+    .reu-rapido { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; padding: 8px; border-radius: 10px; background: rgba(255,255,255,.05); }
+    .reu-rapido span { font-weight: 700; color: var(--gold); font-size: 13px; }
+    .reu-rapido input, .reu-rapido select { width: auto; flex: 1; min-width: 120px; }
+    .reu-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+    .reu-acciones .btn { width: auto; }
+    #reu-nueva { margin: 4px 0 12px; }
     @media (max-width: 640px) { .tel-fila.reu-sala-fila, .tel-fila.reu-curso-fila { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 640px) { .tel-fila { grid-template-columns: 1fr 1fr; } }
     .tel-quitar { border: 1px solid var(--red); background: transparent; color: #ff8b8e; border-radius: 10px; cursor: pointer; font-weight: 800; }
@@ -105,9 +116,9 @@
 </head>
 <body>
   <div class="wrap" id="app"></div>
-  <script src="config.js?v=20261103b"></script>
-  <script src="api.js?v=20261103b"></script>
-  <script src="common.js?v=20261103b"></script>
-  <script src="admin.js?v=20261103b"></script>
+  <script src="config.js?v=20261103e"></script>
+  <script src="api.js?v=20261103e"></script>
+  <script src="common.js?v=20261103e"></script>
+  <script src="admin.js?v=20261103e"></script>
 </body>
 </html>

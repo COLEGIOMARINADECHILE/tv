@@ -619,21 +619,31 @@
     return a;
   }
 
-  // Modo reunión de apoderados (Admin → 👨‍👩‍👧 Reunión): salas de cada edificio y sala de cada curso.
-  // Ajustes "salas" = [{edificio, sala, piso}] · "reunion" = {activo, titulo, desde, hasta, cursos:[{curso, edificio, sala}]}
-  const EDIFICIOS = { matriz: '🏫 Colegio Matriz', menor: '🧒 Ciclo Menor' };
+  // Modo reunión de apoderados (Admin → 👨‍👩‍👧 Reunión): salas de cada edificio y varias reuniones guardadas
+  // (ej. "Básica" y "Media"), cada una con su horario y la sala de cada curso.
+  // Ajustes "salas" = [{edificio, sala, piso}]
+  //         "reuniones" = [{id, nombre, activo, titulo, desde, hasta, cursos:[{curso, edificio, sala, estado, cambio}]}]
+  // estado: '' = con reunión · 'sin' = sin reunión · 'cambio' = cambiada a otro día (cambio = cuándo)
+  const EDIFICIOS = { prebasica: '🧸 Prebásica', menor: '🧒 Ciclo Menor', matriz: '🏫 Colegio Matriz' };
   const leerJSON = (s, def) => { try { const v = JSON.parse(s); return v && typeof v === 'object' ? v : def; } catch (e) { return def; } };
+  // lista de reuniones guardadas (acepta también la versión anterior, de una sola reunión)
+  function reuniones(aj) {
+    const lista = leerJSON(aj.reuniones, null);
+    if (Array.isArray(lista)) return lista;
+    const una = leerJSON(aj.reunion, null);
+    return una && una.cursos ? [Object.assign({ id: 'r1', nombre: 'Reunión' }, una)] : [];
+  }
+  const estaVigente = (r, ahora) => r.activo === 'si' &&
+    (!r.desde || Date.parse(r.desde) <= ahora) && (!r.hasta || Date.parse(r.hasta) >= ahora);
+  // La reunión que se muestra ahora (la primera activa dentro de su horario), con el piso de cada sala
   function reunion(aj) {
-    const r = leerJSON(aj.reunion, {});
     const salas = leerJSON(aj.salas, []);
-    const ahora = Date.now();
-    // activo y, si tiene horario, dentro de él ("desde" / "hasta" opcionales)
-    const vigente = r.activo === 'si' && (!r.desde || Date.parse(r.desde) <= ahora) && (!r.hasta || Date.parse(r.hasta) >= ahora);
+    const r = reuniones(aj).find(x => estaVigente(x, Date.now())) || {};
     const cursos = (r.cursos || []).filter(c => c && c.curso).map(c => {
       const s = salas.find(x => x.edificio === c.edificio && String(x.sala) === String(c.sala));
       return Object.assign({}, c, { piso: s ? s.piso : '' });
     });
-    return Object.assign({}, r, { salas, cursos, vigente });
+    return Object.assign({}, r, { salas, cursos, vigente: !!r.activo });
   }
   // "12" → "Sala 12" · "Laboratorio" queda igual
   const nombreSala = s => (/^\d+\s*[A-Za-z]?$/.test(String(s).trim()) ? 'Sala ' + String(s).trim() : String(s || ''));
@@ -732,5 +742,5 @@
     return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, EDIFICIOS, nombreSala, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, leerJSON, EDIFICIOS, nombreSala, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

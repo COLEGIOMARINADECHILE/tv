@@ -41,17 +41,22 @@
     ],
     // ?demo=1&reunion=1 muestra el modo reunión de apoderados de ejemplo
     ajustesReunion: [
-      { id: 'salas', valor: JSON.stringify([
-        { edificio: 'matriz', sala: '11', piso: '1' }, { edificio: 'matriz', sala: '21', piso: '2' },
-        { edificio: 'matriz', sala: '22', piso: '2' }, { edificio: 'matriz', sala: '31', piso: '3' },
-        { edificio: 'matriz', sala: 'Laboratorio', piso: '3' }, { edificio: 'menor', sala: '1', piso: '' },
-        { edificio: 'menor', sala: '2', piso: '' }, { edificio: 'menor', sala: '3', piso: '' }]) },
-      { id: 'reunion', valor: JSON.stringify({ activo: 'si', titulo: 'Hoy 19:00 hrs', cursos: [
-        { curso: '7° Básico A', edificio: 'matriz', sala: '11' }, { curso: '8° Básico A', edificio: 'matriz', sala: '21' },
-        { curso: '1° Medio A', edificio: 'matriz', sala: '22' }, { curso: '2° Medio A', edificio: 'matriz', sala: '31' },
-        { curso: '3° Medio A', edificio: 'matriz', sala: 'Laboratorio' }, { curso: '4° Medio A', edificio: 'matriz', sala: '31' },
-        { curso: 'Pre-Kínder', edificio: 'menor', sala: '1' }, { curso: 'Kínder', edificio: 'menor', sala: '2' },
-        { curso: '1° Básico A', edificio: 'menor', sala: '3' }] }) },
+      // ejemplo real: Básica = 18 cursos en 3 edificios (un curso sin reunión y otro cambiado de día)
+      { id: 'salas', valor: JSON.stringify(
+        [['prebasica', 'Pre-Kínder', ''], ['prebasica', 'Kínder', '']]
+          .concat([1, 2, 3, 4, 5, 6, 7, 8].map(n => ['menor', String(n), n <= 4 ? '1' : '2']))
+          .concat([11, 12, 13, 14, 21, 22, 23, 24, 31, 32, 33, 34].map(n => ['matriz', String(n), String(n)[0]]))
+          .map(([edificio, sala, piso]) => ({ edificio, sala, piso }))) },
+      { id: 'reuniones', valor: JSON.stringify([
+        { id: 'r1', nombre: 'Básica', activo: 'si', titulo: 'Hoy 19:00 hrs', cursos:
+          [{ curso: 'Pre-Kínder', edificio: 'prebasica', sala: 'Pre-Kínder' }, { curso: 'Kínder', edificio: 'prebasica', sala: 'Kínder' }]
+            .concat([1, 2, 3, 4].flatMap((n, k) => ['A', 'B'].map((l, j) => ({ curso: `${n}° Básico ${l}`, edificio: 'menor', sala: String(k * 2 + j + 1) }))))
+            .concat([5, 6, 7, 8].flatMap((n, k) => ['A', 'B'].map((l, j) => ({ curso: `${n}° Básico ${l}`, edificio: 'matriz', sala: String([11, 12, 13, 14, 21, 22, 23, 24][k * 2 + j]) }))))
+            .map(c => (c.curso === '3° Básico B' ? Object.assign(c, { estado: 'sin' })
+              : c.curso === '6° Básico A' ? Object.assign(c, { estado: 'cambio', cambio: 'jueves 6 nov · 19:00' }) : c)) },
+        { id: 'r2', nombre: 'Media', activo: '', titulo: 'Martes 11 nov · 19:00 hrs', cursos:
+          [1, 2, 3, 4].flatMap((n, k) => ['A', 'B', 'C'].map((l, j) => ({ curso: `${n}° Medio ${l}`, edificio: 'matriz', sala: String([21, 22, 23, 24, 31, 32, 33, 34, 11, 12, 13, 14][k * 3 + j]) }))) },
+      ]) },
     ],
     historias: [
       { id: 'h1', url: 'https://picsum.photos/seed/marinah1/1080/1920', fecha: new Date(Date.now() - 3 * 3600e3).toISOString(),
@@ -96,8 +101,14 @@
 
   async function cargarDatos() {
     if (MODO_DEMO) {
-      return /[?&]reunion=1/.test(location.search)
-        ? Object.assign({}, DEMO, { ajustes: (DEMO.ajustes || []).concat(DEMO.ajustesReunion) }) : DEMO;
+      // ?reunion=1 → ejemplo "Básica" (3 edificios) · ?reunion=2 → ejemplo "Media" (12 cursos)
+      const modo = (location.search.match(/[?&]reunion=(\d)/) || [])[1];
+      if (!modo) return DEMO;
+      const aj = DEMO.ajustesReunion.map(a => {
+        if (a.id !== 'reuniones' || modo !== '2') return a;
+        return { id: a.id, valor: JSON.stringify(JSON.parse(a.valor).map(r => Object.assign({}, r, { activo: r.id === 'r2' ? 'si' : '' }))) };
+      });
+      return Object.assign({}, DEMO, { ajustes: (DEMO.ajustes || []).concat(aj) });
     }
     try {
       const r = await fetch(CFG.API_URL + '?t=' + Date.now());

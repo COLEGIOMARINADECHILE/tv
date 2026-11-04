@@ -301,7 +301,7 @@
       </form></div>`;
   }
 
-  // ---------- 👨‍👩‍👧 Modo reunión de apoderados: salas por edificio y sala de cada curso ----------
+  // ---------- 👨‍👩‍👧 Modo reunión de apoderados: salas por edificio y varias reuniones guardadas ----------
   const opcEdificio = sel => Object.entries(UI.EDIFICIOS)
     .map(([v, t]) => `<option value="${v}" ${(sel || 'matriz') === v ? 'selected' : ''}>${t}</option>`).join('');
   const filaSala = s => `<div class="tel-fila reu-sala-fila">
@@ -311,10 +311,14 @@
       `<option value="${p}" ${String(s.piso) === String(p) ? 'selected' : ''}>${p}° piso</option>`).join('')}</select>
     <button type="button" class="tel-quitar" title="Quitar">✕</button>
   </div>`;
+  // estado de cada curso: con reunión · sin reunión · cambiada a otro día (y cuándo)
+  const ESTADOS = [['', '✅ Con reunión'], ['sin', '🚫 Sin reunión'], ['cambio', '📅 Cambiada a otro día']];
   const filaCurso = c => `<div class="tel-fila reu-curso-fila">
-    <input data-campo="curso" placeholder="Curso (ej. 1° Básico A)" value="${esc(c.curso || '')}">
+    <input data-campo="curso" placeholder="Curso (ej. 5° Básico A)" value="${esc(c.curso || '')}">
     <select data-campo="edificio">${opcEdificio(c.edificio)}</select>
     <select data-campo="sala" data-valor="${esc(c.sala || '')}"></select>
+    <select data-campo="estado">${ESTADOS.map(([v, t]) => `<option value="${v}" ${(c.estado || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+    <input data-campo="cambio" placeholder="¿Cuándo? (ej. jueves 6 nov 19:00)" value="${esc(c.cambio || '')}" ${c.estado === 'cambio' ? '' : 'hidden'}>
     <button type="button" class="tel-quitar" title="Quitar">✕</button>
   </div>`;
   // los datos de una lista de filas → [{campo: valor}]
@@ -324,95 +328,164 @@
     return o;
   });
 
+  // Una reunión guardada (ej. "Básica" o "Media") con su horario y sus cursos
+  const bloqueReunion = r => `<fieldset class="grupo reu-bloque" data-id="${esc(r.id || 'r' + Date.now())}">
+    <legend><input class="reu-nombre" value="${esc(r.nombre || '')}" placeholder="Nombre (ej. Básica)"></legend>
+    <label class="check"><input type="checkbox" data-r="activo" ${r.activo === 'si' ? 'checked' : ''}>
+      <b>Activar esta reunión</b> (la pantalla Familias la muestra en el horario indicado)</label>
+    <label>Título / horario que se ve en pantalla<input data-r="titulo" value="${esc(r.titulo || '')}" placeholder="Ej: Martes 11 nov · 19:00 hrs"></label>
+    <div class="dos">
+      <label>Mostrar desde (opcional)<input type="datetime-local" data-r="desde" value="${esc(r.desde || '')}"></label>
+      <label>Hasta (opcional)<input type="datetime-local" data-r="hasta" value="${esc(r.hasta || '')}"></label>
+    </div>
+    <div class="etiqueta">📋 Cursos y salas</div>
+    <div class="tel-filas reu-cursos">${(r.cursos && r.cursos.length ? r.cursos : [{}]).map(filaCurso).join('')}</div>
+    <div class="reu-rapido">
+      <span>⚡ Agregar varios:</span>
+      <input class="rap-nivel" placeholder="Nivel (ej. 5° Básico)">
+      <input class="rap-letras" placeholder="Letras (ej. A B C)">
+      <select class="rap-edificio">${opcEdificio('matriz')}</select>
+      <button type="button" class="btn ghost rap-agregar">➕ Agregar</button>
+    </div>
+    <div class="reu-acciones">
+      <button type="button" class="btn ghost reu-curso-agregar">➕ Agregar un curso</button>
+      <button type="button" class="btn ghost reu-duplicar">📄 Duplicar reunión</button>
+      <button type="button" class="btn ghost reu-eliminar">🗑️ Eliminar reunión</button>
+    </div>
+  </fieldset>`;
+
   function formReunion() {
-    const r = UI.reunion(UI.ajustes(data));
-    const estado = r.vigente ? '🟢 <b>Se está mostrando ahora</b> en la pantalla Familias.'
-      : r.activo === 'si' ? '🕒 Activado: se mostrará en el horario indicado.' : '⚪ Desactivado: la pantalla Familias muestra lo de siempre.';
-    return `<div class="panel" style="max-width:980px">
+    const aj = UI.ajustes(data);
+    const lista = UI.reuniones(aj);
+    const salas = UI.leerJSON(aj.salas, []);
+    const ahora = UI.reunion(aj);
+    const estado = ahora.vigente ? `🟢 <b>Se está mostrando ahora: "${esc(ahora.nombre || ahora.titulo || 'Reunión')}"</b> en la pantalla Familias.`
+      : '⚪ Ninguna reunión se está mostrando ahora: la pantalla Familias muestra lo de siempre.';
+    return `<div class="panel" style="max-width:1100px">
       <h2>👨‍👩‍👧 Modo reunión de apoderados</h2>
       <p class="note">${estado}</p>
       <form id="f-reunion">
         <fieldset class="grupo">
-          <legend>▶️ Activar</legend>
-          <label class="check"><input type="checkbox" name="activo" value="si" ${r.activo === 'si' ? 'checked' : ''}>
-            <b>Mostrar el modo reunión en la pantalla Familias</b> (en lugar de las fotos; lo demás se mantiene)</label>
-          <label>Título / horario<input name="titulo" value="${esc(r.titulo || '')}" placeholder="Ej: Hoy 19:00 hrs"></label>
-          <div class="dos">
-            <label>Desde (opcional)<input type="datetime-local" name="desde" value="${esc(r.desde || '')}"></label>
-            <label>Hasta (opcional)<input type="datetime-local" name="hasta" value="${esc(r.hasta || '')}"></label>
-          </div>
-          <p class="note">Con "Desde" y "Hasta" se muestra solo en ese horario y luego vuelve todo a lo normal (la casilla debe estar marcada).</p>
-        </fieldset>
-        <fieldset class="grupo">
-          <legend>🏫 Salas de cada edificio (se ingresan una vez)</legend>
-          <div class="tel-filas" id="reu-salas">${(r.salas.length ? r.salas : [{}]).map(filaSala).join('')}</div>
+          <legend>🏫 Salas de cada edificio (se ingresan una vez y sirven para todas las reuniones)</legend>
+          <div class="tel-filas" id="reu-salas">${(salas.length ? salas : [{}]).map(filaSala).join('')}</div>
           <button type="button" class="btn ghost" id="reu-sala-agregar">➕ Agregar sala</button>
           <p class="note">Indique el piso cuando el edificio tiene más de uno (algunos tienen 3 pisos, otros solo 1).</p>
         </fieldset>
-        <fieldset class="grupo">
-          <legend>📋 Sala de cada curso</legend>
-          <div class="tel-filas" id="reu-cursos">${(r.cursos.length ? r.cursos : [{}]).map(filaCurso).join('')}</div>
-          <button type="button" class="btn ghost" id="reu-curso-agregar">➕ Agregar curso</button>
-          <p class="note">Elija el edificio (Matriz o Ciclo Menor) y luego una de sus salas; el piso se muestra solo.</p>
-        </fieldset>
-        <button class="btn">Guardar</button>
+        <p class="note">Guarde una reunión por cada día (ej. <b>Básica</b> de Pre-Kínder a 8° y <b>Media</b> de 1° a 4° Medio).
+        Si un curso no tiene reunión o se cambió de día, elija su estado: en la pantalla se avisa en vez de la sala.</p>
+        <div id="reu-lista">${(lista.length ? lista : [{ nombre: 'Básica' }]).map(bloqueReunion).join('')}</div>
+        <button type="button" class="btn ghost" id="reu-nueva">➕ Nueva reunión (otro día)</button>
+        <button class="btn">💾 Guardar todo</button>
       </form></div>`;
   }
 
   function iniciarReunion() {
     const fr = document.getElementById('f-reunion');
     const salas = document.getElementById('reu-salas');
-    const cursos = document.getElementById('reu-cursos');
+    const lista = document.getElementById('reu-lista');
     // cada curso solo puede elegir salas del edificio que se le asignó
     const actualizarSalas = () => {
-      const lista = leerFilas(salas).filter(s => s.sala);
-      cursos.querySelectorAll('.reu-curso-fila').forEach(f => {
+      const todas = leerFilas(salas).filter(s => s.sala);
+      lista.querySelectorAll('.reu-curso-fila').forEach(f => {
         const ed = f.querySelector('[data-campo="edificio"]').value;
         const sel = f.querySelector('[data-campo="sala"]');
         const valor = sel.value || sel.dataset.valor || '';
-        const propias = lista.filter(s => s.edificio === ed);
+        const propias = todas.filter(s => s.edificio === ed);
         sel.innerHTML = `<option value="">${propias.length ? 'Elija la sala…' : 'Primero agregue salas de este edificio'}</option>` +
           propias.map(s => `<option value="${esc(s.sala)}">${esc(UI.nombreSala(s.sala))}${s.piso ? ` · ${s.piso}° piso` : ''}</option>`).join('');
         sel.value = propias.some(s => s.sala === valor) ? valor : '';
         sel.dataset.valor = sel.value;
+        // "¿Cuándo?" solo cuando se cambió de día
+        f.querySelector('[data-campo="cambio"]').hidden = f.querySelector('[data-campo="estado"]').value !== 'cambio';
       });
     };
-    const quitar = (cont, fila) => e => {
+
+    salas.onclick = e => {
       if (!e.target.classList.contains('tel-quitar')) return;
       e.target.closest('.tel-fila').remove();
-      if (!cont.children.length) cont.insertAdjacentHTML('beforeend', fila({}));
+      if (!salas.children.length) salas.insertAdjacentHTML('beforeend', filaSala({}));
       actualizarSalas();
     };
-    salas.onclick = quitar(salas, filaSala);
-    cursos.onclick = quitar(cursos, filaCurso);
     salas.oninput = salas.onchange = actualizarSalas;
-    cursos.onchange = e => { if (e.target.dataset.campo === 'edificio') actualizarSalas(); };
     document.getElementById('reu-sala-agregar').onclick = () => { salas.insertAdjacentHTML('beforeend', filaSala({})); actualizarSalas(); };
-    document.getElementById('reu-curso-agregar').onclick = () => { cursos.insertAdjacentHTML('beforeend', filaCurso({})); actualizarSalas(); };
+
+    lista.onchange = e => {
+      if (['edificio', 'estado'].includes(e.target.dataset.campo)) actualizarSalas();
+    };
+    lista.onclick = e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const bloque = b.closest('.reu-bloque');
+      const cursos = bloque.querySelector('.reu-cursos');
+      if (b.classList.contains('tel-quitar')) {
+        b.closest('.tel-fila').remove();
+        if (!cursos.children.length) cursos.insertAdjacentHTML('beforeend', filaCurso({}));
+      } else if (b.classList.contains('reu-curso-agregar')) {
+        cursos.insertAdjacentHTML('beforeend', filaCurso({}));
+      } else if (b.classList.contains('rap-agregar')) {
+        // "5° Básico" + "A B" → 5° Básico A, 5° Básico B (en el edificio elegido)
+        const nivel = bloque.querySelector('.rap-nivel').value.trim();
+        const letras = bloque.querySelector('.rap-letras').value.split(/[\s,;y]+/i).filter(Boolean);
+        const edificio = bloque.querySelector('.rap-edificio').value;
+        if (!nivel) return toast('Escriba el nivel, por ejemplo 5° Básico', 'err');
+        // la fila vacía del comienzo se reemplaza
+        [...cursos.children].forEach(f => { if (!f.querySelector('[data-campo="curso"]').value.trim()) f.remove(); });
+        (letras.length ? letras : ['']).forEach(l => cursos.insertAdjacentHTML('beforeend',
+          filaCurso({ curso: (nivel + ' ' + l.toUpperCase()).trim(), edificio })));
+        bloque.querySelector('.rap-letras').value = '';
+      } else if (b.classList.contains('reu-duplicar')) {
+        const copia = leerBloque(bloque);
+        copia.id = 'r' + Date.now();
+        copia.nombre = (copia.nombre || 'Reunión') + ' (copia)';
+        copia.activo = '';
+        bloque.insertAdjacentHTML('afterend', bloqueReunion(copia));
+      } else if (b.classList.contains('reu-eliminar')) {
+        if (!confirm('¿Eliminar esta reunión? (se borra al pulsar Guardar todo)')) return;
+        bloque.remove();
+        if (!lista.children.length) lista.insertAdjacentHTML('beforeend', bloqueReunion({ nombre: 'Reunión' }));
+      } else return;
+      actualizarSalas();
+    };
+    document.getElementById('reu-nueva').onclick = () => {
+      lista.insertAdjacentHTML('beforeend', bloqueReunion({ nombre: 'Media' }));
+      actualizarSalas();
+      lista.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
     actualizarSalas();
+
+    // datos de un bloque de reunión
+    function leerBloque(bloque) {
+      const v = k => bloque.querySelector(`[data-r="${k}"]`);
+      return {
+        id: bloque.dataset.id, nombre: bloque.querySelector('.reu-nombre').value.trim(),
+        activo: v('activo').checked ? 'si' : '', titulo: v('titulo').value.trim(), desde: v('desde').value, hasta: v('hasta').value,
+        cursos: leerFilas(bloque.querySelector('.reu-cursos')).filter(c => c.curso)
+          .map(c => (c.estado === 'cambio' ? c : Object.assign(c, { cambio: '' }))),
+      };
+    }
 
     fr.onsubmit = async e => {
       e.preventDefault();
       const btn = fr.querySelector('.btn:not(.ghost)');
       try {
-        const el = fr.elements;
-        if (el.desde.value && el.hasta.value && el.hasta.value < el.desde.value) throw new Error('"Hasta" debe ser después de "Desde"');
-        const reunion = {
-          activo: el.activo.checked ? 'si' : '', titulo: el.titulo.value.trim(), desde: el.desde.value, hasta: el.hasta.value,
-          cursos: leerFilas(cursos).filter(c => c.curso),
-        };
-        if (reunion.activo && !reunion.cursos.length) throw new Error('Agregue al menos un curso con su sala');
+        const reuniones = [...lista.querySelectorAll('.reu-bloque')].map(leerBloque);
+        reuniones.forEach(r => {
+          const n = r.nombre || 'sin nombre';
+          if (r.desde && r.hasta && r.hasta < r.desde) throw new Error(`Reunión "${n}": "Hasta" debe ser después de "Desde"`);
+          if (r.activo && !r.cursos.length) throw new Error(`Reunión "${n}": agregue al menos un curso`);
+        });
         btn.disabled = true;
         btn.textContent = 'Guardando…';
         await API.admin('ajustes', { password, valores: {
-          reunion: JSON.stringify(reunion), salas: JSON.stringify(leerFilas(salas).filter(s => s.sala)),
+          reuniones: JSON.stringify(reuniones), salas: JSON.stringify(leerFilas(salas).filter(s => s.sala)),
+          reunion: '', // formato anterior (una sola reunión): ya no se usa
         } });
-        toast(reunion.activo ? 'Guardado ✔ · Modo reunión activado' : 'Guardado ✔');
+        toast('Guardado ✔');
         await recargar();
       } catch (err) {
         toast(err.message, 'err');
         btn.disabled = false;
-        btn.textContent = 'Guardar';
+        btn.textContent = '💾 Guardar todo';
       }
     };
   }

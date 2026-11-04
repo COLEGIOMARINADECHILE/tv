@@ -340,10 +340,13 @@
   let principal = () => {};
   setInterval(() => principal(), 30000); // se activa / desactiva solo según el horario elegido
 
-  // Devuelve true si el modo está activo (y lo muestra); false si hay que mostrar el carrusel
-  function renderReunion(aj) {
+  // Devuelve true si el modo está activo (y lo muestra); false si hay que mostrar el carrusel.
+  // Mientras está activo, las fotos siguen pasando en un recuadro más chico al costado.
+  const galMini = document.getElementById('gal-mini');
+  function renderReunion(aj, fotos) {
     const r = UI.reunion(aj);
     const box = document.getElementById('reunion');
+    const reacomodarFechas = () => ultimasFechas && setTimeout(() => renderFechas(...ultimasFechas), 50);
     if (!r.vigente || !r.cursos.length) {
       if (!box.hidden) {
         box.hidden = true;
@@ -351,30 +354,51 @@
         box._firma = '';
         clearInterval(box._pag);
         gal.hidden = false;
+        if (galMini._detener) galMini._detener();
+        galMini.hidden = true;
+        document.body.classList.remove('modo-reunion');
+        reacomodarFechas();
       }
       return false;
     }
-    if (gal._detener) gal._detener(); // el carrusel se detiene (videos y su sonido)
+    if (gal._detener) gal._detener(); // el carrusel grande se detiene (videos y su sonido)
     gal.hidden = true;
     box.hidden = false;
+    if (!document.body.classList.contains('modo-reunion')) {
+      document.body.classList.add('modo-reunion');
+      reacomodarFechas();
+    }
+    // fotos al costado: solo imágenes (sin videos ni sonido, para no distraer)
+    const soloFotos = fotos.filter(f => f.url && !UI.youtubeId(f.url) && !UI.instagramRuta(f.url) && f.formato !== 'video')
+      .map(f => ({ titulo: f.titulo, url: f.url, etiqueta: f.historia ? 'Instagram' : f.etiqueta }));
+    galMini.hidden = !soloFotos.length;
+    if (soloFotos.length) {
+      UI.gallery(galMini, soloFotos, { seg: 8, maxVideo: 0, sonido: false, perfil: 'mini' }, 'Actividades del colegio');
+    }
+
     const firma = JSON.stringify([r.titulo, r.cursos]);
     if (box._firma === firma) return true;
     box._firma = firma;
     clearInterval(box._pag);
 
     const edificios = Object.keys(UI.EDIFICIOS).filter(e => r.cursos.some(c => c.edificio === e));
-    const fila = c => `<div class="reu-fila">
+    // cada columna tan ancha como cursos tiene (un edificio con 2 cursos no ocupa lo mismo que uno con 8)
+    const anchos = edificios.map(e => `minmax(0,${Math.max(r.cursos.filter(c => c.edificio === e).length, 4)}fr)`).join(' ');
+    // cada curso: su sala (y piso) o, si cambió, el aviso
+    const fila = c => `<div class="reu-fila ${c.estado ? 'est-' + esc(c.estado) : ''}">
       <b class="reu-curso">${esc(c.curso)}</b>
-      <span class="reu-sala">${esc(UI.nombreSala(c.sala) || 'Sala por confirmar')}</span>
-      ${c.piso ? `<span class="reu-piso">${esc(c.piso)}° piso</span>` : ''}
+      ${c.estado === 'sin' ? '<span class="reu-sala aviso">🚫 Sin reunión</span>'
+        : c.estado === 'cambio' ? `<span class="reu-sala aviso">📅 Cambiada${c.cambio ? ': ' + esc(c.cambio) : ' a otro día'}</span>`
+        : `<span class="reu-sala">${esc(UI.nombreSala(c.sala) || 'Sala por confirmar')}</span>
+          ${c.piso ? `<span class="reu-piso">${esc(c.piso)}° piso</span>` : ''}`}
     </div>`;
     box.innerHTML = `
       <div class="reu-head">
         <span class="reu-tag">👨‍👩‍👧 Reunión de apoderados</span>
         ${r.titulo ? `<span class="reu-titulo">${esc(r.titulo)}</span>` : ''}
+        <span class="reu-nota">Busque el curso de su hijo o hija y diríjase a la sala indicada</span>
       </div>
-      <p class="reu-nota">Busque el curso de su hijo o hija y diríjase a la sala indicada</p>
-      <div class="reu-cols ${edificios.length === 1 ? 'una' : ''}">
+      <div class="reu-cols ${['', 'una', 'dos', 'tres'][edificios.length]}" style="grid-template-columns:${anchos}">
         ${edificios.map(e => `<div class="reu-col reu-${e}">
           <h3>${UI.EDIFICIOS[e]} <span class="pag"></span></h3>
           <div class="reu-lista"></div></div>`).join('')}
@@ -418,7 +442,7 @@
     const fotos = UI.carrusel(data, 'familias');
     principal = () => {
       // Modo reunión de apoderados: ocupa el lugar del carrusel mientras esté activo
-      if (renderReunion(aj)) return;
+      if (renderReunion(aj, fotos)) return;
       UI.gallery(gal, fotos,
         { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,
           perfil: 'familias', onCambio: onCambioVideo },
