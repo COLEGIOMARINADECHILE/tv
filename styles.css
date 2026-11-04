@@ -652,10 +652,18 @@ body.video-activo .sem-card.importante::after { display: none; }
 .reu-fila { display: flex; align-items: center; gap: 0.9vw; padding: 1vh 0.9vw; border-radius: 1.2vh; background: #fff; color: var(--navy-900); }
 .reu-curso { flex: none; min-width: 9vw; text-align: center; font-size: 2.4vh; font-weight: 800; color: #fff; padding: 0.6vh 0.8vw; border-radius: 1vh; background: #1d4ed8; }
 .reu-menor .reu-curso { background: #d97706; }
-.reu-sala { flex: 1; min-width: 0; font-size: 2.6vh; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* nada se corta: si la sala no cabe al lado del curso, baja completa a la línea siguiente */
+.reu-fila { flex-wrap: wrap; row-gap: 0.4vh; }
+.reu-sala { flex: 1 0 auto; max-width: 100%; font-size: 2.6vh; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+/* "Cambiada…": en su propia línea, bajo el curso, para leerse completo */
+.reu-fila.est-cambio .reu-sala.aviso { flex-basis: 100%; }
 .reu-piso { flex: none; font-size: 1.9vh; font-weight: 800; padding: 0.4vh 0.8vw; border-radius: 99px; background: #e8eefc; color: #1d4ed8; }
 .reu-menor .reu-piso { background: #fff1d6; color: #b45309; }
 .reu-prebasica h3 { color: #ff9ecf; }
+/* horario de cada edificio, destacado junto a su nombre */
+.reu-col h3 { flex-wrap: wrap; row-gap: 0.5vh; }
+.reu-hora { font-size: 2.1vh; font-weight: 800; color: var(--navy-900); background: var(--gold); padding: 0.3vh 0.7vw; border-radius: 99px; white-space: nowrap; }
+.reu-cols:is(.dos, .tres) .reu-hora { font-size: 1.8vh; padding: 0.25vh 0.5vw; }
 .reu-prebasica .reu-curso { background: #db2777; }
 .reu-prebasica .reu-piso { background: #ffe4f1; color: #be185d; }
 /* curso sin reunión o cambiado de día: se avisa en lugar de la sala */
@@ -663,17 +671,17 @@ body.video-activo .sem-card.importante::after { display: none; }
 .reu-fila.est-sin .reu-curso { background: #6b7280; }
 .reu-fila.est-sin .reu-sala { color: #4b5563; }
 .reu-fila.est-cambio { background: #fff4d6; outline: 2px solid #f59e0b; }
-.reu-fila.est-cambio .reu-sala { color: #b45309; white-space: normal; font-size: 2.1vh; line-height: 1.2; }
-/* tres edificios: filas más compactas para que quepan 8 cursos por columna */
-.reu-cols.tres { gap: 0.8vw; }
-.reu-cols.tres .reu-col { padding: 1.1vh 0.6vw; }
-.reu-cols.tres .reu-col h3 { font-size: 2.2vh; }
-.reu-cols.tres .reu-lista { gap: 0.7vh; }
-.reu-cols.tres .reu-fila { gap: 0.5vw; padding: 0.7vh 0.5vw; }
-.reu-cols.tres .reu-curso { min-width: 0; font-size: 1.9vh; padding: 0.5vh 0.5vw; }
-.reu-cols.tres .reu-sala { font-size: 2.1vh; }
-.reu-cols.tres .reu-piso { font-size: 1.6vh; padding: 0.3vh 0.5vw; }
-.reu-cols.tres .est-cambio .reu-sala { font-size: 1.7vh; }
+.reu-fila.est-cambio .reu-sala { color: #b45309; font-size: 2.1vh; line-height: 1.2; }
+/* dos o tres grupos: filas más compactas para que quepan 8 cursos por columna */
+.reu-cols:is(.dos, .tres) { gap: 0.8vw; }
+.reu-cols:is(.dos, .tres) .reu-col { padding: 1.1vh 0.6vw; }
+.reu-cols:is(.dos, .tres) .reu-col h3 { font-size: 2.2vh; }
+.reu-cols:is(.dos, .tres) .reu-lista { gap: 0.55vh; }
+.reu-cols:is(.dos, .tres) .reu-fila { gap: 0.5vw; row-gap: 0.25vh; padding: 0.55vh 0.5vw; }
+.reu-cols:is(.dos, .tres) .reu-curso { min-width: 0; font-size: 1.9vh; padding: 0.5vh 0.5vw; }
+.reu-cols:is(.dos, .tres) .reu-sala { font-size: 2.1vh; }
+.reu-cols:is(.dos, .tres) .reu-piso { font-size: 1.6vh; padding: 0.3vh 0.5vw; }
+.reu-cols:is(.dos, .tres) .est-cambio .reu-sala { font-size: 1.7vh; }
 
 /* En modo reunión: el tablero usa todo el lado izquierdo, la franja de contacto queda solo con teléfonos
    y las fotos siguen pasando en un recuadro chico a la derecha */
@@ -920,6 +928,7 @@ body.video-activo .sem-card.importante::after { display: none; }
 .home h2 { font-size: 2.4vh; color: var(--gold); letter-spacing: 0.45em; text-transform: uppercase; margin-top: 0.6vh; }
 .home .choose { margin-top: 5vh; font-size: 2vh; color: var(--muted); }
 .profiles { display: flex; gap: 2.4vw; justify-content: center; margin-top: 2.4vh; }
+.profiles[hidden] { display: none; }
 .profile {
   width: 24vw; padding: 4vh 2vw; border-radius: 2.4vh;
   background: var(--glass); border: 3px solid var(--line);

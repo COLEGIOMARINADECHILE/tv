@@ -13,9 +13,15 @@
   const MAX_VIDEO_MB = 200;
   const MAX_AUDIO_MB = 100;
 
+  // En qué edificio se muestra en las pantallas Familias (cada TV Familias elige su espacio al abrirse)
+  const ESPACIO_SEL = `<label>🏫 Espacio en pantallas Familias
+    <select name="espacio"><option value="">Todos los edificios</option>
+    <option value="matriz">🏫 Edificio Matriz (Prebásica y 5° Básico a 4° Medio)</option>
+    <option value="menor">🧒 Edificio Ciclo Menor (1° a 4° Básico)</option></select></label>`;
   const PUBLICO = `<label>Mostrar a
     <select name="publico"><option value="ambos">Funcionarios y familias</option>
-    <option value="funcionarios">Solo funcionarios</option><option value="familias">Solo familias</option></select></label>`;
+    <option value="funcionarios">Solo funcionarios</option><option value="familias">Solo familias</option></select></label>
+    ${ESPACIO_SEL}`;
 
   // Cuántas veces al día suena un video (para no saturar)
   const OPC_VECES = [['', 'Siempre'], ['1', '1 vez al día'], ['2', '2 veces al día'], ['3', '3 veces al día'],
@@ -155,7 +161,7 @@
         <p class="note">Para un <b>período</b> (ej. del 2 de noviembre a las 14:00 hasta el 30 de noviembre) complete "Hasta".
         Mientras esté vigente se muestra "🟢 Disponible ahora" con los días que quedan, y desaparece al terminar.</p>
         <label>Detalle<input name="descripcion" placeholder="Ej: En la página del colegio o en secretaría"></label>
-        ${selectorIconos('📅')}${IMPORTANTE}`,
+        ${selectorIconos('📅')}${IMPORTANTE}${ESPACIO_SEL}`,
       linea: f => [(f.importante === 'si' ? '⭐ ' : '') + f.titulo, `${f.fecha}${f.hora ? ' ' + f.hora : ''}${f.fechaFin ? ' → ' + f.fechaFin + (f.horaFin ? ' ' + f.horaFin : '') : ''} · ${f.descripcion || ''}`],
       ico: f => f.icono || '📅',
       extra: filaImportante,
@@ -333,7 +339,10 @@
     <legend><input class="reu-nombre" value="${esc(r.nombre || '')}" placeholder="Nombre (ej. Básica)"></legend>
     <label class="check"><input type="checkbox" data-r="activo" ${r.activo === 'si' ? 'checked' : ''}>
       <b>Activar esta reunión</b> (la pantalla Familias la muestra en el horario indicado)</label>
-    <label>Título / horario que se ve en pantalla<input data-r="titulo" value="${esc(r.titulo || '')}" placeholder="Ej: Martes 11 nov · 19:00 hrs"></label>
+    <label>Título que se ve en pantalla<input data-r="titulo" value="${esc(r.titulo || '')}" placeholder="Ej: Martes 11 de noviembre"></label>
+    <div class="etiqueta">🕒 Horario de cada edificio (déjelo vacío si ese edificio no tiene reunión)</div>
+    <div class="reu-horas">${Object.entries(UI.EDIFICIOS).map(([e, nombre]) => `<label>${nombre}
+      <input type="time" data-hora="${e}" value="${esc((r.horas || {})[e] || '')}"></label>`).join('')}</div>
     <div class="dos">
       <label>Mostrar desde (opcional)<input type="datetime-local" data-r="desde" value="${esc(r.desde || '')}"></label>
       <label>Hasta (opcional)<input type="datetime-local" data-r="hasta" value="${esc(r.hasta || '')}"></label>
@@ -369,7 +378,9 @@
           <legend>🏫 Salas de cada edificio (se ingresan una vez y sirven para todas las reuniones)</legend>
           <div class="tel-filas" id="reu-salas">${(salas.length ? salas : [{}]).map(filaSala).join('')}</div>
           <button type="button" class="btn ghost" id="reu-sala-agregar">➕ Agregar sala</button>
-          <p class="note">Indique el piso cuando el edificio tiene más de uno (algunos tienen 3 pisos, otros solo 1).</p>
+          <p class="note">Indique el piso cuando el edificio tiene más de uno (algunos tienen 3 pisos, otros solo 1).
+          <b>Prebásica</b> está en el Edificio Matriz, pero va aparte para tener su propio horario de reunión:
+          se muestra en los TV del <b>Edificio Matriz</b> (y en el General).</p>
         </fieldset>
         <p class="note">Guarde una reunión por cada día (ej. <b>Básica</b> de Pre-Kínder a 8° y <b>Media</b> de 1° a 4° Medio).
         Si un curso no tiene reunión o se cambió de día, elija su estado: en la pantalla se avisa en vez de la sala.</p>
@@ -459,6 +470,8 @@
       return {
         id: bloque.dataset.id, nombre: bloque.querySelector('.reu-nombre').value.trim(),
         activo: v('activo').checked ? 'si' : '', titulo: v('titulo').value.trim(), desde: v('desde').value, hasta: v('hasta').value,
+        // hora de cada edificio (ej. Prebásica 17:30, Ciclo Menor 18:00, Matriz 19:00)
+        horas: Object.fromEntries([...bloque.querySelectorAll('[data-hora]')].map(i => [i.dataset.hora, i.value]).filter(([, h]) => h)),
         cursos: leerFilas(bloque.querySelector('.reu-cursos')).filter(c => c.curso)
           .map(c => (c.estado === 'cambio' ? c : Object.assign(c, { cambio: '' }))),
       };
@@ -594,7 +607,7 @@
           titulo: (texto.split('\n')[0] || 'Reel de Instagram').slice(0, 90), texto,
           formato: 'video', origen: 'instagram', categoria: 'actividades',
           audio: el.audio.checked ? 'si' : 'no', audioFunc: el.audioFunc.checked ? 'si' : 'no',
-          vecesAudio: el.vecesAudio.value, publico: el.publico.value,
+          vecesAudio: el.vecesAudio.value, publico: el.publico.value, espacio: el.espacio.value,
         }, image: { fileId, mimeType: archivo.type || 'video/mp4' } });
         toast('Reel publicado ✔');
         await recargar();
@@ -619,7 +632,7 @@
         await API.admin('add', { password, sheet: 'fotos', item: {
           titulo: (texto.split('\n')[0] || (ruta.startsWith('reel/') ? 'Reel de Instagram' : 'Publicación de Instagram')).slice(0, 90),
           url: `https://www.instagram.com/${ruta}/`, texto, origen: 'instagram',
-          publico: fe.elements.publico.value, categoria: fe.elements.categoria.value,
+          publico: fe.elements.publico.value, espacio: fe.elements.espacio.value, categoria: fe.elements.categoria.value,
         } });
         toast('Publicado en las pantallas ✔');
         await recargar();
@@ -845,7 +858,8 @@
           <div class="items">${lista.map(it => {
             const [t, sub] = S.linea(it);
             return `<div class="item">${S.img && S.img(it) ? `<img src="${esc(S.img(it))}" alt="">` : ''}${S.ico ? UI.icono(S.ico(it), 'lista-ico') : ''}
-              <div class="t"><b>${esc(t)}</b><small>${esc(sub)}</small></div>
+              <div class="t"><b>${esc(t)}</b><small>${esc(sub)}${it.espacio && UI.ESPACIOS[it.espacio]
+                ? ' · solo ' + esc(UI.ESPACIOS[it.espacio].nombre) : ''}</small></div>
               <button class="edit" data-id="${esc(it.id)}">✏️ Editar</button>
               <button class="del" data-id="${esc(it.id)}">Eliminar</button>
               ${S.extra ? S.extra(it) : ''}</div>`;

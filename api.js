@@ -48,13 +48,13 @@
           .concat([11, 12, 13, 14, 21, 22, 23, 24, 31, 32, 33, 34].map(n => ['matriz', String(n), String(n)[0]]))
           .map(([edificio, sala, piso]) => ({ edificio, sala, piso }))) },
       { id: 'reuniones', valor: JSON.stringify([
-        { id: 'r1', nombre: 'Básica', activo: 'si', titulo: 'Hoy 19:00 hrs', cursos:
+        { id: 'r1', nombre: 'Básica', activo: 'si', titulo: 'Hoy', horas: { prebasica: '17:30', menor: '18:00', matriz: '19:00' }, cursos:
           [{ curso: 'Pre-Kínder', edificio: 'prebasica', sala: 'Pre-Kínder' }, { curso: 'Kínder', edificio: 'prebasica', sala: 'Kínder' }]
             .concat([1, 2, 3, 4].flatMap((n, k) => ['A', 'B'].map((l, j) => ({ curso: `${n}° Básico ${l}`, edificio: 'menor', sala: String(k * 2 + j + 1) }))))
             .concat([5, 6, 7, 8].flatMap((n, k) => ['A', 'B'].map((l, j) => ({ curso: `${n}° Básico ${l}`, edificio: 'matriz', sala: String([11, 12, 13, 14, 21, 22, 23, 24][k * 2 + j]) }))))
             .map(c => (c.curso === '3° Básico B' ? Object.assign(c, { estado: 'sin' })
               : c.curso === '6° Básico A' ? Object.assign(c, { estado: 'cambio', cambio: 'jueves 6 nov · 19:00' }) : c)) },
-        { id: 'r2', nombre: 'Media', activo: '', titulo: 'Martes 11 nov · 19:00 hrs', cursos:
+        { id: 'r2', nombre: 'Media', activo: '', titulo: 'Martes 11 de noviembre', horas: { matriz: '19:00' }, cursos:
           [1, 2, 3, 4].flatMap((n, k) => ['A', 'B', 'C'].map((l, j) => ({ curso: `${n}° Medio ${l}`, edificio: 'matriz', sala: String([21, 22, 23, 24, 31, 32, 33, 34, 11, 12, 13, 14][k * 3 + j]) }))) },
       ]) },
     ],

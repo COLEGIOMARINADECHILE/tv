@@ -625,6 +625,27 @@
   //         "reuniones" = [{id, nombre, activo, titulo, desde, hasta, cursos:[{curso, edificio, sala, estado, cambio}]}]
   // estado: '' = con reunión · 'sin' = sin reunión · 'cambio' = cambiada a otro día (cambio = cuándo)
   const EDIFICIOS = { prebasica: '🧸 Prebásica', menor: '🧒 Ciclo Menor', matriz: '🏫 Colegio Matriz' };
+  // Espacio (edificio) donde está cada TV Familias y qué grupos de reunión le corresponden.
+  // Prebásica tiene su propio horario de reunión, pero está en el Edificio Matriz.
+  const ESPACIOS = {
+    matriz: { nombre: '🏫 Edificio Matriz', corto: 'Edificio Matriz', grupos: ['prebasica', 'matriz'] },
+    menor: { nombre: '🧒 Edificio Ciclo Menor', corto: 'Ciclo Menor', grupos: ['menor'] },
+  };
+  // Espacio de este TV: ?espacio=matriz|menor|general (se recuerda en el equipo). '' = general (todo)
+  function espacioTv() {
+    const KEY = 'cmch_espacio';
+    const q = new URLSearchParams(location.search).get('espacio');
+    if (q !== null) {
+      const v = ESPACIOS[q] ? q : '';
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      return v;
+    }
+    let v = '';
+    try { v = localStorage.getItem(KEY) || ''; } catch (e) {}
+    return ESPACIOS[v] ? v : '';
+  }
+  // Solo lo publicado para todos o para el espacio de este TV (el TV General muestra todo)
+  const paraEspacio = (lista, esp) => (lista || []).filter(x => !esp || !x.espacio || x.espacio === esp);
   const leerJSON = (s, def) => { try { const v = JSON.parse(s); return v && typeof v === 'object' ? v : def; } catch (e) { return def; } };
   // lista de reuniones guardadas (acepta también la versión anterior, de una sola reunión)
   function reuniones(aj) {
@@ -742,5 +763,5 @@
     return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, leerJSON, EDIFICIOS, nombreSala, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

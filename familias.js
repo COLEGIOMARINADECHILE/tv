@@ -3,7 +3,9 @@
   const CFG = window.APP_CONFIG;
   const { esc, MESES, parseFecha, diasHasta } = UI;
 
-  document.getElementById('hdr').outerHTML = UI.header('Familias');
+  // Espacio (edificio) de este TV: muestra lo publicado para ese edificio y sus salas de reunión
+  const ESPACIO = UI.espacioTv();
+  document.getElementById('hdr').outerHTML = UI.header(ESPACIO ? 'Familias · ' + UI.ESPACIOS[ESPACIO].corto : 'Familias');
   UI.startClock();
   UI.backToHome();
 
@@ -345,6 +347,8 @@
   const galMini = document.getElementById('gal-mini');
   function renderReunion(aj, fotos) {
     const r = UI.reunion(aj);
+    // en el TV de un edificio, solo las salas de ese edificio (más grandes y sin cambiar de página)
+    if (ESPACIO) r.cursos = r.cursos.filter(c => UI.ESPACIOS[ESPACIO].grupos.includes(c.edificio));
     const box = document.getElementById('reunion');
     const reacomodarFechas = () => ultimasFechas && setTimeout(() => renderFechas(...ultimasFechas), 50);
     if (!r.vigente || !r.cursos.length) {
@@ -376,14 +380,14 @@
       UI.gallery(galMini, soloFotos, { seg: 8, maxVideo: 0, sonido: false, perfil: 'mini' }, 'Actividades del colegio');
     }
 
-    const firma = JSON.stringify([r.titulo, r.cursos]);
+    const firma = JSON.stringify([r.titulo, r.horas, r.cursos]);
     if (box._firma === firma) return true;
     box._firma = firma;
     clearInterval(box._pag);
 
     const edificios = Object.keys(UI.EDIFICIOS).filter(e => r.cursos.some(c => c.edificio === e));
     // cada columna tan ancha como cursos tiene (un edificio con 2 cursos no ocupa lo mismo que uno con 8)
-    const anchos = edificios.map(e => `minmax(0,${Math.max(r.cursos.filter(c => c.edificio === e).length, 4)}fr)`).join(' ');
+    const anchos = edificios.map(e => `minmax(0,${Math.max(r.cursos.filter(c => c.edificio === e).length, 5)}fr)`).join(' ');
     // cada curso: su sala (y piso) o, si cambió, el aviso
     const fila = c => `<div class="reu-fila ${c.estado ? 'est-' + esc(c.estado) : ''}">
       <b class="reu-curso">${esc(c.curso)}</b>
@@ -400,7 +404,8 @@
       </div>
       <div class="reu-cols ${['', 'una', 'dos', 'tres'][edificios.length]}" style="grid-template-columns:${anchos}">
         ${edificios.map(e => `<div class="reu-col reu-${e}">
-          <h3>${UI.EDIFICIOS[e]} <span class="pag"></span></h3>
+          <h3><span>${UI.EDIFICIOS[e]}</span>
+            ${(r.horas || {})[e] ? `<span class="reu-hora">🕒 ${esc(r.horas[e])} hrs</span>` : ''}<span class="pag"></span></h3>
           <div class="reu-lista"></div></div>`).join('')}
       </div>`;
 
@@ -434,7 +439,10 @@
     return true;
   }
 
-  UI.autoData(data => {
+  UI.autoData(todo => {
+    // solo lo publicado para todos o para el edificio de este TV
+    const data = Object.assign({}, todo);
+    ['fotos', 'fechas', 'actividades', 'avisos', 'noticias'].forEach(k => (data[k] = UI.paraEspacio(todo[k], ESPACIO)));
     const aj = UI.ajustes(data);
     renderMensaje(aj.mensajeTexto);
     renderContacto(aj);

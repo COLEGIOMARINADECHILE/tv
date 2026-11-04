@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261103e">
+  <link rel="stylesheet" href="styles.css?v=20261104e">
 </head>
 <body>
   <main class="home">
@@ -27,18 +27,36 @@
           <b>Funcionarios</b>
           <span>Televisión en vivo + actividades de la semana, fotos e información educativa</span>
         </a>
-        <a class="profile" href="familias.html">
+        <a class="profile" href="familias.html" id="ir-familias">
           <span class="ico">👨‍👩‍👧‍👦</span>
           <b>Familias</b>
           <span>Pantalla completa con fechas importantes y actividades en imágenes</span>
         </a>
       </nav>
+      <!-- Familias: ¿en qué espacio está este TV? (muestra la información y las salas de reunión de ese ciclo) -->
+      <nav class="profiles espacios" id="espacios" hidden>
+        <a class="profile" href="familias.html?espacio=general"><span class="ico">⭐</span><b>General</b>
+          <span>Todo el colegio: toda la información y todas las salas</span></a>
+        <a class="profile" href="familias.html?espacio=matriz"><span class="ico">🏫</span><b>Edificio Matriz</b>
+          <span>Prebásica (Pre-Kínder y Kínder) y de 5° Básico a 4° Medio</span></a>
+        <a class="profile" href="familias.html?espacio=menor"><span class="ico">🧒</span><b>Edificio Ciclo Menor</b>
+          <span>De 1° a 4° Básico</span></a>
+      </nav>
     </div>
   </main>
   <script>
     // Navegación con flechas del control remoto
-    const items = [...document.querySelectorAll('.profile')];
+    let items = [...document.querySelectorAll('.profiles:not([hidden]) .profile')];
     items[0].focus();
+    // Familias → segundo paso: elegir el espacio donde está este TV
+    document.getElementById('ir-familias').addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelector('.profiles').hidden = true;
+      document.getElementById('espacios').hidden = false;
+      document.querySelector('.choose').textContent = '¿Dónde está este televisor?';
+      items = [...document.querySelectorAll('#espacios .profile')];
+      items[0].focus();
+    });
     document.addEventListener('keydown', e => {
       const i = items.indexOf(document.activeElement);
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { items[Math.min(i + 1, items.length - 1)].focus(); e.preventDefault(); }
