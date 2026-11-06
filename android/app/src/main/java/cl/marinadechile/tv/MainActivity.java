@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -101,6 +102,12 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false); // videos y música suenan sin tocar nada
         s.setTextZoom(100); // ignora el "tamaño de letra" del TV: así nada se corta ni se amontona
+        // Instagram (y algunos canales) necesitan sus cookies dentro de la página del colegio; sin ellas
+        // piden iniciar sesión y se ve "Página web no disponible". También se presenta como navegador
+        // común (sin la marca "wv" de app), para que las publicaciones insertadas carguen.
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(w, true);
+        s.setUserAgentString(s.getUserAgentString().replace("; wv", ""));
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
