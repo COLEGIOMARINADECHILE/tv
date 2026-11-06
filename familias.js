@@ -421,12 +421,16 @@
       document.body.classList.add('modo-reunion');
       reacomodarFechas();
     }
-    // fotos al costado: solo imágenes (sin videos ni sonido, para no distraer)
-    const soloFotos = fotos.filter(f => f.url && !UI.youtubeId(f.url) && !UI.instagramRuta(f.url) && f.formato !== 'video')
-      .map(f => ({ titulo: f.titulo, url: f.url, etiqueta: f.historia ? 'Instagram' : f.etiqueta }));
-    galMini.hidden = !soloFotos.length;
-    if (soloFotos.length) {
-      UI.gallery(galMini, soloFotos, { seg: 8, maxVideo: 0, sonido: false, perfil: 'mini' }, 'Actividades del colegio');
+    // al costado siguen pasando fotos y videos (YouTube y reels subidos), igual que en el carrusel grande;
+    // las tarjetas de Instagram por enlace no caben en el recuadro chico y el mensaje largo se omite
+    const mini = fotos.filter(f => f.url && !UI.instagramRuta(f.url))
+      .map(f => Object.assign({}, f, { texto: '', etiqueta: f.historia ? 'Instagram' : f.etiqueta }));
+    galMini.hidden = !mini.length;
+    if (mini.length) {
+      UI.gallery(galMini, mini,
+        { seg: 8, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,
+          perfil: 'familias', onCambio: onCambioVideo },
+        'Actividades del colegio');
     }
 
     const firma = JSON.stringify([r.titulo, r.horas, r.cursos]);
