@@ -853,8 +853,9 @@ body.video-activo .sem-card.importante::after { display: none; }
 /* las tarjetas nunca se aplastan: si no caben, pasan a la página siguiente */
 .date-list > .date-item { flex: none; }
 .date-list.midiendo > * { animation: none !important; }
-.date-item h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.date-item p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* el título y el detalle se ven completos (sin "..."): si no caben todas, las fechas pasan por páginas */
+.date-item h3 { line-height: 1.2; overflow-wrap: anywhere; }
+.date-item p { line-height: 1.3; overflow-wrap: anywhere; }
 .date-item > div:nth-child(2) { min-width: 0; }
 /* en Familias la cinta va junto al chip ("¡Hoy!", "En 2 días"): la tarjeta queda más baja */
 .date-item .cinta-imp { display: inline-block; vertical-align: middle; margin: 0.6vh 0 0 0.5vw; }
