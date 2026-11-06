@@ -232,7 +232,8 @@
           // los subidos a Drive se descargan vía Apps Script (data-file); los demás se usan directo
           return `<div class="ph insta mp4 ${texto ? '' : 'solo'}" data-mp4="1" data-clave="${esc(f.fileId || f.id || f.url)}"
               data-file="${esc(f.fileId || '')}" data-audio="${audio ? 1 : ''}" data-veces="${esc(f.vecesAudio || '')}">
-            <div class="ig-foto"><video ${f.fileId ? '' : `src="${esc(f.url)}"`} muted playsinline preload="none"></video></div>
+            <div class="ig-foto"><video ${f.fileId ? '' : `src="${esc(f.url)}"`} muted playsinline preload="none"
+              poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video></div>
             ${texto ? `<div class="ig-resena"><span class="ig-logo">🎬 Reel</span><p class="ig-texto ${tam}">${esc(texto)}</p></div>` : ''}
           </div>`;
         }
@@ -321,20 +322,31 @@
         // Si en 30 s YouTube no informa la duración (video bloqueado o sin internet), se sigue
         el._timer = setTimeout(siguiente, 30000);
       } else if (ph.dataset.ig) {
-        // tarjeta oficial de Instagram: se carga al mostrarse y se ajusta al alto del recuadro
-        if (!ph.querySelector('iframe')) {
-          ph.querySelector('.ig-marco').innerHTML = `<iframe scrolling="no" allow="autoplay; encrypted-media"
-            src="https://www.instagram.com/${ph.dataset.ig}/embed/${ph.dataset.cap ? 'captioned/' : ''}"></iframe>`;
-          ajustarInsta(ph, ph.dataset.cap ? 760 : 560);
+        // tarjeta oficial de Instagram: se carga al mostrarse (oculta hasta que Instagram confirma que cargó bien)
+        // Si Instagram la bloquea (pide iniciar sesión, sin internet): no se muestra el error;
+        // se ve solo el mensaje en grande o, si no tiene mensaje, se salta.
+        const conMensaje = !!ph.querySelector('.ig-texto');
+        if (ph._bloqueado) {
+          ph.classList.add('sin-tarjeta');
+        } else {
+          if (!ph.querySelector('iframe')) {
+            ph.querySelector('.ig-marco').innerHTML = `<iframe scrolling="no" allow="autoplay; encrypted-media"
+              src="https://www.instagram.com/${ph.dataset.ig}/embed/${ph.dataset.cap ? 'captioned/' : ''}"></iframe>`;
+            ajustarInsta(ph, ph.dataset.cap ? 760 : 560);
+          }
+          if (!ph._medido) ph.classList.add('esperando');
+          // la espera sigue corriendo aunque cambie la diapositiva (no se reinicia)
+          if (!ph._medido && !ph._igTimer) ph._igTimer = setTimeout(() => {
+            ph._igTimer = null;
+            if (ph._medido) return;
+            // se recuerda aunque ya se haya pasado a otra diapositiva (la próxima vez ni se intenta)
+            ph._bloqueado = true;
+            ph.querySelector('.ig-marco').innerHTML = '';
+            ph.classList.remove('esperando');
+            if (conMensaje) ph.classList.add('sin-tarjeta');
+            else { ph._falla = Date.now(); if (phs[i] === ph && phs.length > 1) siguiente(); }
+          }, 8000);
         }
-        // si Instagram no responde en 10 s (sin internet, bloqueo), se salta para no mostrar un recuadro vacío
-        ph._medido = false;
-        clearTimeout(ph._igTimer);
-        ph._igTimer = setTimeout(() => {
-          if (ph._medido || phs[i] !== ph) return;
-          ph._falla = Date.now();
-          if (phs.length > 1) siguiente();
-        }, 10000);
         if (phs.length > 1) el._timer = setTimeout(siguiente, opts.seg * 1500);
       } else if (ph.dataset.mp4) {
         // video MP4: se ve completo y pasa al siguiente al terminar
@@ -344,7 +356,14 @@
           v.loop = phs.length === 1;
           v.muted = !conAudio;
           v.onended = () => phs.length > 1 && siguiente();
-          v.onerror = () => { avisar(false); if (phs.length > 1) el._timer = setTimeout(siguiente, 3000); };
+          // el TV no puede con este video (formato o resolución): se salta y se reintenta en 20 min
+          const noPuede = () => { ph._falla = Date.now(); ph.classList.remove('cargando'); avisar(false); if (phs.length > 1) siguiente(); };
+          v.onerror = noPuede;
+          ph.classList.add('cargando'); // "⏳" en vez del ícono ▶ gigante hasta que parte
+          v.onplaying = () => { ph._arranco = true; ph.classList.remove('cargando'); };
+          ph._arranco = false;
+          clearTimeout(ph._vigia);
+          ph._vigia = setTimeout(() => { if (phs[i] === ph && !ph._arranco) noPuede(); }, 10000);
           try { v.currentTime = 0; } catch (e) {}
           document.body.classList.add('video-activo'); // pausa los efectos: el TV se dedica al video
           avisar(conAudio); // la música baja solo cuando el video ya suena
@@ -432,7 +451,11 @@
         if (!fr || e.source !== fr.contentWindow) return;
         try {
           const d = JSON.parse(e.data);
-          if (d.type === 'MEASURE' && d.details.height > 0) { ph._medido = true; ajustarInsta(ph, d.details.height); }
+          if (d.type === 'MEASURE' && d.details.height > 0) {
+            ph._medido = true;
+            ph.classList.remove('esperando'); // cargó bien: recién ahora se muestra la tarjeta
+            ajustarInsta(ph, d.details.height);
+          }
         } catch (err) {}
         return;
       }

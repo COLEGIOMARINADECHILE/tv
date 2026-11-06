@@ -169,6 +169,8 @@
     let total = 1;
     let tipo = '';
     for (let k = 0; k < total; k++) {
+      // mientras se reproduce un video no se descarga nada (procesar la descarga hace que el video se pegue)
+      while (document.body && document.body.classList.contains('video-activo')) await new Promise(r => setTimeout(r, 2000));
       const d = await (await fetch(CFG.API_URL + '?accion=video&id=' + encodeURIComponent(fileId) + '&parte=' + k)).json();
       if (!d.data) throw new Error(d.error || 'Archivo no disponible');
       tipo = d.tipo;

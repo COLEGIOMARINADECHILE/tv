@@ -325,6 +325,17 @@
   // Mientras suene un video del carrusel, la música de fondo baja.
   const gal = document.getElementById('gal');
 
+  // Si la música es de YouTube, se pausa mientras se reproduce cualquier video del carrusel:
+  // muchos TV no pueden con dos videos a la vez (se pegan o no parten). Vuelve al terminar.
+  new MutationObserver(() => {
+    if (!ytFrame) return;
+    const hayVideo = document.body.classList.contains('video-activo');
+    if (hayVideo !== !!ytFrame._pausadoPorVideo) {
+      ytFrame._pausadoPorVideo = hayVideo;
+      ytCmd(hayVideo ? 'pauseVideo' : 'playVideo');
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
   function onCambioVideo(conAudio) {
     videoSonando = conAudio;
     if (pistas.length) fundido(volObjetivo());

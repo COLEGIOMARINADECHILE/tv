@@ -533,6 +533,19 @@
           Para quitar una publicación, use <b>📸 Fotos y videos</b>.</p>
         </fieldset>
       </form>
+      <form id="ig-foto">
+        <fieldset class="grupo">
+          <legend>🖼️ Subir la foto de una publicación con su mensaje (recomendado: siempre se ve)</legend>
+          <p class="note">Instagram a veces bloquea sus publicaciones en otras páginas (en el TV se ve "no disponible").
+          Guarde la foto desde Instagram y súbala aquí con el texto: se verá <b>igual, con la foto grande y el mensaje al lado</b>,
+          sin depender de Instagram. Si la publicación tiene varias fotos, elija varias.</p>
+          <label>Foto(s) de la publicación<input type="file" name="fotos" accept="image/*" multiple required></label>
+          <label>Mensaje · copie aquí el texto de la publicación
+            <textarea name="texto" rows="4" placeholder="Ej: 🥦🍎 Día de la Alimentación Saludable…"></textarea></label>
+          ${PUBLICO}
+          <button class="btn">Publicar en las pantallas</button>
+        </fieldset>
+      </form>
       <form id="ig-reel">
         <fieldset class="grupo">
           <legend>🎬 Subir un reel para que se reproduzca solo (con sonido)</legend>
@@ -598,6 +611,33 @@
   }
 
   async function iniciarInstagram() {
+    // Foto(s) de una publicación + su mensaje: se ve como Instagram pero sin depender de Instagram
+    const ff = document.getElementById('ig-foto');
+    ff.onsubmit = async e => {
+      e.preventDefault();
+      const btn = ff.querySelector('.btn');
+      try {
+        const fotos = [...ff.elements.fotos.files];
+        if (!fotos.length) throw new Error('Elija la foto de la publicación');
+        const texto = ff.elements.texto.value.trim();
+        btn.disabled = true;
+        for (let k = 0; k < fotos.length; k++) {
+          btn.textContent = `Subiendo foto ${k + 1} de ${fotos.length}…`;
+          const image = { data: await comprimir(fotos[k]), mimeType: 'image/jpeg', name: fotos[k].name.replace(/\.\w+$/, '') + '.jpg' };
+          await API.admin('add', { password, sheet: 'fotos', image, item: {
+            titulo: (texto.split('\n')[0] || 'Publicación de Instagram').slice(0, 90), texto, origen: 'instagram',
+            categoria: 'actividades', publico: ff.elements.publico.value, espacio: ff.elements.espacio.value,
+          } });
+        }
+        toast('Publicado en las pantallas ✔');
+        await recargar();
+      } catch (err) {
+        toast(err.message, 'err');
+        btn.disabled = false;
+        btn.textContent = 'Publicar en las pantallas';
+      }
+    };
+
     // Subir un reel (MP4): se guarda en Drive y se reproduce solo en el carrusel
     const fr = document.getElementById('ig-reel');
     fr.onsubmit = async e => {

@@ -500,6 +500,16 @@ button { font: inherit; color: inherit; }
   inset: auto; top: 0; left: 0; width: 400px; height: 560px;
   transform-origin: top left; background: #fff;
 }
+/* mientras Instagram carga, la tarjeta no se ve (así nunca aparece una página de error) */
+.ph.insta.enlace.esperando .ig-marco iframe { visibility: hidden; }
+.ph.insta.enlace.esperando .ig-marco::after {
+  content: '⏳ Cargando publicación…'; position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 2vh; font-weight: 800; color: #c13584;
+}
+/* Instagram bloqueado en este equipo: se muestra solo el mensaje, en grande y centrado */
+.ph.insta.enlace.sin-tarjeta .ig-marco { display: none; }
+.ph.insta.enlace.sin-tarjeta .ig-resena { max-width: 80%; }
+.ph.insta.enlace.sin-tarjeta .ig-texto { font-size: 3vh; -webkit-line-clamp: 12; }
 .ph.insta.enlace .ig-resena { max-width: 52%; text-shadow: 0 0.2vh 0.8vh rgba(0, 0, 0, 0.35); }
 .ph.insta.enlace .ig-logo { background: #fff; color: #c13584; text-shadow: none; }
 .ph.insta.enlace .ig-texto { border-left-color: #fff; }
