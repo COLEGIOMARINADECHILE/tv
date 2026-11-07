@@ -117,6 +117,29 @@
       // categoría y sonido editables en cada publicación
       extra: f => filaCategoria(f) + filaSonido(f),
     },
+    // ⭐ Alumnos destacados (varias fotos de una vez; en pantalla pasan de a 3) y 🏆 cursos destacados
+    destacados: {
+      nombre: '⭐ Destacados',
+      form: `<label>¿Qué quiere destacar?
+          <select name="tipo"><option value="alumno">⭐ Alumnos destacados</option><option value="curso">🏆 Un curso destacado</option></select></label>
+        <label data-tipo="alumno">📷 Fotos de los alumnos (elija varias a la vez con Ctrl o arrastrándolas)
+          <input type="file" name="imagen" accept="image/*" multiple id="dest-fotos"></label>
+        <div class="dest-filas" id="dest-filas" data-tipo="alumno"></div>
+        <label data-tipo="curso" hidden>📷 Foto del curso<input type="file" name="imagenCurso" accept="image/*" id="dest-foto-curso"></label>
+        <img class="preview" id="preview" hidden alt="">
+        <label data-solo-editar hidden>Nombre del alumno o alumna<input name="nombre"></label>
+        <label><span data-tipo="alumno">Curso (si todos son del mismo; si no, escríbalo en cada alumno)</span><span data-tipo="curso" hidden>Curso</span>
+          <input name="curso" list="lista-cursos" placeholder="Ej: 5° Básico A">
+          <datalist id="lista-cursos">${Object.values(UI.NIVELES).flatMap(n => n.cursos).map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
+        <label>Motivo<textarea name="motivo" rows="3" placeholder="Ej: Excelencia académica del semestre · Primer lugar comunal de ajedrez"></textarea></label>
+        <p class="note" data-tipo="alumno">El motivo de arriba vale para todos; si alguno tiene otro, escríbalo en su fila.
+          En las pantallas pasan <b>de a 3 alumnos</b> por imagen, con su foto, nombre, curso y motivo.</p>
+        <label>Mostrar hasta (opcional · vacío = hasta que lo elimine)<input type="date" name="vence"></label>
+        ${PUBLICO}`,
+      linea: d => [(d.tipo === 'curso' ? '🏆 Curso destacado: ' + d.curso : '⭐ ' + d.nombre + (d.curso ? ' · ' + d.curso : '')),
+        (d.motivo || 'Sin motivo') + ' · ' + d.publico + (d.vence ? ' · hasta ' + d.vence : '')],
+      img: d => d.url || '',
+    },
     musica: {
       nombre: '🎵 Música Familias',
       form: `<label>Nombre de la canción<input name="titulo" required></label>
@@ -203,12 +226,12 @@
     });
   }
 
-  // Reduce imagen a máx. 1920px y devuelve base64 JPEG
-  function comprimir(file) {
+  // Reduce imagen a máx. 1920px (o lo indicado) y devuelve base64 JPEG
+  function comprimir(file, max) {
+    max = max || 1920;
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
-        const max = 1920;
         const k = Math.min(1, max / Math.max(img.width, img.height));
         const c = document.createElement('canvas');
         c.width = Math.round(img.width * k);
@@ -231,8 +254,28 @@
         <label>Contraseña<input type="password" name="pass" required autofocus></label>
         <button class="btn">Ingresar</button>
         ${error ? `<p class="note" style="color:#ff8b8e">${esc(error)}</p>` : ''}
+        <button type="button" class="link-btn" id="olvide">🔑 ¿Olvidó la clave? Enviarla al correo del administrador</button>
+        <p class="note" id="olvide-msg" hidden></p>
         <a href="index.html" class="note">← Volver al inicio</a>
       </form></div>`;
+    // la clave se envía SOLO al correo fijo del administrador (lo decide Apps Script, no esta página)
+    document.getElementById('olvide').onclick = async e => {
+      const b = e.target;
+      const msg = document.getElementById('olvide-msg');
+      if (!confirm('¿Enviar la clave al correo del administrador?')) return;
+      b.disabled = true;
+      msg.hidden = false;
+      msg.textContent = 'Enviando…';
+      try {
+        const r = await API.admin('recuperarClave', {});
+        msg.style.color = '#7ee2a8';
+        msg.textContent = `✔ Se envió la clave a ${r.correo}. Revise también la carpeta de spam.`;
+      } catch (err) {
+        msg.style.color = '#ff8b8e';
+        msg.textContent = err.message;
+        b.disabled = false;
+      }
+    };
     document.getElementById('f-login').onsubmit = async e => {
       e.preventDefault();
       const btn = e.target.querySelector('button');
@@ -304,7 +347,41 @@
         </fieldset>
 
         <button class="btn">Guardar ajustes</button>
+      </form>
+      <form id="f-clave" class="clave-box">
+        <fieldset class="grupo">
+          <legend>🔑 Cambiar la clave del panel</legend>
+          <label>Clave actual<input type="password" name="actual" required autocomplete="current-password"></label>
+          <label>Clave nueva (mínimo 6 caracteres)<input type="password" name="nueva" required minlength="6" autocomplete="new-password"></label>
+          <label>Repita la clave nueva<input type="password" name="repetir" required minlength="6" autocomplete="new-password"></label>
+          <p class="note">Al cambiarla se envía un comprobante con la clave nueva al correo del administrador.</p>
+          <button class="btn">🔑 Cambiar clave</button>
+        </fieldset>
       </form></div>`;
+  }
+
+  function iniciarClave() {
+    const f = document.getElementById('f-clave');
+    f.onsubmit = async e => {
+      e.preventDefault();
+      const btn = f.querySelector('.btn');
+      const { actual, nueva, repetir } = f.elements;
+      if (nueva.value !== repetir.value) return toast('Las claves nuevas no coinciden', 'err');
+      if (nueva.value === actual.value) return toast('La clave nueva debe ser distinta de la actual', 'err');
+      btn.disabled = true;
+      btn.textContent = 'Cambiando…';
+      try {
+        const r = await API.admin('cambiarClave', { password: actual.value, nueva: nueva.value });
+        password = nueva.value;
+        try { sessionStorage.setItem(PASS_KEY, password); } catch (e2) {}
+        f.reset();
+        toast(`Clave cambiada ✔ · comprobante enviado a ${r.correo}`);
+      } catch (err) {
+        toast(err.message, 'err');
+      }
+      btn.disabled = false;
+      btn.textContent = '🔑 Cambiar clave';
+    };
   }
 
   // ---------- 👨‍👩‍👧 Modo reunión de apoderados: salas por edificio y varias reuniones guardadas ----------
@@ -334,6 +411,12 @@
     return o;
   });
 
+  // Niveles marcados de una reunión (los guardados o, en reuniones antiguas, los que tienen algún curso en la lista)
+  const nivelesDe = r => (Array.isArray(r.niveles) ? r.niveles
+    : Object.keys(UI.NIVELES).filter(k => (r.cursos || []).some(c => UI.NIVELES[k].cursos.includes(c.curso))));
+  // Sala que tuvo cada curso la última vez (Admin la recuerda: no hay que elegirla en cada reunión)
+  let salasCurso = {};
+
   // Una reunión guardada (ej. "Básica" o "Media") con su horario y sus cursos
   const bloqueReunion = r => `<fieldset class="grupo reu-bloque" data-id="${esc(r.id || 'r' + Date.now())}">
     <legend><input class="reu-nombre" value="${esc(r.nombre || '')}" placeholder="Nombre (ej. Básica)"></legend>
@@ -353,8 +436,28 @@
       <label>Mostrar las salas desde (opcional)<input type="datetime-local" data-r="desde" value="${esc(r.desde || '')}"></label>
       <label>Hasta (opcional · vacío = todo el día de la reunión)<input type="datetime-local" data-r="hasta" value="${esc(r.hasta || '')}"></label>
     </div>
-    <div class="etiqueta">📋 Cursos y salas</div>
-    <div class="tel-filas reu-cursos">${(r.cursos && r.cursos.length ? r.cursos : [{}]).map(filaCurso).join('')}</div>
+    <fieldset class="reu-previa-box">
+      <legend>📣 Reunión general antes (opcional)</legend>
+      <label class="check"><input type="checkbox" data-p="activa" ${(r.previa || {}).activa === 'si' ? 'checked' : ''}>
+        Hay una <b>reunión general previa</b> para todos (ej. en el gimnasio, con una institución)</label>
+      <div class="dos">
+        <label>Lugar<input data-p="lugar" list="lugares-previa" value="${esc((r.previa || {}).lugar || '')}" placeholder="Ej: Gimnasio">
+          <datalist id="lugares-previa"><option value="Gimnasio"><option value="Hall de entrada"><option value="Patio techado"><option value="Biblioteca CRA"><option value="Comedor"></datalist></label>
+        <label>Hora<input type="time" data-p="hora" value="${esc((r.previa || {}).hora || '')}"></label>
+      </div>
+      <div class="dos">
+        <label>Tema (opcional)<input data-p="tema" value="${esc((r.previa || {}).tema || '')}" placeholder="Ej: Charla de seguridad escolar"></label>
+        <label>Con la institución (opcional)<input data-p="institucion" value="${esc((r.previa || {}).institucion || '')}" placeholder="Ej: Carabineros de Chile"></label>
+      </div>
+      <p class="note">En la pantalla aparece arriba del tablero: "📣 Primero: reunión general · Gimnasio · 17:00 hrs · …",
+      y también en el aviso de la próxima reunión.</p>
+    </fieldset>
+    <div class="etiqueta">👥 ¿Qué cursos tienen esta reunión? (cada uno va a su edificio solo)</div>
+    <div class="reu-niveles">${Object.entries(UI.NIVELES).map(([k, n]) => `<label class="check">
+      <input type="checkbox" data-nivel="${k}" ${nivelesDe(r).includes(k) ? 'checked' : ''}> ${n.nombre}</label>`).join('')}</div>
+    <details class="reu-detalle" ${(r.cursos || []).some(c => c.curso && !c.sala && !c.estado) ? 'open' : ''}>
+    <summary>📋 Salas de cada curso, cursos sin reunión o cambiados de día (las salas se recuerdan para la próxima vez)</summary>
+    <div class="tel-filas reu-cursos">${(r.cursos && r.cursos.length ? r.cursos : []).map(filaCurso).join('')}</div>
     <div class="reu-rapido">
       <span>⚡ Agregar varios:</span>
       <input class="rap-nivel" placeholder="Nivel (ej. 5° Básico)">
@@ -362,17 +465,27 @@
       <select class="rap-edificio">${opcEdificio('matriz')}</select>
       <button type="button" class="btn ghost rap-agregar">➕ Agregar</button>
     </div>
+    <button type="button" class="btn ghost reu-curso-agregar">➕ Agregar otro curso</button>
+    </details>
     <div class="reu-acciones">
-      <button type="button" class="btn ghost reu-curso-agregar">➕ Agregar un curso</button>
       <button type="button" class="btn ghost reu-duplicar">📄 Duplicar reunión</button>
       <button type="button" class="btn ghost reu-eliminar">🗑️ Eliminar reunión</button>
     </div>
   </fieldset>`;
 
+  const salasIniciales = () => [{ edificio: 'prebasica', sala: 'Pre-Kínder' }, { edificio: 'prebasica', sala: 'Kínder' }]
+    .concat([1, 2, 3, 4, 5, 6, 7, 8].map(n => ({ edificio: 'menor', sala: String(n) })))
+    .concat(Array.from({ length: 15 }, (_, k) => ({ edificio: 'matriz', sala: String(k + 1) })));
+
   function formReunion() {
     const aj = UI.ajustes(data);
     const lista = UI.reuniones(aj);
-    const salas = UI.leerJSON(aj.salas, []);
+    salasCurso = UI.leerJSON(aj.salasCurso, {});
+    // si aún no se recordaba, se toma la sala que el curso tiene en las reuniones ya guardadas
+    lista.forEach(r => (r.cursos || []).forEach(c => { if (c.sala && !salasCurso[c.curso]) salasCurso[c.curso] = c.sala; }));
+    let salas = UI.leerJSON(aj.salas, []);
+    // la primera vez: salas del colegio ya creadas (Matriz 1 a 15, Ciclo Menor 1 a 8, Prebásica)
+    if (!salas.length) salas = salasIniciales();
     const ahora = UI.reunion(aj);
     const estado = ahora.vigente ? `🟢 <b>Se está mostrando ahora: "${esc(ahora.nombre || ahora.titulo || 'Reunión')}"</b> en la pantalla Familias.`
       : '⚪ Ninguna reunión se está mostrando ahora: la pantalla Familias muestra lo de siempre.';
@@ -384,6 +497,7 @@
           <legend>🏫 Salas de cada edificio (se ingresan una vez y sirven para todas las reuniones)</legend>
           <div class="tel-filas" id="reu-salas">${(salas.length ? salas : [{}]).map(filaSala).join('')}</div>
           <button type="button" class="btn ghost" id="reu-sala-agregar">➕ Agregar sala</button>
+          <button type="button" class="btn ghost" id="reu-sala-base">⚡ Completar salas 1 a 15 del Matriz y 1 a 8 del Ciclo Menor</button>
           <p class="note">Indique el piso cuando el edificio tiene más de uno (algunos tienen 3 pisos, otros solo 1).
           <b>Prebásica</b> está en el Edificio Matriz, pero va aparte para tener su propio horario de reunión:
           se muestra en los TV del <b>Edificio Matriz</b> (y en el General).</p>
@@ -426,7 +540,33 @@
     salas.oninput = salas.onchange = actualizarSalas;
     document.getElementById('reu-sala-agregar').onclick = () => { salas.insertAdjacentHTML('beforeend', filaSala({})); actualizarSalas(); };
 
+    document.getElementById('reu-sala-base').onclick = () => {
+      const hay = leerFilas(salas).filter(s => s.sala);
+      [...salas.children].forEach(f => { if (!f.querySelector('[data-campo="sala"]').value.trim()) f.remove(); });
+      salasIniciales().filter(s => !hay.some(h => h.edificio === s.edificio && h.sala === s.sala))
+        .forEach(s => salas.insertAdjacentHTML('beforeend', filaSala(s)));
+      actualizarSalas();
+      toast('Salas completadas: revise el piso de cada una y pulse Guardar todo');
+    };
+
     lista.onchange = e => {
+      // marcar un nivel agrega sus cursos (con su edificio y la sala de la última vez); desmarcarlo los quita
+      const nivel = e.target.dataset.nivel;
+      if (nivel) {
+        const bloque = e.target.closest('.reu-bloque');
+        const cursos = bloque.querySelector('.reu-cursos');
+        const N = UI.NIVELES[nivel];
+        const filasDe = () => [...cursos.children].filter(f => N.cursos.includes(f.querySelector('[data-campo="curso"]').value.trim()));
+        if (e.target.checked) {
+          const ya = filasDe().map(f => f.querySelector('[data-campo="curso"]').value.trim());
+          N.cursos.filter(c => !ya.includes(c)).forEach(c =>
+            cursos.insertAdjacentHTML('beforeend', filaCurso({ curso: c, edificio: N.edificio, sala: salasCurso[c] || '' })));
+        } else {
+          filasDe().forEach(f => f.remove());
+        }
+        actualizarSalas();
+        return;
+      }
       if (['edificio', 'estado'].includes(e.target.dataset.campo)) actualizarSalas();
     };
     lista.onclick = e => {
@@ -436,7 +576,6 @@
       const cursos = bloque.querySelector('.reu-cursos');
       if (b.classList.contains('tel-quitar')) {
         b.closest('.tel-fila').remove();
-        if (!cursos.children.length) cursos.insertAdjacentHTML('beforeend', filaCurso({}));
       } else if (b.classList.contains('reu-curso-agregar')) {
         cursos.insertAdjacentHTML('beforeend', filaCurso({}));
       } else if (b.classList.contains('rap-agregar')) {
@@ -483,6 +622,10 @@
         resumen: Object.fromEntries([...bloque.querySelectorAll('[data-resumen]')].map(i => [i.dataset.resumen, i.value.trim()]).filter(([, t]) => t)),
         cursos: leerFilas(bloque.querySelector('.reu-cursos')).filter(c => c.curso)
           .map(c => (c.estado === 'cambio' ? c : Object.assign(c, { cambio: '' }))),
+        niveles: [...bloque.querySelectorAll('[data-nivel]')].filter(i => i.checked).map(i => i.dataset.nivel),
+        // reunión general antes de ir a las salas (gimnasio, hall…)
+        previa: Object.fromEntries([...bloque.querySelectorAll('[data-p]')].map(i =>
+          [i.dataset.p, i.type === 'checkbox' ? (i.checked ? 'si' : '') : i.value.trim()])),
       };
     }
 
@@ -494,12 +637,16 @@
         reuniones.forEach(r => {
           const n = r.nombre || 'sin nombre';
           if (r.desde && r.hasta && r.hasta < r.desde) throw new Error(`Reunión "${n}": "Hasta" debe ser después de "Desde"`);
-          if (r.activo && !r.cursos.length) throw new Error(`Reunión "${n}": agregue al menos un curso`);
+          if (r.activo && !r.cursos.length) throw new Error(`Reunión "${n}": marque qué cursos tienen reunión`);
+          if (r.previa.activa && !(r.previa.lugar && r.previa.hora)) throw new Error(`Reunión "${n}": indique el lugar y la hora de la reunión general`);
+          // se recuerda la sala de cada curso para la próxima reunión
+          r.cursos.forEach(c => { if (c.sala) salasCurso[c.curso] = c.sala; });
         });
         btn.disabled = true;
         btn.textContent = 'Guardando…';
         await API.admin('ajustes', { password, valores: {
           reuniones: JSON.stringify(reuniones), salas: JSON.stringify(leerFilas(salas).filter(s => s.sala)),
+          salasCurso: JSON.stringify(salasCurso),
           reunion: '', // formato anterior (una sola reunión): ya no se usa
         } });
         toast('Guardado ✔');
@@ -835,13 +982,18 @@
     const el = form.elements;
     // tipo según lo publicado (no se puede cambiar al editar)
     if (el.tipo) {
-      el.tipo.value = seccion === 'musica' ? (it.fileId ? 'archivo' : 'enlace') : UI.youtubeId(it.url) ? 'video' : 'imagen';
+      el.tipo.value = seccion === 'destacados' ? (it.tipo === 'curso' ? 'curso' : 'alumno')
+        : seccion === 'musica' ? (it.fileId ? 'archivo' : 'enlace') : UI.youtubeId(it.url) ? 'video' : 'imagen';
       el.tipo.onchange && el.tipo.onchange();
       el.tipo.disabled = true;
     }
     // los reels (MP4) también tienen sonido; las publicaciones de Instagram, su mensaje
     if (it.formato === 'video') form.querySelectorAll('fieldset.sonido').forEach(f => (f.hidden = false));
     form.querySelectorAll('[data-editar-ig]').forEach(f => (f.hidden = it.origen !== 'instagram'));
+    // destacados: al editar un alumno se puede cambiar su nombre
+    form.querySelectorAll('[data-solo-editar]').forEach(f => (f.hidden = seccion === 'destacados' && it.tipo === 'curso'));
+    form.querySelectorAll('.dest-filas').forEach(f => (f.hidden = true));
+    if (seccion === 'destacados' && it.url) { const p = document.getElementById('preview'); p.src = it.url; p.hidden = false; }
     // lo que no corresponde a esta publicación no se envía (así no se borra, por ejemplo, la imagen)
     form.querySelectorAll('input, select, textarea').forEach(c => {
       if (c.name === 'tipo') return;
@@ -891,6 +1043,88 @@
       toast(err.message, 'err');
       btn.disabled = false;
       btn.textContent = '💾 Guardar cambios';
+    }
+  }
+
+  // ---------- ⭐ Destacados: varias fotos de una vez, una fila por alumno (nombre, curso y motivo propio opcional) ----------
+  let destArchivos = [];
+  function iniciarDestacados(form) {
+    const input = document.getElementById('dest-fotos');
+    const filas = document.getElementById('dest-filas');
+    const prev = document.getElementById('preview');
+    destArchivos = [];
+    const dibujar = () => {
+      filas.innerHTML = destArchivos.length ? destArchivos.map((f, k) => `<div class="dest-fila" data-k="${k}">
+        <img src="${f.vista}" alt="">
+        <input data-campo="nombre" placeholder="Nombre del alumno o alumna" value="${esc(f.nombre || '')}">
+        <input data-campo="curso" list="lista-cursos" placeholder="Curso (si es otro)" value="${esc(f.curso || '')}">
+        <input data-campo="motivo" placeholder="Motivo propio (opcional)" value="${esc(f.motivo || '')}">
+        <button type="button" class="tel-quitar" title="Quitar">✕</button></div>`).join('') +
+        `<p class="note" style="color:var(--gold)">${destArchivos.length} alumno(s) · en pantalla se verán en
+         ${Math.ceil(destArchivos.length / 3)} imagen(es) de hasta 3</p>` : '';
+    };
+    // guardar lo escrito antes de redibujar
+    const leer = () => filas.querySelectorAll('.dest-fila').forEach(r => {
+      const f = destArchivos[+r.dataset.k];
+      r.querySelectorAll('[data-campo]').forEach(c => (f[c.dataset.campo] = c.value.trim()));
+    });
+    input.onchange = () => {
+      leer();
+      [...input.files].forEach(file => destArchivos.push({ file, vista: URL.createObjectURL(file),
+        // el nombre del archivo sirve de sugerencia (ej. "Martina Soto.jpg")
+        nombre: file.name.replace(/\.\w+$/, '').replace(/^(img|dsc|whatsapp image|foto|image)[\s_-]*[\d\s_.-]*$/i, '').replace(/[_]+/g, ' ').trim() }));
+      input.value = '';
+      dibujar();
+    };
+    filas.onclick = e => {
+      if (!e.target.classList.contains('tel-quitar')) return;
+      leer();
+      destArchivos.splice(+e.target.closest('.dest-fila').dataset.k, 1);
+      dibujar();
+    };
+    const fc = document.getElementById('dest-foto-curso');
+    fc.onchange = () => { if (fc.files[0]) { prev.src = URL.createObjectURL(fc.files[0]); prev.hidden = false; } };
+    form.elements.tipo.addEventListener('change', () => { prev.hidden = true; });
+    form._leerDest = leer;
+  }
+
+  async function publicarDestacados(form, btn) {
+    const el = form.elements;
+    const tipo = el.tipo.value;
+    const comun = { publico: el.publico.value, espacio: el.espacio.value, vence: el.vence.value,
+      curso: el.curso.value.trim(), motivo: el.motivo.value.trim() };
+    try {
+      let items = [];
+      if (tipo === 'curso') {
+        const f = document.getElementById('dest-foto-curso').files[0];
+        if (!comun.curso) throw new Error('Escriba el curso destacado');
+        if (!f) throw new Error('Elija una foto del curso');
+        if (!comun.motivo) throw new Error('Escriba el motivo');
+        items = [{ file: f, max: 1920, item: Object.assign({ tipo: 'curso' }, comun) }];
+      } else {
+        form._leerDest();
+        if (!destArchivos.length) throw new Error('Elija las fotos de los alumnos');
+        const sinNombre = destArchivos.findIndex(f => !f.nombre);
+        if (sinNombre > -1) throw new Error(`Falta el nombre del alumno ${sinNombre + 1}`);
+        if (destArchivos.some(f => !f.motivo) && !comun.motivo) throw new Error('Escriba el motivo (para todos o en cada alumno)');
+        const grupo = 'g' + Date.now();
+        items = destArchivos.map(f => ({ file: f.file, max: 900, item: Object.assign({}, comun, {
+          tipo: 'alumno', grupo, nombre: f.nombre, curso: f.curso || comun.curso, motivo: f.motivo || comun.motivo }) }));
+      }
+      btn.disabled = true;
+      for (let k = 0; k < items.length; k++) {
+        btn.textContent = items.length > 1 ? `Subiendo ${k + 1} de ${items.length}…` : 'Publicando…';
+        const it = items[k];
+        const image = { data: await comprimir(it.file, it.max), mimeType: 'image/jpeg', name: (it.item.nombre || it.item.curso || 'destacado') + '.jpg' };
+        await API.admin('add', { password, sheet: 'destacados', item: it.item, image });
+      }
+      toast(items.length > 1 ? `${items.length} alumnos destacados publicados ✔` : 'Publicado ✔');
+      destArchivos = [];
+      await recargar();
+    } catch (err) {
+      toast(err.message, 'err');
+      btn.disabled = false;
+      btn.textContent = 'Publicar';
     }
   }
 
@@ -948,6 +1182,7 @@
     }
 
     if (seccion === 'ajustes') {
+      iniciarClave();
       const fa = document.getElementById('f-ajustes');
       const filas = document.getElementById('tel-filas');
       // agregar / quitar filas de teléfono
@@ -1021,10 +1256,13 @@
     const cancelar = document.getElementById('cancelar-edicion');
     if (cancelar) cancelar.onclick = () => { editando = null; vistaPanel(); };
 
+    if (seccion === 'destacados' && !editando) iniciarDestacados(form);
+
     form.onsubmit = async e => {
       e.preventDefault();
       if (editando) return guardarEdicion(form);
       const btn = form.querySelector('.btn');
+      if (seccion === 'destacados') return publicarDestacados(form, btn);
       try {
         const item = {};
         new FormData(form).forEach((v, k) => { if (k !== 'imagen' && k !== 'tipo') item[k] = v; });

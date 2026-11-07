@@ -212,6 +212,25 @@
           return `<div class="ph texto"><div class="slide-texto">
             <h3>${esc(f.titulo)}</h3>${f.texto ? `<p>${esc(f.texto)}</p>` : ''}</div></div>`;
         }
+        // ⭐ Alumnos destacados (de a 3 por diapositiva) · 🏆 Curso destacado (foto grande y el motivo)
+        if (f.destacado === 'alumnos') {
+          const foto = p => (p.url ? `<img src="${esc(p.url)}" alt="${esc(p.nombre)}">`
+            : `<span class="dest-inicial">${esc(String(p.nombre || '⭐').trim().charAt(0).toUpperCase())}</span>`);
+          return `<div class="ph destacado alumnos n${f.personas.length}">
+            <div class="dest-cabeza"><span class="dest-sello">⭐ Alumnos destacados</span>${f.titulo ? `<b>${esc(f.titulo)}</b>` : ''}</div>
+            <div class="dest-grid">${f.personas.map(p => `<div class="dest-card">
+              <div class="dest-foto">${foto(p)}</div>
+              <div class="dest-datos"><h3>${esc(p.nombre)}</h3>${p.curso ? `<span class="dest-curso">${esc(p.curso)}</span>` : ''}
+                ${p.motivo ? `<p>${esc(p.motivo)}</p>` : ''}</div></div>`).join('')}</div></div>`;
+        }
+        if (f.destacado === 'curso') {
+          const motivo = String(f.texto || '').trim();
+          return `<div class="ph destacado curso">
+            <div class="ig-fondo" style="background-image:url('${esc(f.url)}')"></div>
+            <div class="ig-foto"><img src="${esc(f.url)}" alt="${esc(f.titulo)}"></div>
+            <div class="dest-lado"><span class="dest-sello">🏆 Curso destacado</span>
+              <h3>${esc(f.titulo)}</h3>${motivo ? `<p class="${motivo.length < 140 ? 'g' : 'm'}">${esc(motivo)}</p>` : ''}</div></div>`;
+        }
         // Publicación o reel de Instagram por enlace: tarjeta oficial de Instagram y el mensaje al lado
         const ig = instagramRuta(f.url);
         if (ig) {
@@ -285,7 +304,12 @@
       const img = !p.dataset.yt && p.querySelector('.ig-foto img, :scope > img');
       return !img || (img.complete && img.naturalWidth > 0);
     };
-    el.querySelectorAll('img').forEach(im => (im.onerror = () => { const p = im.closest('.ph'); if (p) p._falla = Date.now(); }));
+    el.querySelectorAll('img').forEach(im => (im.onerror = () => {
+      // en Alumnos destacados una foto que no carga no oculta a los demás: se ve la inicial del nombre
+      const card = im.closest('.dest-card');
+      if (card) { im.replaceWith(Object.assign(document.createElement('span'), { className: 'dest-inicial', textContent: (card.querySelector('h3')?.textContent || '⭐').trim().charAt(0) })); return; }
+      const p = im.closest('.ph'); if (p) p._falla = Date.now();
+    }));
 
     const siguiente = () => {
       clearTimeout(el._timer);
@@ -737,6 +761,23 @@
     });
     return Object.assign({}, r, { salas, cursos, vigente: !!r.activo });
   }
+  // Reunión general previa (ej. en el gimnasio con una institución): "Gimnasio · 17:00 hrs · Charla … · con Carabineros"
+  function textoPrevia(p) {
+    if (!p || p.activa !== 'si' || !(p.lugar || p.hora)) return '';
+    return [p.lugar, p.hora ? p.hora + ' hrs' : '', p.tema, p.institucion ? 'con ' + p.institucion : ''].filter(Boolean).join(' · ');
+  }
+
+  // Cursos del colegio y dónde tienen reunión (así no hay que escribirlos uno a uno en cada reunión)
+  const NIVELES = {
+    pre: { nombre: '🧸 Pre-Kínder y Kínder', edificio: 'prebasica', cursos: ['Pre-Kínder', 'Kínder'] },
+    menor: { nombre: '🧒 1° a 4° Básico A y B (Ciclo Menor)', edificio: 'menor',
+      cursos: [1, 2, 3, 4].flatMap(n => ['A', 'B'].map(l => `${n}° Básico ${l}`)) },
+    basica: { nombre: '🏫 5° a 8° Básico A y B (Matriz)', edificio: 'matriz',
+      cursos: [5, 6, 7, 8].flatMap(n => ['A', 'B'].map(l => `${n}° Básico ${l}`)) },
+    media: { nombre: '🎓 1° a 4° Medio A, B y C (Matriz)', edificio: 'matriz',
+      cursos: [1, 2, 3, 4].flatMap(n => ['A', 'B', 'C'].map(l => `${n}° Medio ${l}`)) },
+  };
+
   // "12" → "Sala 12" · "Laboratorio" queda igual
   const nombreSala = s => (/^\d+\s*[A-Za-z]?$/.test(String(s).trim()) ? 'Sala ' + String(s).trim() : String(s || ''));
 
@@ -806,7 +847,35 @@
     const historias = (data.historias || [])
       .filter(h => new Date(h.vence).getTime() > Date.now())
       .map(h => ({ titulo: 'Historia de Instagram', url: h.url, fecha: h.fecha, historia: true, etiqueta: 'Recién publicado' }));
-    return historias.concat(fotos, antiguos);
+    return historias.concat(destacados(data, perfil), fotos, antiguos);
+  }
+
+  // ⭐ Alumnos destacados: los subidos juntos (mismo "grupo") pasan de a 3 por diapositiva.
+  // 🏆 Cursos destacados: uno por diapositiva. Se dejan de mostrar después de "vence" (si se indicó).
+  function destacados(data, perfil) {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const lista = API.para(data.destacados, perfil).filter(d => !d.vence || String(d.vence) >= hoy);
+    const out = [];
+    const grupos = {};
+    lista.filter(d => d.tipo !== 'curso').forEach(d => {
+      const g = d.grupo || d.id;
+      if (!grupos[g]) { grupos[g] = []; out.push(grupos[g]); }
+      grupos[g].push(d);
+    });
+    const slides = [];
+    out.forEach(g => {
+      for (let k = 0; k < g.length; k += 3) {
+        const personas = g.slice(k, k + 3);
+        // si todos comparten el motivo, va una vez arriba (como título)
+        const mismo = personas.every(p => p.motivo === personas[0].motivo) && personas.length > 1 ? personas[0].motivo : '';
+        slides.push({ destacado: 'alumnos', titulo: mismo, url: personas.map(p => p.url).join(' '),
+          texto: personas.map(p => p.nombre + p.curso + p.motivo).join('|'),
+          personas: personas.map(p => ({ nombre: p.nombre, curso: p.curso, motivo: mismo ? '' : p.motivo, url: p.url })) });
+      }
+    });
+    lista.filter(d => d.tipo === 'curso').forEach(d =>
+      slides.push({ destacado: 'curso', titulo: d.curso || d.nombre, texto: d.motivo, url: d.url }));
+    return slides;
   }
 
   // Miniatura de video para tarjetas de Educación
@@ -834,5 +903,5 @@
     return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, textoPrevia, NIVELES, destacados, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

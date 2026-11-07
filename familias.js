@@ -371,7 +371,7 @@
     const lista = UI.proximasReuniones(aj)
       .map(r => Object.assign({}, r, { grupos: r.grupos.filter(g => !ESPACIO || g.espacio === ESPACIO) }))
       .filter(r => r.grupos.length);
-    const firma = JSON.stringify(lista.map(r => [r.fecha, r.grupos]));
+    const firma = JSON.stringify(lista.map(r => [r.fecha, r.grupos, r.previa]));
     if (box._firma === firma) return;
     box._firma = firma;
     clearInterval(box._rot);
@@ -383,7 +383,8 @@
         <b>${esc(g.cursos)}</b>
         <span>${esc(g.espacio ? UI.ESPACIOS[g.espacio].nombre : UI.EDIFICIOS[g.grupo])}</span>
         ${g.hora ? `<span class="pr-hora">🕒 ${esc(g.hora)} hrs</span>` : ''}
-      </div>`).join('')}</div>`;
+      </div>`).join('')}</div>
+      ${UI.textoPrevia(r.previa) ? `<div class="prox-previa">📣 Antes: reunión general · ${esc(UI.textoPrevia(r.previa))}</div>` : ''}`;
     // si hay más de una reunión próxima (ej. Básica y Media), se alternan
     let k = 0;
     const mostrar = () => { box.innerHTML = `<div class="fade">${tarjeta(lista[k])}</div>`; };
@@ -423,7 +424,8 @@
     }
     // al costado siguen pasando fotos y videos (YouTube y reels subidos), igual que en el carrusel grande;
     // las tarjetas de Instagram por enlace no caben en el recuadro chico y el mensaje largo se omite
-    const mini = fotos.filter(f => f.url && !UI.instagramRuta(f.url))
+    // (los destacados necesitan la pantalla grande: no van en el recuadro chico)
+    const mini = fotos.filter(f => f.url && !UI.instagramRuta(f.url) && !f.destacado)
       .map(f => Object.assign({}, f, { texto: '', etiqueta: f.historia ? 'Instagram' : f.etiqueta }));
     galMini.hidden = !mini.length;
     if (mini.length) {
@@ -433,7 +435,7 @@
         'Actividades del colegio');
     }
 
-    const firma = JSON.stringify([r.titulo, r.horas, r.cursos]);
+    const firma = JSON.stringify([r.titulo, r.horas, r.cursos, r.previa]);
     if (box._firma === firma) return true;
     box._firma = firma;
     clearInterval(box._pag);
@@ -455,6 +457,8 @@
         ${r.titulo ? `<span class="reu-titulo">${esc(r.titulo)}</span>` : ''}
         <span class="reu-nota">Busque el curso de su hijo o hija y diríjase a la sala indicada</span>
       </div>
+      ${UI.textoPrevia(r.previa) ? `<div class="reu-previa"><span class="rp-tit">📣 Primero: reunión general</span>
+        <span>${esc(UI.textoPrevia(r.previa))}</span></div>` : ''}
       <div class="reu-cols ${['', 'una', 'dos', 'tres'][edificios.length]}" style="grid-template-columns:${anchos}">
         ${edificios.map(e => `<div class="reu-col reu-${e}">
           <h3><span>${UI.EDIFICIOS[e]}</span>
@@ -495,7 +499,7 @@
   UI.autoData(todo => {
     // solo lo publicado para todos o para el edificio de este TV
     const data = Object.assign({}, todo);
-    ['fotos', 'fechas', 'actividades', 'avisos', 'noticias'].forEach(k => (data[k] = UI.paraEspacio(todo[k], ESPACIO)));
+    ['fotos', 'fechas', 'actividades', 'avisos', 'noticias', 'destacados'].forEach(k => (data[k] = UI.paraEspacio(todo[k], ESPACIO)));
     const aj = UI.ajustes(data);
     renderMensaje(aj.mensajeTexto);
     renderContacto(aj);
