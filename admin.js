@@ -177,6 +177,24 @@
       form: `<label>Texto del aviso<input name="texto" required maxlength="140"></label>${PUBLICO}`,
       linea: a => [a.texto, a.publico],
     },
+    // 🎂 Cumpleaños de funcionarios/as: ese día aparece un saludo en la pantalla Funcionarios
+    cumpleanos: {
+      nombre: '🎂 Cumpleaños',
+      form: `<label>👤 Nombre del funcionario o funcionaria<input name="nombre" required placeholder="Ej: María José Pérez"></label>
+        <label>📅 Día del cumpleaños (el año no importa: se saluda todos los años)<input type="date" name="fecha" required></label>
+        <label>💼 Cargo (opcional)<input name="cargo" placeholder="Ej: Profesora de Lenguaje"></label>
+        <label>💌 Mensaje para ese día (opcional)<textarea name="mensaje" rows="3" maxlength="220"
+          placeholder="Vacío = ¡Te deseamos un día lleno de alegría! Con cariño, tu comunidad del Colegio Marina de Chile 💙"></textarea></label>
+        <p class="note">Ese día, en la pantalla <b>Funcionarios</b>, aparece "🎂 ¡Feliz cumpleaños!" con el nombre y el mensaje,
+        primero en el carrusel y repetido durante la jornada. No se muestra en Familias.</p>`,
+      linea: c => {
+        const d = String(c.fecha || '').slice(5, 10).split('-');
+        const hoy = new Date();
+        const esHoy = +d[0] === hoy.getMonth() + 1 && +d[1] === hoy.getDate();
+        return [(esHoy ? '🎉 HOY · ' : '🎂 ') + c.nombre,
+          `${+d[1] || '?'} de ${UI.MESES[(+d[0] || 1) - 1] || ''}${c.cargo ? ' · ' + c.cargo : ''}${c.mensaje ? ' · 💌 ' + c.mensaje.slice(0, 60) : ''}`];
+      },
+    },
     instagram: { nombre: '📸 Instagram' },
     reunion: { nombre: '👨‍👩‍👧 Reunión apoderados' },
     ajustes: { nombre: '⚙️ Ajustes' },
@@ -295,64 +313,195 @@
     <span class="note">${e.id ? 'TV: familias.html?espacio=' + esc(e.id) : 'Nuevo'}</span>
     <button type="button" class="tel-quitar" title="Quitar">✕</button></div>`;
 
-  // 🎨 Colores y fondo: temas listos para elegir, uno personalizado y vista previa antes de guardar
+  // 🎨 Colores y fondo: un tema para todas las pantallas y, si se quiere, uno distinto para Familias o Funcionarios.
+  // Temas listos, uno personalizado, imagen de fondo propia con ajustes y vista previa antes de guardar.
+  const PERFILES_TEMA = [['todas', '🖥️ Todas las pantallas'], ['familias', '👨‍👩‍👧 Familias'], ['funcionarios', '📺 Funcionarios']];
+  let temas = {}; // { todas, familias, funcionarios } mientras se edita
+  let temaPerfil = 'todas';
   function bloqueTema(a) {
-    const t = UI.leerJSON(a.tema, {});
-    const preset = t.preset || 'marino';
+    const g = UI.leerJSON(a.tema, {});
+    temas = g.todas || g.familias || g.funcionarios
+      ? { todas: g.todas || {}, familias: g.familias || null, funcionarios: g.funcionarios || null }
+      : { todas: g, familias: null, funcionarios: null }; // formato anterior: un solo tema
+    temaPerfil = 'todas';
     const tarjeta = (k, nombre, c, acento) => `<label class="tema-op">
-      <input type="radio" name="temaPreset" value="${k}" ${preset === k ? 'checked' : ''}>
+      <input type="radio" name="temaPreset" value="${k}">
       <span class="tema-muestra" style="background:linear-gradient(160deg,${c[1]},${c[0]})">
         <i style="background:${c[4]}"></i><i style="background:${c[2]}"></i><i style="background:${acento}"></i></span>
       <b>${esc(nombre)}</b></label>`;
-    const propio = UI.coloresTema({ preset: 'propio', base: t.base || '#0f2c72', acento: t.acento || '#f6c90e' });
-    return `<fieldset class="grupo">
+    const deslizador = (k, nombre, min, max, unidad) => `<label class="tema-rango">${nombre} <output data-salida="${k}"></output>
+      <input type="range" name="${k}" min="${min}" max="${max}" data-unidad="${unidad}"></label>`;
+    return `<fieldset class="grupo" id="tema-box">
       <legend>🎨 Colores y fondo de las pantallas</legend>
-      <div class="tema-grid">${Object.entries(UI.TEMAS).map(([k, p]) => tarjeta(k, p.nombre, p.c, p.acento)).join('')}
-        ${tarjeta('propio', '🎨 Personalizado', propio.c, propio.acento)}</div>
-      <div class="dos tema-propio">
-        <label>Color principal (personalizado)<input type="color" name="temaBase" value="${esc(t.base || '#0f2c72')}"></label>
-        <label>Color de acento (destacados, títulos)<input type="color" name="temaAcento" value="${esc(t.acento || '#f6c90e')}"></label>
+      <div class="tema-tabs">${PERFILES_TEMA.map(([k, n]) => `<button type="button" data-perfil="${k}" class="${k === 'todas' ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <label class="check tema-propio-perfil" hidden><input type="checkbox" name="temaUsarPropio">
+        <span>Usar colores y fondo <b>propios</b> en esta pantalla (si no, usa los de "Todas las pantallas")</span></label>
+      <div class="tema-editor">
+        <div class="tema-grid">${Object.entries(UI.TEMAS).map(([k, p]) => tarjeta(k, p.nombre, p.c, p.acento)).join('')}
+          ${tarjeta('propio', '🎨 Personalizado', ['#06153a', '#0a1f52', '#0f2c72', '#163b94', '#2453c4'], '#f6c90e')}</div>
+        <div class="dos tema-propio">
+          <label>Color principal (personalizado)<input type="color" name="temaBase"></label>
+          <label>Color de acento (destacados, títulos)<input type="color" name="temaAcento"></label>
+        </div>
+        <div class="etiqueta">Fondo</div>
+        <div class="fondo-grid">${Object.entries(UI.FONDOS).map(([k, n]) => `<label class="check">
+          <input type="radio" name="temaFondo" value="${k}"> ${esc(n)}</label>`).join('')}</div>
+        <div class="tema-img" hidden>
+          <div class="etiqueta">🖼️ Imagen de fondo</div>
+          <div class="img-lista">${(data.fondos || []).map(f => `<label class="img-op" title="${esc(f.nombre || '')}">
+            <input type="radio" name="temaImg" value="${esc(f.url)}"><img src="${esc(f.url)}" alt="">
+            <button type="button" class="img-quitar" data-id="${esc(f.id)}" title="Eliminar esta imagen">✕</button></label>`).join('')}
+            <label class="img-op img-subir"><input type="file" accept="image/*" id="img-subir" hidden><span>➕<br>Subir imagen</span></label></div>
+          <div class="tema-ajustes">
+            ${deslizador('imgOscuro', '🌑 Oscurecer', 0, 85, '%')}
+            ${deslizador('imgBlur', '💧 Desenfoque', 0, 30, '')}
+            ${deslizador('imgSat', '🎨 Intensidad del color', 0, 200, '%')}
+            ${deslizador('imgZoom', '🔍 Acercar', 100, 250, '%')}
+            ${deslizador('imgTinte', '🖌️ Tinte con los colores del tema', 0, 90, '%')}
+            <label>📍 Mostrar la parte de la foto
+              <select name="imgPos"><option value="center">Centro</option><option value="top">Arriba</option>
+              <option value="bottom">Abajo</option><option value="left">Izquierda</option><option value="right">Derecha</option></select></label>
+            <label class="check"><input type="checkbox" name="imgMover"> 🎞️ Movimiento suave (acercamiento lento)</label>
+            <button type="button" class="btn ghost mini" id="img-restablecer">↺ Restablecer ajustes de la imagen</button>
+          </div>
+          <p class="note">Consejo: oscurecer entre 40 % y 60 % y un poco de tinte hacen que los textos se lean bien sobre cualquier foto.</p>
+        </div>
       </div>
-      <div class="etiqueta">Fondo</div>
-      <div class="fondo-grid">${Object.entries(UI.FONDOS).map(([k, n]) => `<label class="check">
-        <input type="radio" name="temaFondo" value="${k}" ${(t.fondo || 'degradado') === k ? 'checked' : ''}> ${esc(n)}</label>`).join('')}</div>
       <div class="tema-vista-acc">
         <select id="tema-pantalla"><option value="familias">👨‍👩‍👧 Ver Familias</option><option value="funcionarios">📺 Ver Funcionarios (sin TV)</option></select>
-        <button type="button" class="btn ghost" id="tema-ver">👀 Ver vista previa</button>
         <a class="btn ghost" id="tema-abrir" target="_blank">↗ Abrir en pantalla completa</a>
       </div>
       <div class="tema-vista"><iframe id="tema-iframe" title="Vista previa" tabindex="-1"></iframe></div>
-      <p class="note">La vista previa <b>no cambia las pantallas</b>. Cuando le guste, pulse <b>Guardar ajustes</b> y los TV se actualizan solos.</p>
+      <p class="note">La vista previa se actualiza al instante y <b>no cambia las pantallas</b>. Cuando le guste, pulse <b>Guardar ajustes</b>.</p>
     </fieldset>`;
   }
-  // el tema elegido en el formulario
-  const temaDelForm = fa => {
-    const v = n => (fa.querySelector(`[name="${n}"]:checked`) || fa.elements[n] || {}).value;
-    const t = { preset: v('temaPreset') || 'marino', fondo: v('temaFondo') || 'degradado' };
-    if (t.preset === 'propio') { t.base = fa.elements.temaBase.value; t.acento = fa.elements.temaAcento.value; }
-    return t;
-  };
+  // el tema guardado: { todas, familias, funcionarios } (null = usa el de todas)
+  const temaDelForm = () => ({ todas: temas.todas, familias: temas.familias, funcionarios: temas.funcionarios });
+
   function iniciarTema(fa) {
+    const box = document.getElementById('tema-box');
     const iframe = document.getElementById('tema-iframe');
     const caja = iframe.parentElement;
+    const el = fa.elements;
     const escalar = () => { iframe.style.transform = `scale(${caja.clientWidth / 1920})`; };
-    const url = () => {
-      const pant = document.getElementById('tema-pantalla').value;
-      return `${pant}.html?vista=1${pant === 'funcionarios' ? '&tv=0' : ''}${API.DEMO && /demo=1/.test(location.search) ? '&demo=1' : ''}` +
-        `&tema=${encodeURIComponent(JSON.stringify(temaDelForm(fa)))}`;
+    const actual = () => temas[temaPerfil] || temas.todas;
+    // muestra en el formulario el tema de la pestaña elegida
+    const cargar = () => {
+      const t = Object.assign({ preset: 'marino', fondo: 'degradado', base: '#0f2c72', acento: '#f6c90e' }, UI.IMG_DEF, actual());
+      const propio = temaPerfil === 'todas' || !!temas[temaPerfil];
+      box.querySelector('.tema-propio-perfil').hidden = temaPerfil === 'todas';
+      el.temaUsarPropio.checked = propio;
+      box.querySelector('.tema-editor').classList.toggle('apagado', !propio);
+      fa.querySelectorAll('[name="temaPreset"]').forEach(r => (r.checked = r.value === t.preset));
+      fa.querySelectorAll('[name="temaFondo"]').forEach(r => (r.checked = r.value === t.fondo));
+      fa.querySelectorAll('[name="temaImg"]').forEach(r => (r.checked = r.value === t.img));
+      el.temaBase.value = t.base; el.temaAcento.value = t.acento;
+      ['imgOscuro', 'imgBlur', 'imgSat', 'imgZoom', 'imgTinte'].forEach(k => (el[k].value = t[k]));
+      el.imgPos.value = t.imgPos || 'center';
+      el.imgMover.checked = !!t.imgMover;
+      salidas();
+      box.querySelector('.tema-img').hidden = t.fondo !== 'imagen';
     };
-    const ver = () => { iframe.src = url(); escalar(); document.getElementById('tema-abrir').href = url(); };
-    document.getElementById('tema-ver').onclick = ver;
-    document.getElementById('tema-pantalla').onchange = ver;
-    // al cambiar un color o un fondo, la vista previa se actualiza sola
-    fa.querySelectorAll('[name="temaPreset"], [name="temaFondo"]').forEach(r => (r.onchange = ver));
-    fa.querySelectorAll('[name="temaBase"], [name="temaAcento"]').forEach(c => (c.onchange = () => {
-      fa.querySelector('[name="temaPreset"][value="propio"]').checked = true;
+    const salidas = () => box.querySelectorAll('[data-salida]').forEach(o => {
+      const i = el[o.dataset.salida];
+      o.textContent = i.name === 'imgBlur' ? (i.value === '0' ? 'nada' : i.value) : i.value + i.dataset.unidad;
+    });
+    // lee el formulario y lo guarda en la pestaña elegida
+    const leer = () => {
+      if (temaPerfil !== 'todas' && !el.temaUsarPropio.checked) { temas[temaPerfil] = null; return; }
+      const v = n => (fa.querySelector(`[name="${n}"]:checked`) || {}).value;
+      const t = { preset: v('temaPreset') || 'marino', fondo: v('temaFondo') || 'degradado' };
+      if (t.preset === 'propio') { t.base = el.temaBase.value; t.acento = el.temaAcento.value; }
+      if (t.fondo === 'imagen') {
+        t.img = v('temaImg') || '';
+        ['imgOscuro', 'imgBlur', 'imgSat', 'imgZoom', 'imgTinte'].forEach(k => (t[k] = +el[k].value));
+        t.imgPos = el.imgPos.value;
+        t.imgMover = el.imgMover.checked ? 'si' : '';
+      }
+      temas[temaPerfil] = t;
+    };
+    // vista previa: la pantalla de la pestaña (o la elegida), con el tema completo
+    const pantalla = () => (temaPerfil === 'todas' ? document.getElementById('tema-pantalla').value : temaPerfil);
+    const url = () => `${pantalla()}.html?vista=1${pantalla() === 'funcionarios' ? '&tv=0' : ''}${/demo=1/.test(location.search) ? '&demo=1' : ''}` +
+      `&tema=${encodeURIComponent(JSON.stringify(temaDelForm()))}`;
+    let cargada = '';
+    const ver = () => {
+      document.getElementById('tema-abrir').href = url();
+      const w = iframe.contentWindow;
+      // misma pantalla: se aplica al instante sin recargar (los deslizadores se ven en vivo)
+      if (cargada === pantalla() && w && w.UI && w.UI.aplicarTema) {
+        try { w.history.replaceState(null, '', url()); w.UI.aplicarTema(null, JSON.stringify(temaDelForm())); return; } catch (e) {}
+      }
+      cargada = pantalla();
+      iframe.src = url();
+      escalar();
+    };
+    const cambio = () => { leer(); salidas(); box.querySelector('.tema-img').hidden = (fa.querySelector('[name="temaFondo"]:checked') || {}).value !== 'imagen'; ver(); };
+
+    box.querySelectorAll('.tema-tabs button').forEach(b => (b.onclick = () => {
+      box.querySelectorAll('.tema-tabs button').forEach(x => x.classList.toggle('on', x === b));
+      temaPerfil = b.dataset.perfil;
+      document.getElementById('tema-pantalla').hidden = temaPerfil !== 'todas';
+      cargar();
       ver();
     }));
+    el.temaUsarPropio.onchange = () => {
+      if (el.temaUsarPropio.checked && !temas[temaPerfil]) temas[temaPerfil] = Object.assign({}, temas.todas); // parte desde el general
+      if (!el.temaUsarPropio.checked) temas[temaPerfil] = null;
+      cargar();
+      ver();
+    };
+    box.querySelector('.tema-editor').addEventListener('change', e => {
+      if (e.target.id === 'img-subir') return;
+      // al tocar un color propio se elige "Personalizado"
+      if (e.target.name === 'temaBase' || e.target.name === 'temaAcento') fa.querySelector('[name="temaPreset"][value="propio"]').checked = true;
+      // al elegir una imagen se activa el fondo de imagen
+      if (e.target.name === 'temaImg') fa.querySelector('[name="temaFondo"][value="imagen"]').checked = true;
+      cambio();
+    });
+    box.querySelector('.tema-editor').addEventListener('input', e => { if (e.target.type === 'range') cambio(); });
+    document.getElementById('tema-pantalla').onchange = ver;
+    document.getElementById('img-restablecer').onclick = () => {
+      Object.entries(UI.IMG_DEF).forEach(([k, v]) => { if (el[k]) { if (el[k].type === 'checkbox') el[k].checked = !!v; else el[k].value = v; } });
+      cambio();
+    };
+    // subir una imagen de fondo nueva (queda en la lista para usarla en cualquier pantalla)
+    document.getElementById('img-subir').onchange = async e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const etq = e.target.closest('.img-subir').querySelector('span');
+      etq.textContent = 'Subiendo…';
+      try {
+        const r = await API.admin('add', { password, sheet: 'fondos', item: { nombre: f.name.replace(/\.\w+$/, '') },
+          image: { data: await comprimir(f, 1920), mimeType: 'image/jpeg', name: f.name.replace(/\.\w+$/, '') + '.jpg' } });
+        // se agrega a la lista y queda elegida
+        const url = (r.item && r.item.url) || '';
+        data.fondos = (data.fondos || []).concat(r.item ? [r.item] : []);
+        e.target.closest('.img-subir').insertAdjacentHTML('beforebegin', `<label class="img-op"><input type="radio" name="temaImg" value="${esc(url)}" checked>
+          <img src="${esc(url)}" alt=""><button type="button" class="img-quitar" data-id="${esc((r.item || {}).id || '')}" title="Eliminar esta imagen">✕</button></label>`);
+        fa.querySelector('[name="temaFondo"][value="imagen"]').checked = true;
+        toast('Imagen subida ✔ · ajústela y pulse Guardar ajustes');
+        cambio();
+      } catch (err) { toast(err.message, 'err'); }
+      etq.innerHTML = '➕<br>Subir imagen';
+      e.target.value = '';
+    };
+    box.querySelector('.img-lista').addEventListener('click', async e => {
+      const b = e.target.closest('.img-quitar');
+      if (!b) return;
+      e.preventDefault();
+      if (!confirm('¿Eliminar esta imagen de fondo? Si alguna pantalla la usa, pulse luego Guardar ajustes con otra imagen o fondo.')) return;
+      try {
+        await API.admin('delete', { password, sheet: 'fondos', id: b.dataset.id });
+        b.closest('.img-op').remove();
+        toast('Imagen eliminada');
+      } catch (err) { toast(err.message, 'err'); }
+    });
     window.addEventListener('resize', escalar);
+    cargar();
     ver();
   }
+
 
   // Ajustes generales: mensaje para las familias y segundos de las fotos
   function formAjustes() {
@@ -1135,13 +1284,21 @@
     funcionario: { quien: 'funcionario/a', detalle: '💼 Cargo (ej. Inspector, Profesora de Lenguaje)' },
   };
 
-  // una persona ya publicada: se edita ahí mismo (nombre, motivo, foto) o se elimina
+  // ¿Quién lo ve? (cada destacado por separado: ej. lo de funcionarios, solo en la pantalla Funcionarios)
+  const OPC_PUBLICO = [['ambos', '👀 Funcionarios y familias'], ['funcionarios', '📺 Solo Funcionarios'], ['familias', '👨‍👩‍👧 Solo Familias']];
+  const selPublico = (sel, attr) => `<label>👀 Lo ven<select ${attr}>${OPC_PUBLICO.map(([v, t]) =>
+    `<option value="${v}" ${(sel || 'ambos') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
+  // por defecto: lo de funcionarios solo en Funcionarios; el resto, en ambas pantallas
+  const publicoPorDefecto = tipo => (/funcionario/.test(tipo) ? 'funcionarios' : 'ambos');
+
+  // una persona ya publicada: se edita ahí mismo (nombre, motivo, foto, quién lo ve) o se elimina
   const tarjetaPersona = d => `<div class="dp-item" data-id="${esc(d.id)}">
     <img src="${esc(d.url || 'insignia.png')}" alt="">
     <div class="dp-campos">
       <label>👤 Nombre<input data-f="nombre" value="${esc(d.nombre || '')}"></label>
       ${ETQ_DEST[d.tipo] && ETQ_DEST[d.tipo].detalle ? `<label>${ETQ_DEST[d.tipo].detalle}<input data-f="curso" value="${esc(d.curso || '')}"></label>` : ''}
       <label>🏅 Motivo<input data-f="motivo" value="${esc(d.motivo || '')}"></label>
+      ${selPublico(d.publico, 'data-f="publico"')}
     </div>
     <div class="dp-acc">
       <label class="btn ghost mini">📷 Cambiar foto<input type="file" accept="image/*" data-acc="foto" hidden></label>
@@ -1152,38 +1309,63 @@
   // agregar personas: se eligen varias fotos y aparece una fila por foto
   const bloqueNuevos = tipo => `<div class="dp-nuevos">
     <label class="btn ghost dp-subir">📷 Agregar fotos de ${tipo === 'alumno' ? 'alumnos/as' : tipo === 'apoderado' ? 'apoderados/as' : 'funcionarios/as'}
-      (puede elegir varias a la vez)<input type="file" accept="image/*" multiple data-acc="fotos" hidden></label>
+      (una por persona · puede elegir varias a la vez)<input type="file" accept="image/*" multiple data-acc="fotos" hidden></label>
     <div class="dp-filas"></div>
     <div class="dp-publicar" hidden>
       <label>🏅 Motivo para todos (si alguno tiene otro, escríbalo en su fila)<input data-f="motivoComun" placeholder="Ej: Excelencia académica del semestre"></label>
+      ${tipo === 'alumno' ? '' : selPublico(publicoPorDefecto(tipo), 'data-f="publicoNuevo"')}
       <button type="button" class="btn" data-acc="publicar">✅ Publicar</button>
     </div></div>`;
+
+  // una foto de grupo ya publicada (curso completo, o un grupo / actividad de funcionarios o apoderados)
+  const tarjetaGrupo = (c, conNombre) => `<div class="dp-item" data-id="${esc(c.id)}"><img src="${esc(c.url)}" alt="" class="ancha">
+    <div class="dp-campos">
+      ${conNombre ? `<label>📌 Grupo o actividad<input data-f="nombre" value="${esc(c.nombre || '')}"></label>` : ''}
+      <label>🏅 Motivo<input data-f="motivo" value="${esc(c.motivo || '')}"></label>
+      ${selPublico(c.publico, 'data-f="publico"')}
+    </div>
+    <div class="dp-acc">
+      <label class="btn ghost mini">📷 Cambiar foto<input type="file" accept="image/*" data-acc="foto" hidden></label>
+      <button type="button" class="btn mini" data-acc="guardar">💾 Guardar</button>
+      <button type="button" class="del" data-acc="eliminar">🗑️ Quitar</button></div></div>`;
 
   // un grupo (un curso, apoderados o funcionarios): lo publicado y para agregar más
   function cuerpoGrupo(tipo, curso) {
     const lista = (data.destacados || []).filter(d => (d.tipo || 'alumno') === tipo && (tipo !== 'alumno' || d.curso === curso));
-    let html = `<div class="dp-lista">${lista.map(tarjetaPersona).join('') || `<p class="note">Aún no hay ${ETQ_DEST[tipo].quien} destacados/as${curso ? ' en este curso' : ''}.</p>`}</div>
+    let html = `<div class="etiqueta">${tipo === 'alumno' ? '⭐ Alumnos/as destacados/as' : '👤 Personas destacadas (una foto por persona)'}</div>
+      <div class="dp-lista">${lista.map(tarjetaPersona).join('') || `<p class="note">Aún no hay ${ETQ_DEST[tipo].quien} destacados/as${curso ? ' en este curso' : ''}.</p>`}</div>
       ${bloqueNuevos(tipo)}`;
     if (tipo === 'alumno') {
       // 🏆 el curso completo
       const c = (data.destacados || []).find(d => d.tipo === 'curso' && d.curso === curso);
       html += `<div class="dp-curso" data-tipo="curso">
         <div class="etiqueta">🏆 Destacar al curso completo</div>
-        ${c ? `<div class="dp-item" data-id="${esc(c.id)}"><img src="${esc(c.url)}" alt="" class="ancha">
-            <div class="dp-campos"><label>🏅 Motivo<input data-f="motivo" value="${esc(c.motivo || '')}"></label></div>
-            <div class="dp-acc">
-              <label class="btn ghost mini">📷 Cambiar foto<input type="file" accept="image/*" data-acc="foto" hidden></label>
-              <button type="button" class="btn mini" data-acc="guardar">💾 Guardar</button>
-              <button type="button" class="del" data-acc="eliminar">🗑️ Quitar</button></div></div>`
+        ${c ? tarjetaGrupo(c, false)
           : `<div class="dp-nuevo-curso">
             <label class="btn ghost mini">📷 Foto del curso completo<input type="file" accept="image/*" data-acc="fotoCurso" hidden></label>
             <img class="dp-vista" hidden alt="">
             <label>🏅 Motivo<input data-f="motivoCurso" placeholder="Ej: Mejor asistencia del mes"></label>
+            ${selPublico('ambos', 'data-f="publicoNuevo"')}
             <button type="button" class="btn mini" data-acc="publicarCurso">🏆 Destacar curso</button></div>`}
+      </div>`;
+    } else {
+      // 👥 grupos o actividades (ej. "Equipo de Inspectoría", "Taller de apoderados"): una foto con varias personas
+      const grupos = (data.destacados || []).filter(d => d.tipo === 'grupo_' + tipo);
+      html += `<div class="dp-curso" data-tipo="grupo_${tipo}">
+        <div class="etiqueta">👥 Grupos y actividades destacadas (una foto con varias personas)</div>
+        <div class="dp-lista">${grupos.map(g => tarjetaGrupo(g, true)).join('')}</div>
+        <div class="dp-nuevo-curso">
+          <label class="btn ghost mini">📷 Foto del grupo o actividad<input type="file" accept="image/*" data-acc="fotoCurso" hidden></label>
+          <img class="dp-vista" hidden alt="">
+          <label>📌 Grupo o actividad<input data-f="nombreGrupo" placeholder="${tipo === 'funcionario' ? 'Ej: Equipo de Inspectoría · Jornada de convivencia' : 'Ej: Directiva de 3° Medio · Taller de familias'}"></label>
+          <label>🏅 Motivo<input data-f="motivoCurso" placeholder="Ej: Por su gran apoyo en la Fiesta de la Chilenidad"></label>
+          ${selPublico(publicoPorDefecto(tipo), 'data-f="publicoNuevo"')}
+          <button type="button" class="btn mini" data-acc="publicarCurso">⭐ Destacar</button></div>
       </div>`;
     }
     return html;
   }
+
 
   function vistaDestacados() {
     const ds = data.destacados || [];
@@ -1208,8 +1390,8 @@
           <div class="dp-cursos">${N.cursos.map(c => grupo('alumno', c, c,
             `${cuenta(c) ? `⭐ ${cuenta(c)}` : '—'}${tieneCurso(c) ? ' · 🏆' : ''}`)).join('')}</div></div>`).join('')}
         <div class="dp-nivel"><h3>👥 Comunidad</h3><div class="dp-cursos">
-          ${grupo('apoderado', '', '💙 Apoderados/as destacados/as', n('apoderado') ? `⭐ ${n('apoderado')}` : '—')}
-          ${grupo('funcionario', '', '🏅 Funcionarios/as destacados/as', n('funcionario') ? `⭐ ${n('funcionario')}` : '—')}
+          ${grupo('apoderado', '', '💙 Apoderados/as destacados/as', [n('apoderado') ? `⭐ ${n('apoderado')}` : '', n('grupo_apoderado') ? `👥 ${n('grupo_apoderado')}` : ''].filter(Boolean).join(' · ') || '—')}
+          ${grupo('funcionario', '', '🏅 Funcionarios/as destacados/as', [n('funcionario') ? `⭐ ${n('funcionario')}` : '', n('grupo_funcionario') ? `👥 ${n('grupo_funcionario')}` : ''].filter(Boolean).join(' · ') || '—')}
         </div></div>
       </div></div>`;
   }
@@ -1274,7 +1456,9 @@
         v.hidden = false;
       }
     });
-    cont.addEventListener('input', e => { const it = e.target.closest('.dp-item'); if (it) it.classList.add('cambiado'); });
+    const marcar = e => { const it = e.target.closest('.dp-item'); if (it) it.classList.add('cambiado'); };
+    cont.addEventListener('input', marcar);
+    cont.addEventListener('change', marcar);
 
     cont.addEventListener('click', async e => {
       const b = e.target.closest('button');
@@ -1308,6 +1492,9 @@
             const f = fs[k];
             const item = Object.assign(opc(), { tipo, grupo: grupoId, nombre: f.nombre, motivo: f.motivo || comun,
               curso: tipo === 'alumno' ? curso : (f.curso || '') });
+            // apoderados/as y funcionarios/as: quién lo ve se elige en su propio bloque
+            const pub = nuevos.querySelector('[data-f="publicoNuevo"]');
+            if (pub) item.publico = pub.value;
             const image = { data: await comprimir(f.file, 900), mimeType: 'image/jpeg', name: f.nombre + '.jpg' };
             await API.admin('add', { password, sheet: 'destacados', item, image });
           }
@@ -1315,14 +1502,21 @@
           await recargar();
         });
       } else if (b.dataset.acc === 'publicarCurso') {
+        // foto de grupo: el curso completo, o un grupo / actividad de funcionarios o apoderados
         const bl = b.closest('.dp-nuevo-curso');
+        const tipoG = b.closest('.dp-curso').dataset.tipo; // 'curso' | 'grupo_funcionario' | 'grupo_apoderado'
         const motivo = bl.querySelector('[data-f="motivoCurso"]').value.trim();
-        if (!bl._foto) return toast('Elija la foto del curso completo', 'err');
+        const nombreG = bl.querySelector('[data-f="nombreGrupo"]');
+        if (!bl._foto) return toast(tipoG === 'curso' ? 'Elija la foto del curso completo' : 'Elija la foto del grupo o actividad', 'err');
+        if (nombreG && !nombreG.value.trim()) return toast('Escriba el nombre del grupo o actividad', 'err');
         if (!motivo) return toast('Escriba el motivo', 'err');
         await ocupado('Subiendo…', async () => {
-          const image = { data: await comprimir(bl._foto, 1920), mimeType: 'image/jpeg', name: curso + '.jpg' };
-          await API.admin('add', { password, sheet: 'destacados', item: Object.assign(opc(), { tipo: 'curso', curso, motivo }), image });
-          toast('Curso destacado ✔');
+          const nombre = nombreG ? nombreG.value.trim() : '';
+          const image = { data: await comprimir(bl._foto, 1920), mimeType: 'image/jpeg', name: (nombre || curso) + '.jpg' };
+          const item = Object.assign(opc(), { tipo: tipoG, curso: tipoG === 'curso' ? curso : '', nombre, motivo,
+            publico: bl.querySelector('[data-f="publicoNuevo"]').value });
+          await API.admin('add', { password, sheet: 'destacados', item, image });
+          toast('Destacado ✔');
           await recargar();
         });
       } else if (b.dataset.acc === 'guardar') {
@@ -1443,8 +1637,11 @@
           return o;
         }).filter(t => t.numero));
         // colores y fondo
-        valores.tema = JSON.stringify(temaDelForm(fa));
-        ['temaPreset', 'temaFondo', 'temaBase', 'temaAcento'].forEach(k => delete valores[k]);
+        valores.tema = JSON.stringify(temaDelForm());
+        // los campos del editor de colores no son ajustes sueltos
+        Object.keys(valores).filter(k => /^(tema|img)[A-Z]/.test(k)).forEach(k => delete valores[k]);
+        const sinImg = Object.values(temaDelForm()).find(t => t && t.fondo === 'imagen' && !t.img);
+        if (sinImg) { toast('Eligió "Imagen propia" pero falta elegir o subir la imagen', 'err'); return; }
         // edificios agregados (cada uno con un id fijo, ej. "edanexo")
         const usados = new Set(Object.keys(UI.ESPACIOS).concat(Object.keys(UI.EDIFICIOS)));
         valores.edificios = JSON.stringify([...edFilas.querySelectorAll('.ed-fila')].map(f => {

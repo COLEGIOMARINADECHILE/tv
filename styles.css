@@ -34,6 +34,24 @@ body {
     linear-gradient(160deg, var(--navy-800), var(--navy-900));
   overflow: hidden;
 }
+/* 🖼️ Imagen de fondo (Admin → Ajustes): la foto con sus ajustes y, encima, un tinte con los colores del tema */
+body[data-fondo="imagen"] { background-image: none; background-color: var(--navy-900); }
+body[data-fondo="imagen"]::before, body[data-fondo="imagen"]::after {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+}
+body[data-fondo="imagen"]::before {
+  background: var(--fondo-img) var(--fondo-pos, center) / cover no-repeat;
+  filter: brightness(var(--fondo-brillo, 0.55)) blur(var(--fondo-blur, 0)) saturate(var(--fondo-sat, 1));
+  transform: scale(calc(var(--fondo-zoom, 1) * 1.04)); /* un poco más grande: el desenfoque no deja bordes */
+  transform-origin: var(--fondo-pos, center);
+}
+body[data-fondo="imagen"]::after { background: var(--fondo-tinte, transparent); }
+body.fondo-mover[data-fondo="imagen"]::before { animation: fondoMover 60s ease-in-out infinite alternate; }
+body.fondo-mover.video-activo[data-fondo="imagen"]::before { animation-play-state: paused; }
+@keyframes fondoMover {
+  from { transform: scale(calc(var(--fondo-zoom, 1) * 1.04)) translate(0, 0); }
+  to { transform: scale(calc(var(--fondo-zoom, 1) * 1.14)) translate(-1.5%, -1%); }
+}
 /* Fondos que se eligen en Admin → Ajustes → Colores y fondo */
 body[data-fondo="liso"] { background-image: none; background-color: var(--navy-900); }
 body[data-fondo="aurora"] {
@@ -1096,3 +1114,60 @@ body.video-activo .sem-card.importante::after { display: none; }
 .reu-previa .rp-tit { background: #2fbf71; color: #fff; font-weight: 800; border-radius: 99px; padding: 0.3vh 0.9vw; white-space: nowrap; }
 .reu-previa b { color: var(--gold); }
 .prox-previa { font-size: 1.6vh; color: #9ff0c4; font-weight: 700; margin-top: 0.4vh; line-height: 1.3; }
+/* ---------- 🎂 Saludo de cumpleaños (Funcionarios) ---------- */
+.gallery .ph.cumple {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4vh; padding: 3vh 2vw; text-align: center;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.18), transparent 60%),
+    linear-gradient(150deg, #ff5f8f 0%, #ff9a3c 45%, var(--gold) 100%);
+  overflow: hidden;
+}
+.cumple-cabeza { position: relative; display: flex; align-items: center; gap: 1.2vw; }
+.cumple-torta { font-size: 8vh; line-height: 1; filter: drop-shadow(0 1vh 1.6vh rgba(0, 0, 0, 0.25)); }
+.ph.cumple.active .cumple-torta { animation: tortaSalto 1.6s ease-in-out infinite; }
+@keyframes tortaSalto { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-1.2vh) rotate(4deg); } }
+.cumple-cabeza h2 { font-size: 6vh; font-weight: 800; color: #fff; text-shadow: 0 0.5vh 1.6vh rgba(120, 20, 60, 0.45); }
+.cumple-grid { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 1.6vw; width: 100%; max-width: 92%; }
+.ph.cumple.n1 .cumple-grid { max-width: 70%; }
+.cumple-card {
+  background: rgba(255, 255, 255, 0.92); color: #5a1035; border-radius: 2vh; padding: 2.2vh 1.4vw;
+  display: flex; flex-direction: column; gap: 0.8vh; box-shadow: 0 1.4vh 3vh rgba(120, 20, 60, 0.3);
+}
+.cumple-card b { font-size: 4vh; line-height: 1.1; color: #b3124f; }
+.cumple-card span { font-size: 2vh; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #c25a00; }
+.cumple-card p { font-size: 2.4vh; font-weight: 600; line-height: 1.35; }
+.ph.cumple.n3 .cumple-card b { font-size: 3vh; }
+.ph.cumple.n3 .cumple-card p { font-size: 1.9vh; }
+.gal-chica .ph.cumple { gap: 1.2vh; padding: 1.4vh 1vw; }
+.gal-chica .cumple-torta { font-size: 4.6vh; }
+.gal-chica .cumple-cabeza h2 { font-size: 3.6vh; }
+.gal-chica .cumple-card { padding: 1.2vh 0.8vw; }
+.gal-chica .cumple-card b { font-size: 2.6vh; }
+.gal-chica .cumple-card span { font-size: 1.4vh; }
+.gal-chica .cumple-card p { font-size: 1.6vh; }
+/* confeti */
+.cumple-confeti { position: absolute; inset: 0; pointer-events: none; }
+.cumple-confeti i { position: absolute; top: -4vh; width: 1vh; height: 1.8vh; border-radius: 0.3vh; opacity: 0.9; }
+.ph.cumple.active .cumple-confeti i { animation: confeti 6s linear infinite; }
+body.video-activo .cumple-confeti i { animation: none !important; display: none; }
+@keyframes confeti { to { transform: translateY(80vh) rotate(720deg); } }
+.cumple-confeti i:nth-child(6n+1) { background: #fff; } .cumple-confeti i:nth-child(6n+2) { background: #2453c4; }
+.cumple-confeti i:nth-child(6n+3) { background: #ff3b6b; } .cumple-confeti i:nth-child(6n+4) { background: #2fbf71; }
+.cumple-confeti i:nth-child(6n+5) { background: #7a3cff; } .cumple-confeti i:nth-child(6n) { background: #ffe27a; }
+.cumple-confeti i:nth-child(1) { left: 38%; animation-delay: -0.7s; animation-duration: 6s; }
+.cumple-confeti i:nth-child(2) { left: 75%; animation-delay: -1.4s; animation-duration: 7s; }
+.cumple-confeti i:nth-child(3) { left: 15%; animation-delay: -2.1s; animation-duration: 8s; }
+.cumple-confeti i:nth-child(4) { left: 52%; animation-delay: -2.8s; animation-duration: 5s; }
+.cumple-confeti i:nth-child(5) { left: 89%; animation-delay: -3.5s; animation-duration: 6s; }
+.cumple-confeti i:nth-child(6) { left: 29%; animation-delay: -4.2s; animation-duration: 7s; }
+.cumple-confeti i:nth-child(7) { left: 66%; animation-delay: -4.9s; animation-duration: 8s; }
+.cumple-confeti i:nth-child(8) { left: 6%; animation-delay: -5.6s; animation-duration: 5s; }
+.cumple-confeti i:nth-child(9) { left: 43%; animation-delay: -0.3s; animation-duration: 6s; }
+.cumple-confeti i:nth-child(10) { left: 80%; animation-delay: -1s; animation-duration: 7s; }
+.cumple-confeti i:nth-child(11) { left: 20%; animation-delay: -1.7s; animation-duration: 8s; }
+.cumple-confeti i:nth-child(12) { left: 57%; animation-delay: -2.4s; animation-duration: 5s; }
+.cumple-confeti i:nth-child(13) { left: 94%; animation-delay: -3.1s; animation-duration: 6s; }
+.cumple-confeti i:nth-child(14) { left: 34%; animation-delay: -3.8s; animation-duration: 7s; }
+.cumple-confeti i:nth-child(15) { left: 71%; animation-delay: -4.5s; animation-duration: 8s; }
+.cumple-confeti i:nth-child(16) { left: 11%; animation-delay: -5.2s; animation-duration: 5s; }
+.cumple-confeti i:nth-child(17) { left: 48%; animation-delay: -5.9s; animation-duration: 6s; }
+.cumple-confeti i:nth-child(18) { left: 85%; animation-delay: -0.6s; animation-duration: 7s; }

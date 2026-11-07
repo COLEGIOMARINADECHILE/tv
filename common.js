@@ -210,6 +210,14 @@
     }
     el.innerHTML =
       fotos.map(f => {
+        // 🎂 saludo de cumpleaños (pantalla Funcionarios)
+        if (f.destacado === 'cumple') {
+          return `<div class="ph cumple n${f.personas.length}">
+            <div class="cumple-confeti" aria-hidden="true">${'<i></i>'.repeat(18)}</div>
+            <div class="cumple-cabeza"><span class="cumple-torta">🎂</span><h2>¡Feliz cumpleaños!</h2></div>
+            <div class="cumple-grid">${f.personas.map(p => `<div class="cumple-card">
+              <b>${esc(p.nombre)}</b>${p.cargo ? `<span>${esc(p.cargo)}</span>` : ''}<p>${esc(p.mensaje)}</p></div>`).join('')}</div></div>`;
+        }
         // diapositiva de solo texto (Educación sin video)
         if (!f.url && f.texto !== undefined) {
           return `<div class="ph texto"><div class="slide-texto">
@@ -231,7 +239,7 @@
           return `<div class="ph destacado curso">
             <div class="ig-fondo" style="background-image:url('${esc(f.url)}')"></div>
             <div class="ig-foto"><img src="${esc(f.url)}" alt="${esc(f.titulo)}"></div>
-            <div class="dest-lado"><span class="dest-sello">🏆 Curso destacado</span>
+            <div class="dest-lado"><span class="dest-sello">${esc(f.sello || '🏆 Curso destacado')}</span>
               <h3>${esc(f.titulo)}</h3>${motivo ? `<p class="${motivo.length < 140 ? 'g' : 'm'}">${esc(motivo)}</p>` : ''}</div></div>`;
         }
         // Publicación o reel de Instagram por enlace: tarjeta oficial de Instagram y el mensaje al lado
@@ -691,7 +699,26 @@
     puntos: '🔹 Puntos finos',
     diagonal: '📐 Líneas diagonales',
     liso: '⬛ Color liso',
+    imagen: '🖼️ Imagen propia',
   };
+  // 🖼️ Imagen de fondo con sus ajustes: oscurecer, desenfoque, color, zoom, posición, tinte del tema y movimiento suave
+  const IMG_DEF = { imgOscuro: 45, imgBlur: 0, imgSat: 100, imgZoom: 100, imgPos: 'center', imgTinte: 35, imgMover: '' };
+  function fondoImagen(t, c) {
+    const st = document.documentElement.style;
+    const usar = t.fondo === 'imagen' && /^https?:\/\//.test(t.img || '');
+    if (document.body) document.body.classList.toggle('fondo-mover', usar && !!t.imgMover);
+    if (!usar) { st.removeProperty('--fondo-img'); return; }
+    const v = k => (t[k] === undefined || t[k] === '' ? IMG_DEF[k] : t[k]);
+    st.setProperty('--fondo-img', `url("${String(t.img).replace(/["\\]/g, '')}")`);
+    st.setProperty('--fondo-brillo', String(1 - Math.min(90, +v('imgOscuro')) / 100));
+    st.setProperty('--fondo-blur', Math.min(30, +v('imgBlur')) / 10 + 'vh');
+    st.setProperty('--fondo-sat', Math.min(200, +v('imgSat')) / 100);
+    st.setProperty('--fondo-zoom', Math.max(100, Math.min(250, +v('imgZoom'))) / 100);
+    st.setProperty('--fondo-pos', { top: 'center top', bottom: 'center bottom', left: 'left center', right: 'right center' }[v('imgPos')] || 'center');
+    // tinte: los colores del tema encima de la foto (así el texto se lee bien y combina)
+    const ti = Math.min(90, +v('imgTinte')) / 100;
+    st.setProperty('--fondo-tinte', `linear-gradient(160deg, ${rgba(c[2], ti)}, ${rgba(c[0], Math.min(1, ti + 0.15))})`);
+  }
   const hexRgb = h => { const n = parseInt(String(h).replace('#', '').padEnd(6, '0').slice(0, 6), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
   const rgbHex = a => '#' + a.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
   const mezclar = (h, con, t) => { const a = hexRgb(h), b = hexRgb(con); return rgbHex(a.map((v, i) => v + (b[i] - v) * t)); };
@@ -707,10 +734,20 @@
     const p = TEMAS[t.preset] || TEMAS.marino;
     return { c: p.c, acento: /^#[0-9a-f]{6}$/i.test(t.acento || '') && t.acentoPropio ? t.acento : p.acento };
   }
+  // Perfil de esta pantalla (cada perfil puede tener sus propios colores y fondo)
+  const perfilPagina = () => (/funcionarios/.test(location.pathname) ? 'funcionarios' : /familias/.test(location.pathname) ? 'familias' : 'todas');
+  // Ajuste "tema" = { todas: {...}, familias: {...} | null, funcionarios: {...} | null } (o el formato anterior: un solo tema)
+  function temaDePerfil(obj, perfil) {
+    if (!obj || typeof obj !== 'object') return {};
+    if (!obj.todas && !obj.familias && !obj.funcionarios) return obj; // formato anterior
+    return (perfil !== 'todas' && obj[perfil]) || obj.todas || {};
+  }
+  // temaTexto: un tema para aplicar ya (vista previa del panel); si no, el de la dirección (?tema=) o el guardado
   function aplicarTema(aj, temaTexto) {
-    let t = {};
-    try { t = JSON.parse((aj ? aj.tema : temaTexto) || '{}') || {}; } catch (e) {}
-    try { const q = new URLSearchParams(location.search).get('tema'); if (q) t = JSON.parse(q); } catch (e) {}
+    let obj = {};
+    const q = new URLSearchParams(location.search).get('tema');
+    try { obj = JSON.parse(temaTexto != null ? temaTexto : (q || (aj && aj.tema) || '{}')) || {}; } catch (e) {}
+    const t = temaDePerfil(obj, perfilPagina());
     const { c, acento } = coloresTema(t);
     const st = document.documentElement.style;
     ['--navy-900', '--navy-800', '--navy-700', '--navy-600', '--navy-500'].forEach((v, i) => st.setProperty(v, c[i]));
@@ -719,6 +756,7 @@
     st.setProperty('--brillo1', rgba(c[4], 0.55));
     st.setProperty('--brillo2', rgba(acento, 0.12));
     if (document.body) document.body.dataset.fondo = FONDOS[t.fondo] ? t.fondo : 'degradado';
+    fondoImagen(t, c);
     // se recuerda en el equipo para que al abrir la pantalla ya parta con estos colores
     if (aj && !/[?&]tema=/.test(location.search)) try { localStorage.setItem('cmch_tema', aj.tema || ''); } catch (e) {}
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -753,7 +791,7 @@
   if (!/admin\.html/.test(location.pathname)) {
     let temaGuardado = '';
     try { temaGuardado = localStorage.getItem('cmch_tema') || ''; } catch (e) {}
-    const aplicarGuardado = () => aplicarTema(null, temaGuardado);
+    const aplicarGuardado = () => aplicarTema(null, /[?&]tema=/.test(location.search) ? null : temaGuardado);
     if (document.body) aplicarGuardado(); else document.addEventListener('DOMContentLoaded', aplicarGuardado);
   }
   // Espacio de este TV: ?espacio=matriz|menor|general|ed… (se recuerda en el equipo). '' = general (todo)
@@ -942,7 +980,30 @@
     const historias = (data.historias || [])
       .filter(h => new Date(h.vence).getTime() > Date.now())
       .map(h => ({ titulo: 'Historia de Instagram', url: h.url, fecha: h.fecha, historia: true, etiqueta: 'Recién publicado' }));
-    return historias.concat(destacados(data, perfil), fotos, antiguos);
+    const resto = historias.concat(destacados(data, perfil), fotos, antiguos);
+    const cumple = cumpleanosHoy(data, perfil);
+    if (!cumple.length) return resto;
+    // el saludo de cumpleaños aparece primero y se repite cada 4 publicaciones durante el día
+    const out = cumple.slice();
+    resto.forEach((f, k) => { out.push(f); if ((k + 1) % 4 === 0 && k < resto.length - 1) out.push(...cumple); });
+    return out;
+  }
+
+  // 🎂 Cumpleaños de funcionarios/as (Admin → 🎂 Cumpleaños): el mismo día (el año no importa) aparece un saludo
+  // en la pantalla Funcionarios, primero en el carrusel. Si cumplen varios el mismo día, pasan de a 3.
+  const MENSAJE_CUMPLE = '¡Te deseamos un día lleno de alegría! Con cariño, tu comunidad del Colegio Marina de Chile 💙';
+  function cumpleanosHoy(data, perfil) {
+    if (perfil !== 'funcionarios') return [];
+    const n = new Date();
+    const hoy = String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+    const lista = (data.cumpleanos || []).filter(c => c.nombre && String(c.fecha || '').slice(5, 10) === hoy);
+    const slides = [];
+    for (let k = 0; k < lista.length; k += 3) {
+      const ps = lista.slice(k, k + 3);
+      slides.push({ destacado: 'cumple', titulo: ps.map(p => p.nombre).join(', '), texto: ps.map(p => p.mensaje).join('|'), url: '',
+        personas: ps.map(p => ({ nombre: p.nombre, cargo: p.cargo, mensaje: String(p.mensaje || '').trim() || MENSAJE_CUMPLE })) });
+    }
+    return slides;
   }
 
   // ⭐ Alumnos destacados: los subidos juntos (mismo "grupo") pasan de a 3 por diapositiva.
@@ -972,7 +1033,11 @@
       }
     });
     lista.filter(d => d.tipo === 'curso').forEach(d =>
-      slides.push({ destacado: 'curso', titulo: d.curso || d.nombre, texto: d.motivo, url: d.url }));
+      slides.push({ destacado: 'curso', sello: '🏆 Curso destacado', titulo: d.curso || d.nombre, texto: d.motivo, url: d.url }));
+    // grupos o actividades destacadas de funcionarios/as y apoderados/as (una foto con varias personas)
+    lista.filter(d => /^grupo_/.test(d.tipo)).forEach(d =>
+      slides.push({ destacado: 'curso', sello: d.tipo === 'grupo_funcionario' ? '🏅 Funcionarios/as destacados/as' : '💙 Apoderados/as destacados/as',
+        titulo: d.nombre, texto: d.motivo, url: d.url }));
     return slides;
   }
 
@@ -1001,5 +1066,5 @@
     return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, textoPrevia, previasDe, NIVELES, destacados, TEMAS, FONDOS, coloresTema, aplicarTema, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, textoPrevia, previasDe, NIVELES, destacados, TEMAS, FONDOS, IMG_DEF, coloresTema, aplicarTema, temaDePerfil, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

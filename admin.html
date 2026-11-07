@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261107c">
+  <link rel="stylesheet" href="styles.css?v=20261107d">
   <style>
     body { overflow: auto; font-size: 15px; }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -162,6 +162,22 @@
     .tema-vista-acc select { width: auto; }
     .tema-vista { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; border: 2px solid var(--line); background: #000; }
     .tema-vista iframe { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }
+    .tema-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .tema-tabs button { background: rgba(255,255,255,.06); border: 1px solid var(--line); color: var(--ink); border-radius: 99px; padding: 8px 14px; cursor: pointer; font-weight: 700; }
+    .tema-tabs button.on { background: var(--gold); color: #06153a; border-color: var(--gold); }
+    .tema-propio-perfil { margin-bottom: 10px; }
+    .tema-editor.apagado { opacity: .35; pointer-events: none; }
+    .img-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-bottom: 10px; }
+    .img-op { position: relative; cursor: pointer; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; border: 3px solid transparent; background: rgba(255,255,255,.06); }
+    .img-op img { width: 100%; height: 100%; object-fit: cover; }
+    .img-op input { position: absolute; opacity: 0; }
+    .img-op:has(input:checked) { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(246,201,14,.35); }
+    .img-subir { display: grid; place-items: center; text-align: center; border: 2px dashed var(--line); color: var(--gold); font-size: 13px; text-transform: none; letter-spacing: 0; }
+    .img-quitar { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; }
+    .tema-ajustes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 16px; align-items: end; }
+    .tema-rango { text-transform: none; letter-spacing: 0; }
+    .tema-rango output { color: var(--gold); font-weight: 800; }
+    .tema-rango input[type=range] { accent-color: var(--gold); padding: 0; }
     .tel-fila.ed-fila { grid-template-columns: 80px 1fr auto 40px; align-items: center; }
     .reu-previas { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
     .reu-previa-fila { display: grid; grid-template-columns: 1.6fr 1.2fr 110px 1.2fr 1.2fr 36px; gap: 8px; align-items: end; }
@@ -206,9 +222,9 @@
 </head>
 <body>
   <div class="wrap" id="app"></div>
-  <script src="config.js?v=20261107c"></script>
-  <script src="api.js?v=20261107c"></script>
-  <script src="common.js?v=20261107c"></script>
-  <script src="admin.js?v=20261107c"></script>
+  <script src="config.js?v=20261107d"></script>
+  <script src="api.js?v=20261107d"></script>
+  <script src="common.js?v=20261107d"></script>
+  <script src="admin.js?v=20261107d"></script>
 </body>
 </html>

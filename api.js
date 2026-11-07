@@ -71,8 +71,16 @@
         motivo: 'Por su compromiso con la directiva del curso', url: 'https://picsum.photos/seed/apod1/600/600' },
       { id: 'u1', tipo: 'funcionario', nombre: 'Jorge Lagos', curso: 'Inspector', publico: 'ambos',
         motivo: '25 años de servicio en el colegio', url: 'https://picsum.photos/seed/func1/600/600' }])
+      .concat([{ id: 'gf1', tipo: 'grupo_funcionario', nombre: 'Equipo de Inspectoría', publico: 'funcionarios',
+        motivo: 'Por su gran trabajo en la Fiesta de la Chilenidad', url: 'https://picsum.photos/seed/equipo1/1280/860' }])
       .concat([{ id: 'c1', tipo: 'curso', curso: '6° Básico B', publico: 'ambos', url: 'https://picsum.photos/seed/curso6b/1280/860',
         motivo: '🏆 Mejor asistencia del mes de octubre (98 %). ¡Felicitaciones a los estudiantes y sus familias!' }]),
+    fondos: [{ id: 'fo1', nombre: 'Bahía', url: 'https://picsum.photos/seed/bahiaconce/1920/1080' }],
+    // 🎂 cumpleaños de ejemplo: hoy (se ve en Funcionarios)
+    cumpleanos: [
+      { id: 'b1', nombre: 'María José Pérez', fecha: '1990-' + hoyMas(0).slice(5), cargo: 'Profesora de Lenguaje', mensaje: '' },
+      { id: 'b2', nombre: 'Pedro Soto', fecha: '1985-' + hoyMas(0).slice(5), cargo: 'Auxiliar', mensaje: '¡Gracias por cuidar cada rincón del colegio! Que tengas un gran día 🎉' },
+    ],
     historias: [
       { id: 'h1', url: 'https://picsum.photos/seed/marinah1/1080/1920', fecha: new Date(Date.now() - 3 * 3600e3).toISOString(),
         vence: new Date(Date.now() + 21 * 3600e3).toISOString() },
