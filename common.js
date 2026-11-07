@@ -194,6 +194,8 @@
     const firma = JSON.stringify(fotos.map(f => [f.url, f.titulo, f.texto, f.audio, f.audioFunc, f.vecesAudio, f.etiqueta].join('|')).concat(!!opts.sonido, opts.seg));
     // qué videos llevan sonido en este perfil (por defecto: el campo "audio" de Familias)
     const audioDe = opts.audioDe || (f => f.audio !== 'no');
+    // carrusel chico (menos de 40 % de la altura de la pantalla): los destacados usan textos más compactos
+    el.classList.toggle('gal-chica', el.clientHeight > 0 && el.clientHeight < innerHeight * 0.4);
     if (el._firma === firma) return;
     el._firma = firma;
     clearTimeout(el._timer);

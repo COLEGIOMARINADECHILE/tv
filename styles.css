@@ -408,7 +408,10 @@ button { font: inherit; color: inherit; }
 #agenda { overflow: hidden; }
 
 /* ---------- Funcionarios: carrusel arriba y actividades abajo (sin Educación) ---------- */
-.info3 { grid-template-rows: minmax(0, 0.8fr) minmax(0, 1.2fr); }
+.info3 { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+.info3.agenda-vacia { grid-template-rows: minmax(0, 1fr) auto; }
+.info3.agenda-vacia .agenda-box .empty-msg { padding: 1vh 0; }
+.split.sin-tv .info3.agenda-vacia { grid-template-columns: 1fr; grid-template-areas: "gal" "agenda"; grid-template-rows: minmax(0, 1fr) auto; }
 .info3 #gal { aspect-ratio: auto; height: 100%; }
 .split.sin-tv .info3 {
   grid-template-columns: 1.5fr 1fr; grid-template-rows: minmax(0, 1fr);
@@ -1000,25 +1003,39 @@ body.video-activo .sem-card.importante::after { display: none; }
 .dest-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 1.6vw; }
 .ph.destacado.n1 .dest-grid { --n: 1; max-width: 40%; margin: 0 auto; width: 100%; }
 .ph.destacado.n2 .dest-grid { --n: 2; max-width: 72%; margin: 0 auto; width: 100%; }
+/* cada alumno: su foto ocupa toda la tarjeta y el nombre, curso y motivo van encima, abajo (se ve bien en cualquier tamaño) */
 .dest-card {
-  min-height: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.2vh;
-  background: rgba(255, 255, 255, 0.08); border: 2px solid rgba(246, 201, 14, 0.55); border-radius: 2vh; padding: 2vh 1vw;
+  position: relative; min-height: 0; overflow: hidden; border-radius: 1.8vh;
+  border: 0.4vh solid var(--gold); box-shadow: 0 1vh 3vh rgba(0, 0, 0, 0.45); background: var(--navy-700);
 }
 .ph.destacado.active .dest-card { animation: destEntrada 0.8s ease-out both; }
 .ph.destacado.active .dest-card:nth-child(2) { animation-delay: 0.25s; }
 .ph.destacado.active .dest-card:nth-child(3) { animation-delay: 0.5s; }
 @keyframes destEntrada { from { opacity: 0; transform: translateY(3vh) scale(0.96); } }
-.dest-foto {
-  flex: 1; min-height: 0; aspect-ratio: 1; max-width: 100%; border-radius: 50%; overflow: hidden;
-  border: 0.6vh solid var(--gold); box-shadow: 0 1vh 3vh rgba(0, 0, 0, 0.45); background: var(--navy-700);
-  display: grid; place-items: center;
-}
-.gallery .ph .dest-foto img { width: 100%; height: 100%; object-fit: cover; animation: none !important; }
+.dest-foto { position: absolute; inset: 0; display: grid; place-items: center; }
+.gallery .ph .dest-foto img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; animation: none !important; }
 .dest-inicial { font-size: 9vh; font-weight: 800; color: var(--gold); }
-.dest-datos { flex: none; display: flex; flex-direction: column; align-items: center; gap: 0.6vh; }
-.dest-datos h3 { font-size: 3vh; color: var(--white); line-height: 1.15; }
-.dest-curso { background: var(--white); color: var(--navy-900); font-weight: 800; font-size: 2vh; padding: 0.3vh 1vw; border-radius: 99px; }
-.dest-datos p { font-size: 2vh; color: var(--gold-soft); font-weight: 700; line-height: 1.3; }
+.dest-datos {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 4vh 0.8vw 1.2vh; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 0.5vh;
+  background: linear-gradient(transparent, rgba(6, 21, 58, 0.85) 38%, rgba(6, 21, 58, 0.96));
+}
+.dest-datos h3 { font-size: 2.8vh; color: var(--white); line-height: 1.15; text-shadow: 0 0.3vh 1vh rgba(0, 0, 0, 0.6); }
+.dest-curso { background: var(--gold); color: var(--navy-900); font-weight: 800; font-size: 1.9vh; padding: 0.3vh 1vw; border-radius: 99px; }
+.dest-datos p { font-size: 1.9vh; color: #fff; font-weight: 700; line-height: 1.3; }
+/* carrusel chico (ej. Funcionarios con la TV): textos más compactos */
+.gal-chica .ph.destacado { padding: 1.4vh 1vw; gap: 1vh; }
+.gal-chica .dest-sello { font-size: 1.8vh; padding: 0.4vh 1vw; }
+.gal-chica .dest-cabeza b { font-size: 1.8vh; }
+.gal-chica .dest-grid { gap: 0.8vw; }
+.gal-chica .dest-datos { padding: 2.4vh 0.4vw 0.6vh; gap: 0.3vh; }
+.gal-chica .dest-datos h3 { font-size: 1.9vh; }
+.gal-chica .dest-curso { font-size: 1.4vh; }
+.gal-chica .dest-datos p { font-size: 1.4vh; }
+.gal-chica .dest-lado h3 { font-size: 3vh; }
+.gal-chica .dest-lado p { font-size: 1.8vh; }
+.gal-chica .ph.destacado.n1 .dest-grid { max-width: 50%; }
+.gal-chica .ph.destacado.n2 .dest-grid { max-width: 80%; }
 /* curso destacado: foto completa y, al lado, el curso y el motivo */
 .gallery .ph.destacado.curso { flex-direction: row; align-items: center; gap: 2.4vw; padding: 3% 3%; }
 .ph.destacado.curso .ig-foto { max-width: 55%; }

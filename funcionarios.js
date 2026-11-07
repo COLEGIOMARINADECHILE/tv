@@ -182,6 +182,8 @@
       </div>`;
     };
 
+    // sin actividades, el carrusel (fotos, destacados) usa casi todo el espacio de la columna
+    el.closest('.info3')?.classList.toggle('agenda-vacia', !lista.length);
     if (!lista.length) {
       el.innerHTML = '<p class="empty-msg">No hay actividades programadas esta semana</p>';
       return;

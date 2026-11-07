@@ -23,6 +23,11 @@
     <option value="funcionarios">Solo funcionarios</option><option value="familias">Solo familias</option></select></label>
     ${ESPACIO_SEL}`;
 
+  // Lista de cursos del colegio agrupada por nivel (para elegir con un clic)
+  const opcionesCursos = (sel, vacio) => `<option value="">${vacio}</option>` +
+    Object.values(UI.NIVELES).map(n => `<optgroup label="${esc(n.nombre.replace(/^\S+\s/, ''))}">${n.cursos.map(c =>
+      `<option value="${esc(c)}" ${c === sel ? 'selected' : ''}>${esc(c)}</option>`).join('')}</optgroup>`).join('');
+
   // Cuántas veces al día suena un video (para no saturar)
   const OPC_VECES = [['', 'Siempre'], ['1', '1 vez al día'], ['2', '2 veces al día'], ['3', '3 veces al día'],
     ['4', '4 veces al día'], ['6', '6 veces al día'], ['8', '8 veces al día']];
@@ -122,18 +127,17 @@
       nombre: '⭐ Destacados',
       form: `<label>¿Qué quiere destacar?
           <select name="tipo"><option value="alumno">⭐ Alumnos destacados</option><option value="curso">🏆 Un curso destacado</option></select></label>
-        <label data-tipo="alumno">📷 Fotos de los alumnos (elija varias a la vez con Ctrl o arrastrándolas)
+        <label data-solo-editar hidden>👤 Nombre del alumno o alumna<input name="nombre"></label>
+        <label><span data-tipo="alumno">🏫 Curso (si son de distintos cursos, cámbielo en cada foto)</span><span data-tipo="curso" hidden>🏫 Curso destacado</span>
+          <select name="curso">${opcionesCursos('', 'Elija el curso…')}</select></label>
+        <label>🏅 Motivo<textarea name="motivo" rows="2" placeholder="Ej: Excelencia académica del semestre"></textarea></label>
+        <label data-tipo="alumno">📷 Fotos de los alumnos (puede elegir varias a la vez)
           <input type="file" name="imagen" accept="image/*" multiple id="dest-fotos"></label>
         <div class="dest-filas" id="dest-filas" data-tipo="alumno"></div>
         <label data-tipo="curso" hidden>📷 Foto del curso<input type="file" name="imagenCurso" accept="image/*" id="dest-foto-curso"></label>
         <img class="preview" id="preview" hidden alt="">
-        <label data-solo-editar hidden>Nombre del alumno o alumna<input name="nombre"></label>
-        <label><span data-tipo="alumno">Curso (si todos son del mismo; si no, escríbalo en cada alumno)</span><span data-tipo="curso" hidden>Curso</span>
-          <input name="curso" list="lista-cursos" placeholder="Ej: 5° Básico A">
-          <datalist id="lista-cursos">${Object.values(UI.NIVELES).flatMap(n => n.cursos).map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
-        <label>Motivo<textarea name="motivo" rows="3" placeholder="Ej: Excelencia académica del semestre · Primer lugar comunal de ajedrez"></textarea></label>
-        <p class="note" data-tipo="alumno">El motivo de arriba vale para todos; si alguno tiene otro, escríbalo en su fila.
-          En las pantallas pasan <b>de a 3 alumnos</b> por imagen, con su foto, nombre, curso y motivo.</p>
+        <p class="note" data-tipo="alumno">Debajo de cada foto escriba el <b>nombre</b>. En las pantallas pasan <b>de a 3 alumnos</b>
+          por imagen, con su foto grande, nombre, curso y motivo.</p>
         <label>Mostrar hasta (opcional · vacío = hasta que lo elimine)<input type="date" name="vence"></label>
         ${PUBLICO}`,
       linea: d => [(d.tipo === 'curso' ? '🏆 Curso destacado: ' + d.curso : '⭐ ' + d.nombre + (d.curso ? ' · ' + d.curso : '')),
@@ -396,8 +400,8 @@
   </div>`;
   // estado de cada curso: con reunión · sin reunión · cambiada a otro día (y cuándo)
   const ESTADOS = [['', '✅ Con reunión'], ['sin', '🚫 Sin reunión'], ['cambio', '📅 Cambiada a otro día']];
-  const filaCurso = c => `<div class="tel-fila reu-curso-fila">
-    <input data-campo="curso" placeholder="Curso (ej. 5° Básico A)" value="${esc(c.curso || '')}">
+  const filaCurso = c => `<div class="tel-fila reu-curso-fila ${c.sala || c.estado ? '' : 'sin-sala'}">
+    <input data-campo="curso" placeholder="Curso (ej. 5° Básico A)" value="${esc(c.curso || '')}" ${c.curso ? 'readonly class="curso-fijo"' : ''}>
     <select data-campo="edificio">${opcEdificio(c.edificio)}</select>
     <select data-campo="sala" data-valor="${esc(c.sala || '')}"></select>
     <select data-campo="estado">${ESTADOS.map(([v, t]) => `<option value="${v}" ${(c.estado || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
@@ -416,6 +420,15 @@
     : Object.keys(UI.NIVELES).filter(k => (r.cursos || []).some(c => UI.NIVELES[k].cursos.includes(c.curso))));
   // Sala que tuvo cada curso la última vez (Admin la recuerda: no hay que elegirla en cada reunión)
   let salasCurso = {};
+  // Cursos de los niveles marcados, con su edificio y su sala de la última vez
+  const cursosDeNiveles = niveles => niveles.flatMap(k => UI.NIVELES[k].cursos.map(c =>
+    ({ curso: c, edificio: UI.NIVELES[k].edificio, sala: salasCurso[c] || '' })));
+  // Una reunión nueva viene con TODOS los cursos listos; una guardada, con los suyos
+  const datosBloque = r => {
+    if (r.cursos && r.cursos.length) return { niveles: nivelesDe(r), cursos: r.cursos };
+    const niveles = Array.isArray(r.niveles) && r.niveles.length ? r.niveles : Object.keys(UI.NIVELES);
+    return { niveles, cursos: cursosDeNiveles(niveles) };
+  };
 
   // Una reunión guardada (ej. "Básica" o "Media") con su horario y sus cursos
   const bloqueReunion = r => `<fieldset class="grupo reu-bloque" data-id="${esc(r.id || 'r' + Date.now())}">
@@ -452,21 +465,13 @@
       <p class="note">En la pantalla aparece arriba del tablero: "📣 Primero: reunión general · Gimnasio · 17:00 hrs · …",
       y también en el aviso de la próxima reunión.</p>
     </fieldset>
-    <div class="etiqueta">👥 ¿Qué cursos tienen esta reunión? (cada uno va a su edificio solo)</div>
+    <div class="etiqueta">👥 Niveles que tienen reunión este día (desmarque los que no)</div>
     <div class="reu-niveles">${Object.entries(UI.NIVELES).map(([k, n]) => `<label class="check">
-      <input type="checkbox" data-nivel="${k}" ${nivelesDe(r).includes(k) ? 'checked' : ''}> ${n.nombre}</label>`).join('')}</div>
-    <details class="reu-detalle" ${(r.cursos || []).some(c => c.curso && !c.sala && !c.estado) ? 'open' : ''}>
-    <summary>📋 Salas de cada curso, cursos sin reunión o cambiados de día (las salas se recuerdan para la próxima vez)</summary>
-    <div class="tel-filas reu-cursos">${(r.cursos && r.cursos.length ? r.cursos : []).map(filaCurso).join('')}</div>
-    <div class="reu-rapido">
-      <span>⚡ Agregar varios:</span>
-      <input class="rap-nivel" placeholder="Nivel (ej. 5° Básico)">
-      <input class="rap-letras" placeholder="Letras (ej. A B C)">
-      <select class="rap-edificio">${opcEdificio('matriz')}</select>
-      <button type="button" class="btn ghost rap-agregar">➕ Agregar</button>
-    </div>
+      <input type="checkbox" data-nivel="${k}" ${datosBloque(r).niveles.includes(k) ? 'checked' : ''}> ${n.nombre}</label>`).join('')}</div>
+    <div class="etiqueta">🚪 Elija solo la sala de cada curso (el edificio se puede cambiar; las salas se recuerdan para la próxima vez)</div>
+    <div class="reu-tabla-head"><span>Curso</span><span>Edificio</span><span>Sala</span><span>Estado</span><span></span><span></span></div>
+    <div class="tel-filas reu-cursos">${datosBloque(r).cursos.map(filaCurso).join('')}</div>
     <button type="button" class="btn ghost reu-curso-agregar">➕ Agregar otro curso</button>
-    </details>
     <div class="reu-acciones">
       <button type="button" class="btn ghost reu-duplicar">📄 Duplicar reunión</button>
       <button type="button" class="btn ghost reu-eliminar">🗑️ Eliminar reunión</button>
@@ -493,17 +498,18 @@
       <h2>👨‍👩‍👧 Modo reunión de apoderados</h2>
       <p class="note">${estado}</p>
       <form id="f-reunion">
-        <fieldset class="grupo">
-          <legend>🏫 Salas de cada edificio (se ingresan una vez y sirven para todas las reuniones)</legend>
+        <details class="grupo reu-detalle">
+          <summary>🏫 Lista de salas de cada edificio y su piso (ya están creadas; ábrala solo para agregar una sala o indicar el piso)</summary>
           <div class="tel-filas" id="reu-salas">${(salas.length ? salas : [{}]).map(filaSala).join('')}</div>
           <button type="button" class="btn ghost" id="reu-sala-agregar">➕ Agregar sala</button>
           <button type="button" class="btn ghost" id="reu-sala-base">⚡ Completar salas 1 a 15 del Matriz y 1 a 8 del Ciclo Menor</button>
           <p class="note">Indique el piso cuando el edificio tiene más de uno (algunos tienen 3 pisos, otros solo 1).
           <b>Prebásica</b> está en el Edificio Matriz, pero va aparte para tener su propio horario de reunión:
           se muestra en los TV del <b>Edificio Matriz</b> (y en el General).</p>
-        </fieldset>
-        <p class="note">Guarde una reunión por cada día (ej. <b>Básica</b> de Pre-Kínder a 8° y <b>Media</b> de 1° a 4° Medio).
-        Si un curso no tiene reunión o se cambió de día, elija su estado: en la pantalla se avisa en vez de la sala.</p>
+        </details>
+        <p class="note">Cada reunión ya trae <b>todos los cursos</b>: solo elija la <b>sala</b> de cada uno (queda en amarillo el que falta).
+        Si un día es solo para algunos niveles (ej. <b>Media</b>), desmarque los demás. Si un curso no tiene reunión o se cambió de día,
+        elija su estado: en la pantalla se avisa en vez de la sala.</p>
         <div id="reu-lista">${(lista.length ? lista : [{ nombre: 'Básica' }]).map(bloqueReunion).join('')}</div>
         <button type="button" class="btn ghost" id="reu-nueva">➕ Nueva reunión (otro día)</button>
         <button class="btn">💾 Guardar todo</button>
@@ -528,6 +534,8 @@
         sel.dataset.valor = sel.value;
         // "¿Cuándo?" solo cuando se cambió de día
         f.querySelector('[data-campo="cambio"]').hidden = f.querySelector('[data-campo="estado"]').value !== 'cambio';
+        // se marca en amarillo el curso que aún no tiene sala
+        f.classList.toggle('sin-sala', !sel.value && !f.querySelector('[data-campo="estado"]').value);
       });
     };
 
@@ -550,6 +558,7 @@
     };
 
     lista.onchange = e => {
+      if (e.target.dataset.campo === 'sala') actualizarSalas();
       // marcar un nivel agrega sus cursos (con su edificio y la sala de la última vez); desmarcarlo los quita
       const nivel = e.target.dataset.nivel;
       if (nivel) {
@@ -603,7 +612,7 @@
       actualizarSalas();
     };
     document.getElementById('reu-nueva').onclick = () => {
-      lista.insertAdjacentHTML('beforeend', bloqueReunion({ nombre: 'Media' }));
+      lista.insertAdjacentHTML('beforeend', bloqueReunion({ nombre: 'Otro día' }));
       actualizarSalas();
       lista.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
@@ -1056,10 +1065,10 @@
     const dibujar = () => {
       filas.innerHTML = destArchivos.length ? destArchivos.map((f, k) => `<div class="dest-fila" data-k="${k}">
         <img src="${f.vista}" alt="">
-        <input data-campo="nombre" placeholder="Nombre del alumno o alumna" value="${esc(f.nombre || '')}">
-        <input data-campo="curso" list="lista-cursos" placeholder="Curso (si es otro)" value="${esc(f.curso || '')}">
-        <input data-campo="motivo" placeholder="Motivo propio (opcional)" value="${esc(f.motivo || '')}">
-        <button type="button" class="tel-quitar" title="Quitar">✕</button></div>`).join('') +
+        <label>👤 Nombre del alumno o alumna<input data-campo="nombre" placeholder="Ej: Martina Soto" value="${esc(f.nombre || '')}"></label>
+        <label>🏫 Curso<select data-campo="curso">${opcionesCursos(f.curso || '', 'Elija el curso…')}</select></label>
+        <label>🏅 Motivo (si es distinto)<input data-campo="motivo" placeholder="Vacío = el motivo de abajo" value="${esc(f.motivo || '')}"></label>
+        <button type="button" class="tel-quitar" title="Quitar esta foto">✕</button></div>`).join('') +
         `<p class="note" style="color:var(--gold)">${destArchivos.length} alumno(s) · en pantalla se verán en
          ${Math.ceil(destArchivos.length / 3)} imagen(es) de hasta 3</p>` : '';
     };
@@ -1070,9 +1079,15 @@
     });
     input.onchange = () => {
       leer();
-      [...input.files].forEach(file => destArchivos.push({ file, vista: URL.createObjectURL(file),
-        // el nombre del archivo sirve de sugerencia (ej. "Martina Soto.jpg")
-        nombre: file.name.replace(/\.\w+$/, '').replace(/^(img|dsc|whatsapp image|foto|image)[\s_-]*[\d\s_.-]*$/i, '').replace(/[_]+/g, ' ').trim() }));
+      // el curso elegido para todos queda puesto en cada foto nueva (se puede cambiar en la fila)
+      const cursoComun = form.elements.curso.value;
+      [...input.files].forEach(file => {
+        // el nombre del archivo sirve de sugerencia solo si parece un nombre (ej. "Martina Soto.jpg"),
+        // no si es de la cámara o de WhatsApp ("WhatsApp Image 2026-10-26 at 10.00.43 PM.jpeg")
+        const base = file.name.replace(/\.\w+$/, '').replace(/_+/g, ' ').trim();
+        const pareceNombre = /^[A-Za-zÁÉÍÓÚÑÜáéíóúñü' ]{3,40}$/.test(base) && !/^(img|dsc|image|foto|photo|whatsapp)/i.test(base);
+        destArchivos.push({ file, vista: URL.createObjectURL(file), nombre: pareceNombre ? base : '', curso: cursoComun });
+      });
       input.value = '';
       dibujar();
     };
@@ -1085,6 +1100,13 @@
     const fc = document.getElementById('dest-foto-curso');
     fc.onchange = () => { if (fc.files[0]) { prev.src = URL.createObjectURL(fc.files[0]); prev.hidden = false; } };
     form.elements.tipo.addEventListener('change', () => { prev.hidden = true; });
+    // cambiar el curso de arriba lo pone en todas las fotos
+    form.elements.curso.addEventListener('change', () => {
+      if (!destArchivos.length) return;
+      leer();
+      destArchivos.forEach(f => (f.curso = form.elements.curso.value));
+      dibujar();
+    });
     form._leerDest = leer;
   }
 
@@ -1133,7 +1155,7 @@
     const lista = (data[seccion] || []).slice().reverse();
     const cuerpo = seccion === 'ajustes' ? formAjustes() : seccion === 'instagram' ? vistaInstagram()
       : seccion === 'reunion' ? formReunion() : `
-      <div class="grid">
+      <div class="grid ${seccion === 'destacados' ? 'una-col' : ''}">
         <div class="panel ${editando ? 'editando' : ''}"><h2>${editando ? '✏️ Editar publicación' : 'Agregar'}</h2>
           <form id="f-add">${S.form}<button class="btn">${editando ? '💾 Guardar cambios' : 'Publicar'}</button>
           ${editando ? '<button type="button" class="btn ghost" id="cancelar-edicion">Cancelar</button>' : ''}</form></div>

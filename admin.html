@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261107a">
+  <link rel="stylesheet" href="styles.css?v=20261107b">
   <style>
     body { overflow: auto; font-size: 15px; }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -65,6 +65,8 @@
       display: flex; flex-direction: column; gap: 10px; background: rgba(246,201,14,.06);
     }
     fieldset.sonido[hidden] { display: none; }
+    /* lo oculto no se ve (los label tienen display:flex y antes ganaban al atributo hidden) */
+    [hidden]:not([data-campo="cambio"]) { display: none !important; }
     .tel-filas { display: flex; flex-direction: column; gap: 8px; }
     .tel-fila { display: grid; grid-template-columns: 140px 1fr 1fr 40px; gap: 8px; }
     .tel-fila.reu-sala-fila { grid-template-columns: 200px 1fr 160px 40px; }
@@ -87,12 +89,27 @@
     @media (max-width: 640px) { .tel-fila { grid-template-columns: 1fr 1fr; } }
     /* ⭐ destacados: una fila por alumno */
     .dest-filas { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 12px; }
-    .dest-fila { display: grid; grid-template-columns: 56px 1.2fr 1fr 1.4fr 40px; gap: 8px; align-items: center; }
-    .dest-fila img { width: 56px; height: 56px; object-fit: cover; border-radius: 50%; border: 2px solid var(--gold); }
-    @media (max-width: 640px) { .dest-fila { grid-template-columns: 56px 1fr 40px; } .dest-fila input[data-campo="curso"], .dest-fila input[data-campo="motivo"] { grid-column: 2 / 4; } }
+    /* Destacados: formulario a todo el ancho (las filas de alumnos necesitan espacio) y lo publicado debajo */
+    .grid.una-col { grid-template-columns: 1fr !important; max-width: 980px; }
+    /* foto a la izquierda · arriba el nombre (grande) · abajo curso y motivo */
+    .dest-fila { display: grid; grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1fr) 36px; grid-template-areas: "foto nom nom x" "foto cur mot x";
+      gap: 8px 10px; align-items: end; padding: 10px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid var(--line); }
+    .dest-fila img { grid-area: foto; width: 84px; height: 84px; object-fit: cover; border-radius: 12px; border: 2px solid var(--gold); align-self: center; }
+    .dest-fila label, .dest-fila input, .dest-fila select { min-width: 0; width: 100%; box-sizing: border-box; }
+    .dest-fila label { gap: 3px; font-size: 11px; letter-spacing: .03em; text-transform: none; margin: 0; }
+    .dest-fila label:nth-of-type(1) { grid-area: nom; }
+    .dest-fila label:nth-of-type(2) { grid-area: cur; }
+    .dest-fila label:nth-of-type(3) { grid-area: mot; }
+    .dest-fila .tel-quitar { grid-area: x; align-self: start; }
+    .dest-fila input[data-campo="nombre"] { font-size: 16px; font-weight: 700; }
     /* reunión: qué niveles tienen reunión y reunión general previa */
     .reu-niveles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 14px; margin: 6px 0 10px; }
     @media (max-width: 640px) { .reu-niveles { grid-template-columns: 1fr; } }
+    .reu-tabla-head { display: grid; grid-template-columns: 1.1fr 170px 1fr 190px 1fr 40px; gap: 8px; font-size: 12px; font-weight: 700;
+      color: var(--gold); text-transform: uppercase; letter-spacing: .05em; padding: 0 2px 4px; }
+    @media (max-width: 640px) { .reu-tabla-head { display: none; } }
+    .curso-fijo { background: transparent !important; border-color: transparent !important; font-weight: 800; color: #fff; }
+    .reu-curso-fila.sin-sala [data-campo="sala"] { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(246,201,14,.35); }
     .reu-previa-box { border: 1px dashed #2fbf71; border-radius: 10px; padding: 10px; margin: 10px 0; }
     details.reu-detalle > summary { cursor: pointer; font-weight: 700; color: var(--gold); margin: 8px 0; }
     .clave-box { max-width: 520px; }
@@ -131,9 +148,9 @@
 </head>
 <body>
   <div class="wrap" id="app"></div>
-  <script src="config.js?v=20261107a"></script>
-  <script src="api.js?v=20261107a"></script>
-  <script src="common.js?v=20261107a"></script>
-  <script src="admin.js?v=20261107a"></script>
+  <script src="config.js?v=20261107b"></script>
+  <script src="api.js?v=20261107b"></script>
+  <script src="common.js?v=20261107b"></script>
+  <script src="admin.js?v=20261107b"></script>
 </body>
 </html>
