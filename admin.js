@@ -122,28 +122,7 @@
       // categoría y sonido editables en cada publicación
       extra: f => filaCategoria(f) + filaSonido(f),
     },
-    // ⭐ Alumnos destacados (varias fotos de una vez; en pantalla pasan de a 3) y 🏆 cursos destacados
-    destacados: {
-      nombre: '⭐ Destacados',
-      form: `<label>¿Qué quiere destacar?
-          <select name="tipo"><option value="alumno">⭐ Alumnos destacados</option><option value="curso">🏆 Un curso destacado</option></select></label>
-        <label data-solo-editar hidden>👤 Nombre del alumno o alumna<input name="nombre"></label>
-        <label><span data-tipo="alumno">🏫 Curso (si son de distintos cursos, cámbielo en cada foto)</span><span data-tipo="curso" hidden>🏫 Curso destacado</span>
-          <select name="curso">${opcionesCursos('', 'Elija el curso…')}</select></label>
-        <label>🏅 Motivo<textarea name="motivo" rows="2" placeholder="Ej: Excelencia académica del semestre"></textarea></label>
-        <label data-tipo="alumno">📷 Fotos de los alumnos (puede elegir varias a la vez)
-          <input type="file" name="imagen" accept="image/*" multiple id="dest-fotos"></label>
-        <div class="dest-filas" id="dest-filas" data-tipo="alumno"></div>
-        <label data-tipo="curso" hidden>📷 Foto del curso<input type="file" name="imagenCurso" accept="image/*" id="dest-foto-curso"></label>
-        <img class="preview" id="preview" hidden alt="">
-        <p class="note" data-tipo="alumno">Debajo de cada foto escriba el <b>nombre</b>. En las pantallas pasan <b>de a 3 alumnos</b>
-          por imagen, con su foto grande, nombre, curso y motivo.</p>
-        <label>Mostrar hasta (opcional · vacío = hasta que lo elimine)<input type="date" name="vence"></label>
-        ${PUBLICO}`,
-      linea: d => [(d.tipo === 'curso' ? '🏆 Curso destacado: ' + d.curso : '⭐ ' + d.nombre + (d.curso ? ' · ' + d.curso : '')),
-        (d.motivo || 'Sin motivo') + ' · ' + d.publico + (d.vence ? ' · hasta ' + d.vence : '')],
-      img: d => d.url || '',
-    },
+    destacados: { nombre: '⭐ Destacados' }, // vista propia: todos los cursos listos (ver vistaDestacados)
     musica: {
       nombre: '🎵 Música Familias',
       form: `<label>Nombre de la canción<input name="titulo" required></label>
@@ -309,6 +288,72 @@
     <button type="button" class="tel-quitar" title="Quitar">✕</button>
   </div>`;
 
+  // 🏫 Un edificio agregado: ícono y nombre (el id no cambia aunque se cambie el nombre)
+  const filaEdificio = e => `<div class="tel-fila ed-fila" data-id="${esc(e.id || '')}">
+    <select data-campo="ico">${['🏢', '🏫', '🏛️', '🏠', '⛪', '🎨', '🔬', '⚽', '🎭', '📚'].map(i => `<option ${i === (e.ico || '🏢') ? 'selected' : ''}>${i}</option>`).join('')}</select>
+    <input data-campo="nombre" placeholder="Nombre (ej. Edificio Anexo)" value="${esc(e.nombre || '')}">
+    <span class="note">${e.id ? 'TV: familias.html?espacio=' + esc(e.id) : 'Nuevo'}</span>
+    <button type="button" class="tel-quitar" title="Quitar">✕</button></div>`;
+
+  // 🎨 Colores y fondo: temas listos para elegir, uno personalizado y vista previa antes de guardar
+  function bloqueTema(a) {
+    const t = UI.leerJSON(a.tema, {});
+    const preset = t.preset || 'marino';
+    const tarjeta = (k, nombre, c, acento) => `<label class="tema-op">
+      <input type="radio" name="temaPreset" value="${k}" ${preset === k ? 'checked' : ''}>
+      <span class="tema-muestra" style="background:linear-gradient(160deg,${c[1]},${c[0]})">
+        <i style="background:${c[4]}"></i><i style="background:${c[2]}"></i><i style="background:${acento}"></i></span>
+      <b>${esc(nombre)}</b></label>`;
+    const propio = UI.coloresTema({ preset: 'propio', base: t.base || '#0f2c72', acento: t.acento || '#f6c90e' });
+    return `<fieldset class="grupo">
+      <legend>🎨 Colores y fondo de las pantallas</legend>
+      <div class="tema-grid">${Object.entries(UI.TEMAS).map(([k, p]) => tarjeta(k, p.nombre, p.c, p.acento)).join('')}
+        ${tarjeta('propio', '🎨 Personalizado', propio.c, propio.acento)}</div>
+      <div class="dos tema-propio">
+        <label>Color principal (personalizado)<input type="color" name="temaBase" value="${esc(t.base || '#0f2c72')}"></label>
+        <label>Color de acento (destacados, títulos)<input type="color" name="temaAcento" value="${esc(t.acento || '#f6c90e')}"></label>
+      </div>
+      <div class="etiqueta">Fondo</div>
+      <div class="fondo-grid">${Object.entries(UI.FONDOS).map(([k, n]) => `<label class="check">
+        <input type="radio" name="temaFondo" value="${k}" ${(t.fondo || 'degradado') === k ? 'checked' : ''}> ${esc(n)}</label>`).join('')}</div>
+      <div class="tema-vista-acc">
+        <select id="tema-pantalla"><option value="familias">👨‍👩‍👧 Ver Familias</option><option value="funcionarios">📺 Ver Funcionarios (sin TV)</option></select>
+        <button type="button" class="btn ghost" id="tema-ver">👀 Ver vista previa</button>
+        <a class="btn ghost" id="tema-abrir" target="_blank">↗ Abrir en pantalla completa</a>
+      </div>
+      <div class="tema-vista"><iframe id="tema-iframe" title="Vista previa" tabindex="-1"></iframe></div>
+      <p class="note">La vista previa <b>no cambia las pantallas</b>. Cuando le guste, pulse <b>Guardar ajustes</b> y los TV se actualizan solos.</p>
+    </fieldset>`;
+  }
+  // el tema elegido en el formulario
+  const temaDelForm = fa => {
+    const v = n => (fa.querySelector(`[name="${n}"]:checked`) || fa.elements[n] || {}).value;
+    const t = { preset: v('temaPreset') || 'marino', fondo: v('temaFondo') || 'degradado' };
+    if (t.preset === 'propio') { t.base = fa.elements.temaBase.value; t.acento = fa.elements.temaAcento.value; }
+    return t;
+  };
+  function iniciarTema(fa) {
+    const iframe = document.getElementById('tema-iframe');
+    const caja = iframe.parentElement;
+    const escalar = () => { iframe.style.transform = `scale(${caja.clientWidth / 1920})`; };
+    const url = () => {
+      const pant = document.getElementById('tema-pantalla').value;
+      return `${pant}.html?vista=1${pant === 'funcionarios' ? '&tv=0' : ''}${API.DEMO && /demo=1/.test(location.search) ? '&demo=1' : ''}` +
+        `&tema=${encodeURIComponent(JSON.stringify(temaDelForm(fa)))}`;
+    };
+    const ver = () => { iframe.src = url(); escalar(); document.getElementById('tema-abrir').href = url(); };
+    document.getElementById('tema-ver').onclick = ver;
+    document.getElementById('tema-pantalla').onchange = ver;
+    // al cambiar un color o un fondo, la vista previa se actualiza sola
+    fa.querySelectorAll('[name="temaPreset"], [name="temaFondo"]').forEach(r => (r.onchange = ver));
+    fa.querySelectorAll('[name="temaBase"], [name="temaAcento"]').forEach(c => (c.onchange = () => {
+      fa.querySelector('[name="temaPreset"][value="propio"]').checked = true;
+      ver();
+    }));
+    window.addEventListener('resize', escalar);
+    ver();
+  }
+
   // Ajustes generales: mensaje para las familias y segundos de las fotos
   function formAjustes() {
     const a = UI.ajustes(data);
@@ -348,6 +393,16 @@
           <legend>📺 Pantalla Funcionarios</legend>
           <label>Segundos que se ve cada foto · Funcionarios<input type="number" name="segFotosFuncionarios" min="3" max="120" value="${esc(a.segFotosFuncionarios)}"></label>
           <p class="note">Los videos siempre se muestran completos.</p>
+        </fieldset>
+
+        ${bloqueTema(a)}
+
+        <fieldset class="grupo">
+          <legend>🏫 Edificios del colegio</legend>
+          <p class="note">Ya existen: <b>🏫 Edificio Matriz</b> (con Prebásica) y <b>🧒 Edificio Ciclo Menor</b>.
+          Agregue aquí otros edificios: aparecerán para elegir en cada TV Familias, en las publicaciones y en las salas de reunión.</p>
+          <div class="tel-filas" id="ed-filas">${UI.leerJSON(a.edificios, []).map(filaEdificio).join('')}</div>
+          <button type="button" class="btn ghost" id="ed-agregar">➕ Agregar edificio</button>
         </fieldset>
 
         <button class="btn">Guardar ajustes</button>
@@ -430,6 +485,20 @@
     return { niveles, cursos: cursosDeNiveles(niveles) };
   };
 
+  // Reuniones generales (una o varias, ej. una por ciclo): para quién, lugar, hora, tema e institución
+  const previasAdmin = r => (Array.isArray(r.previas) ? r.previas
+    : r.previa && r.previa.activa === 'si' ? [Object.assign({ para: 'todos' }, r.previa)] : []);
+  const filaPrevia = p => `<div class="reu-previa-fila">
+    <label>¿Para quiénes?<select data-p="para"><option value="todos">👥 Todos los cursos de esta reunión</option>
+      ${Object.entries(UI.NIVELES).map(([k, n]) => `<option value="${k}" ${p.para === k ? 'selected' : ''}>${esc(n.nombre)}</option>`).join('')}</select></label>
+    <label>Lugar<input data-p="lugar" list="lugares-previa" value="${esc(p.lugar || '')}" placeholder="Ej: Gimnasio"></label>
+    <label>Hora<input type="time" data-p="hora" value="${esc(p.hora || '')}"></label>
+    <label>Tema (opcional)<input data-p="tema" value="${esc(p.tema || '')}" placeholder="Ej: Charla de seguridad"></label>
+    <label>Institución (opcional)<input data-p="institucion" value="${esc(p.institucion || '')}" placeholder="Ej: Carabineros"></label>
+    <button type="button" class="tel-quitar" title="Quitar">✕</button>
+    <datalist id="lugares-previa"><option value="Gimnasio"><option value="Hall de entrada"><option value="Hall Ciclo Menor"><option value="Patio techado"><option value="Biblioteca CRA"><option value="Comedor"></datalist>
+  </div>`;
+
   // Una reunión guardada (ej. "Básica" o "Media") con su horario y sus cursos
   const bloqueReunion = r => `<fieldset class="grupo reu-bloque" data-id="${esc(r.id || 'r' + Date.now())}">
     <legend><input class="reu-nombre" value="${esc(r.nombre || '')}" placeholder="Nombre (ej. Básica)"></legend>
@@ -450,20 +519,11 @@
       <label>Hasta (opcional · vacío = todo el día de la reunión)<input type="datetime-local" data-r="hasta" value="${esc(r.hasta || '')}"></label>
     </div>
     <fieldset class="reu-previa-box">
-      <legend>📣 Reunión general antes (opcional)</legend>
-      <label class="check"><input type="checkbox" data-p="activa" ${(r.previa || {}).activa === 'si' ? 'checked' : ''}>
-        Hay una <b>reunión general previa</b> para todos (ej. en el gimnasio, con una institución)</label>
-      <div class="dos">
-        <label>Lugar<input data-p="lugar" list="lugares-previa" value="${esc((r.previa || {}).lugar || '')}" placeholder="Ej: Gimnasio">
-          <datalist id="lugares-previa"><option value="Gimnasio"><option value="Hall de entrada"><option value="Patio techado"><option value="Biblioteca CRA"><option value="Comedor"></datalist></label>
-        <label>Hora<input type="time" data-p="hora" value="${esc((r.previa || {}).hora || '')}"></label>
-      </div>
-      <div class="dos">
-        <label>Tema (opcional)<input data-p="tema" value="${esc((r.previa || {}).tema || '')}" placeholder="Ej: Charla de seguridad escolar"></label>
-        <label>Con la institución (opcional)<input data-p="institucion" value="${esc((r.previa || {}).institucion || '')}" placeholder="Ej: Carabineros de Chile"></label>
-      </div>
-      <p class="note">En la pantalla aparece arriba del tablero: "📣 Primero: reunión general · Gimnasio · 17:00 hrs · …",
-      y también en el aviso de la próxima reunión.</p>
+      <legend>📣 Reuniones generales antes de ir a las salas (opcional · puede haber una por ciclo)</legend>
+      <div class="reu-previas">${previasAdmin(r).map(filaPrevia).join('')}</div>
+      <button type="button" class="btn ghost mini reu-previa-agregar">➕ Agregar reunión general</button>
+      <p class="note">Ej.: <b>Primer ciclo</b> en el Hall del Ciclo Menor a las 17:30 y <b>Segundo ciclo</b> en el Gimnasio a las 18:30.
+      En la pantalla aparece arriba del tablero de salas y en el aviso de la próxima reunión (cada edificio ve las suyas).</p>
     </fieldset>
     <div class="etiqueta">👥 Niveles que tienen reunión este día (desmarque los que no)</div>
     <div class="reu-niveles">${Object.entries(UI.NIVELES).map(([k, n]) => `<label class="check">
@@ -583,6 +643,15 @@
       if (!b) return;
       const bloque = b.closest('.reu-bloque');
       const cursos = bloque.querySelector('.reu-cursos');
+      // reuniones generales: agregar otra o quitar una
+      if (b.classList.contains('reu-previa-agregar')) {
+        bloque.querySelector('.reu-previas').insertAdjacentHTML('beforeend', filaPrevia({ para: 'todos' }));
+        return;
+      }
+      if (b.classList.contains('tel-quitar') && b.closest('.reu-previa-fila')) {
+        b.closest('.reu-previa-fila').remove();
+        return;
+      }
       if (b.classList.contains('tel-quitar')) {
         b.closest('.tel-fila').remove();
       } else if (b.classList.contains('reu-curso-agregar')) {
@@ -633,8 +702,10 @@
           .map(c => (c.estado === 'cambio' ? c : Object.assign(c, { cambio: '' }))),
         niveles: [...bloque.querySelectorAll('[data-nivel]')].filter(i => i.checked).map(i => i.dataset.nivel),
         // reunión general antes de ir a las salas (gimnasio, hall…)
-        previa: Object.fromEntries([...bloque.querySelectorAll('[data-p]')].map(i =>
-          [i.dataset.p, i.type === 'checkbox' ? (i.checked ? 'si' : '') : i.value.trim()])),
+        previas: [...bloque.querySelectorAll('.reu-previa-fila')].map(f =>
+          Object.fromEntries([...f.querySelectorAll('[data-p]')].map(i => [i.dataset.p, i.value.trim()])))
+          .filter(p => p.lugar || p.hora || p.tema),
+        previa: null, // formato anterior (una sola)
       };
     }
 
@@ -647,7 +718,7 @@
           const n = r.nombre || 'sin nombre';
           if (r.desde && r.hasta && r.hasta < r.desde) throw new Error(`Reunión "${n}": "Hasta" debe ser después de "Desde"`);
           if (r.activo && !r.cursos.length) throw new Error(`Reunión "${n}": marque qué cursos tienen reunión`);
-          if (r.previa.activa && !(r.previa.lugar && r.previa.hora)) throw new Error(`Reunión "${n}": indique el lugar y la hora de la reunión general`);
+          if (r.previas.some(p => !(p.lugar && p.hora))) throw new Error(`Reunión "${n}": indique el lugar y la hora de cada reunión general`);
           // se recuerda la sala de cada curso para la próxima reunión
           r.cursos.forEach(c => { if (c.sala) salasCurso[c.curso] = c.sala; });
         });
@@ -1055,106 +1126,234 @@
     }
   }
 
-  // ---------- ⭐ Destacados: varias fotos de una vez, una fila por alumno (nombre, curso y motivo propio opcional) ----------
-  let destArchivos = [];
-  function iniciarDestacados(form) {
-    const input = document.getElementById('dest-fotos');
-    const filas = document.getElementById('dest-filas');
-    const prev = document.getElementById('preview');
-    destArchivos = [];
-    const dibujar = () => {
-      filas.innerHTML = destArchivos.length ? destArchivos.map((f, k) => `<div class="dest-fila" data-k="${k}">
-        <img src="${f.vista}" alt="">
-        <label>👤 Nombre del alumno o alumna<input data-campo="nombre" placeholder="Ej: Martina Soto" value="${esc(f.nombre || '')}"></label>
-        <label>🏫 Curso<select data-campo="curso">${opcionesCursos(f.curso || '', 'Elija el curso…')}</select></label>
-        <label>🏅 Motivo (si es distinto)<input data-campo="motivo" placeholder="Vacío = el motivo de abajo" value="${esc(f.motivo || '')}"></label>
-        <button type="button" class="tel-quitar" title="Quitar esta foto">✕</button></div>`).join('') +
-        `<p class="note" style="color:var(--gold)">${destArchivos.length} alumno(s) · en pantalla se verán en
-         ${Math.ceil(destArchivos.length / 3)} imagen(es) de hasta 3</p>` : '';
+  // ---------- ⭐ Destacados: todos los cursos listos; se abre uno con un clic y se agregan o editan sus alumnos/as ----------
+  // También: el curso completo (🏆 una foto de todo el curso), apoderados/as y funcionarios/as destacados/as.
+  const destAbiertos = new Set(); // cursos abiertos (siguen abiertos al guardar)
+  const ETQ_DEST = {
+    alumno: { quien: 'alumno/a', detalle: '' },
+    apoderado: { quien: 'apoderado/a', detalle: '👨‍👩‍👧 Detalle (ej. apoderada de 2° Básico B)' },
+    funcionario: { quien: 'funcionario/a', detalle: '💼 Cargo (ej. Inspector, Profesora de Lenguaje)' },
+  };
+
+  // una persona ya publicada: se edita ahí mismo (nombre, motivo, foto) o se elimina
+  const tarjetaPersona = d => `<div class="dp-item" data-id="${esc(d.id)}">
+    <img src="${esc(d.url || 'insignia.png')}" alt="">
+    <div class="dp-campos">
+      <label>👤 Nombre<input data-f="nombre" value="${esc(d.nombre || '')}"></label>
+      ${ETQ_DEST[d.tipo] && ETQ_DEST[d.tipo].detalle ? `<label>${ETQ_DEST[d.tipo].detalle}<input data-f="curso" value="${esc(d.curso || '')}"></label>` : ''}
+      <label>🏅 Motivo<input data-f="motivo" value="${esc(d.motivo || '')}"></label>
+    </div>
+    <div class="dp-acc">
+      <label class="btn ghost mini">📷 Cambiar foto<input type="file" accept="image/*" data-acc="foto" hidden></label>
+      <button type="button" class="btn mini" data-acc="guardar">💾 Guardar</button>
+      <button type="button" class="del" data-acc="eliminar">🗑️ Eliminar</button>
+    </div></div>`;
+
+  // agregar personas: se eligen varias fotos y aparece una fila por foto
+  const bloqueNuevos = tipo => `<div class="dp-nuevos">
+    <label class="btn ghost dp-subir">📷 Agregar fotos de ${tipo === 'alumno' ? 'alumnos/as' : tipo === 'apoderado' ? 'apoderados/as' : 'funcionarios/as'}
+      (puede elegir varias a la vez)<input type="file" accept="image/*" multiple data-acc="fotos" hidden></label>
+    <div class="dp-filas"></div>
+    <div class="dp-publicar" hidden>
+      <label>🏅 Motivo para todos (si alguno tiene otro, escríbalo en su fila)<input data-f="motivoComun" placeholder="Ej: Excelencia académica del semestre"></label>
+      <button type="button" class="btn" data-acc="publicar">✅ Publicar</button>
+    </div></div>`;
+
+  // un grupo (un curso, apoderados o funcionarios): lo publicado y para agregar más
+  function cuerpoGrupo(tipo, curso) {
+    const lista = (data.destacados || []).filter(d => (d.tipo || 'alumno') === tipo && (tipo !== 'alumno' || d.curso === curso));
+    let html = `<div class="dp-lista">${lista.map(tarjetaPersona).join('') || `<p class="note">Aún no hay ${ETQ_DEST[tipo].quien} destacados/as${curso ? ' en este curso' : ''}.</p>`}</div>
+      ${bloqueNuevos(tipo)}`;
+    if (tipo === 'alumno') {
+      // 🏆 el curso completo
+      const c = (data.destacados || []).find(d => d.tipo === 'curso' && d.curso === curso);
+      html += `<div class="dp-curso" data-tipo="curso">
+        <div class="etiqueta">🏆 Destacar al curso completo</div>
+        ${c ? `<div class="dp-item" data-id="${esc(c.id)}"><img src="${esc(c.url)}" alt="" class="ancha">
+            <div class="dp-campos"><label>🏅 Motivo<input data-f="motivo" value="${esc(c.motivo || '')}"></label></div>
+            <div class="dp-acc">
+              <label class="btn ghost mini">📷 Cambiar foto<input type="file" accept="image/*" data-acc="foto" hidden></label>
+              <button type="button" class="btn mini" data-acc="guardar">💾 Guardar</button>
+              <button type="button" class="del" data-acc="eliminar">🗑️ Quitar</button></div></div>`
+          : `<div class="dp-nuevo-curso">
+            <label class="btn ghost mini">📷 Foto del curso completo<input type="file" accept="image/*" data-acc="fotoCurso" hidden></label>
+            <img class="dp-vista" hidden alt="">
+            <label>🏅 Motivo<input data-f="motivoCurso" placeholder="Ej: Mejor asistencia del mes"></label>
+            <button type="button" class="btn mini" data-acc="publicarCurso">🏆 Destacar curso</button></div>`}
+      </div>`;
+    }
+    return html;
+  }
+
+  function vistaDestacados() {
+    const ds = data.destacados || [];
+    const cuenta = c => ds.filter(d => (d.tipo || 'alumno') === 'alumno' && d.curso === c).length;
+    const tieneCurso = c => ds.some(d => d.tipo === 'curso' && d.curso === c);
+    const grupo = (tipo, curso, titulo, resumen) => `<details class="dp-grupo" data-tipo="${tipo}" data-curso="${esc(curso || '')}"
+        ${destAbiertos.has(tipo + '|' + (curso || '')) ? 'open' : ''}>
+      <summary><b>${esc(titulo)}</b><span class="dp-resumen">${resumen}</span></summary>
+      <div class="dp-cuerpo">${destAbiertos.has(tipo + '|' + (curso || '')) ? cuerpoGrupo(tipo, curso) : ''}</div></details>`;
+    const n = t => ds.filter(d => d.tipo === t).length;
+    return `<div class="panel" style="max-width:1100px">
+      <h2>⭐ Destacados</h2>
+      <p class="note">Pinche un curso para abrirlo: ahí agrega a los alumnos/as destacados/as (varias fotos a la vez), corrige su nombre,
+      motivo o foto, y puede destacar al <b>curso completo</b> con una foto. En las pantallas pasan <b>de a 3</b>.</p>
+      <fieldset class="grupo dp-opciones" id="dest-opc">
+        <legend>⚙️ Para lo que publique ahora</legend>
+        <div class="dos">${PUBLICO}</div>
+        <label>📅 Mostrar hasta (opcional · vacío = hasta que lo elimine)<input type="date" name="vence"></label>
+      </fieldset>
+      <div id="dest-grupos">
+        ${Object.values(UI.NIVELES).map(N => `<div class="dp-nivel"><h3>${esc(N.nombre)}</h3>
+          <div class="dp-cursos">${N.cursos.map(c => grupo('alumno', c, c,
+            `${cuenta(c) ? `⭐ ${cuenta(c)}` : '—'}${tieneCurso(c) ? ' · 🏆' : ''}`)).join('')}</div></div>`).join('')}
+        <div class="dp-nivel"><h3>👥 Comunidad</h3><div class="dp-cursos">
+          ${grupo('apoderado', '', '💙 Apoderados/as destacados/as', n('apoderado') ? `⭐ ${n('apoderado')}` : '—')}
+          ${grupo('funcionario', '', '🏅 Funcionarios/as destacados/as', n('funcionario') ? `⭐ ${n('funcionario')}` : '—')}
+        </div></div>
+      </div></div>`;
+  }
+
+  function iniciarDestacados() {
+    const cont = document.getElementById('dest-grupos');
+    const opc = () => {
+      const o = {};
+      document.querySelectorAll('#dest-opc [name]').forEach(c => (o[c.name] = c.value));
+      return o;
     };
-    // guardar lo escrito antes de redibujar
-    const leer = () => filas.querySelectorAll('.dest-fila').forEach(r => {
-      const f = destArchivos[+r.dataset.k];
+    // al abrir un curso se dibuja su contenido
+    cont.addEventListener('toggle', e => {
+      const g = e.target;
+      if (!g.classList || !g.classList.contains('dp-grupo')) return;
+      const k = g.dataset.tipo + '|' + g.dataset.curso;
+      if (g.open) {
+        destAbiertos.add(k);
+        if (!g.querySelector('.dp-cuerpo').innerHTML.trim()) g.querySelector('.dp-cuerpo').innerHTML = cuerpoGrupo(g.dataset.tipo, g.dataset.curso);
+      } else destAbiertos.delete(k);
+    }, true);
+
+    const dibujarFilas = nuevos => {
+      const g = nuevos.closest('.dp-grupo');
+      const det = ETQ_DEST[g.dataset.tipo].detalle;
+      nuevos.querySelector('.dp-filas').innerHTML = nuevos._archivos.map((f, k) => `<div class="dest-fila ${det ? 'con-detalle' : ''}" data-k="${k}">
+        <img src="${f.vista}" alt="">
+        <label>👤 Nombre<input data-campo="nombre" placeholder="Nombre y apellido" value="${esc(f.nombre || '')}"></label>
+        ${det ? `<label>${det}<input data-campo="curso" value="${esc(f.curso || '')}"></label>` : ''}
+        <label>🏅 Motivo (si es distinto)<input data-campo="motivo" placeholder="Vacío = el motivo para todos" value="${esc(f.motivo || '')}"></label>
+        <button type="button" class="tel-quitar" title="Quitar esta foto">✕</button></div>`).join('');
+      nuevos.querySelector('.dp-publicar').hidden = !nuevos._archivos.length;
+    };
+    const leerFilasNuevas = nuevos => nuevos.querySelectorAll('.dest-fila').forEach(r => {
+      const f = nuevos._archivos[+r.dataset.k];
       r.querySelectorAll('[data-campo]').forEach(c => (f[c.dataset.campo] = c.value.trim()));
     });
-    input.onchange = () => {
-      leer();
-      // el curso elegido para todos queda puesto en cada foto nueva (se puede cambiar en la fila)
-      const cursoComun = form.elements.curso.value;
-      [...input.files].forEach(file => {
-        // el nombre del archivo sirve de sugerencia solo si parece un nombre (ej. "Martina Soto.jpg"),
-        // no si es de la cámara o de WhatsApp ("WhatsApp Image 2026-10-26 at 10.00.43 PM.jpeg")
-        const base = file.name.replace(/\.\w+$/, '').replace(/_+/g, ' ').trim();
-        const pareceNombre = /^[A-Za-zÁÉÍÓÚÑÜáéíóúñü' ]{3,40}$/.test(base) && !/^(img|dsc|image|foto|photo|whatsapp)/i.test(base);
-        destArchivos.push({ file, vista: URL.createObjectURL(file), nombre: pareceNombre ? base : '', curso: cursoComun });
-      });
-      input.value = '';
-      dibujar();
-    };
-    filas.onclick = e => {
-      if (!e.target.classList.contains('tel-quitar')) return;
-      leer();
-      destArchivos.splice(+e.target.closest('.dest-fila').dataset.k, 1);
-      dibujar();
-    };
-    const fc = document.getElementById('dest-foto-curso');
-    fc.onchange = () => { if (fc.files[0]) { prev.src = URL.createObjectURL(fc.files[0]); prev.hidden = false; } };
-    form.elements.tipo.addEventListener('change', () => { prev.hidden = true; });
-    // cambiar el curso de arriba lo pone en todas las fotos
-    form.elements.curso.addEventListener('change', () => {
-      if (!destArchivos.length) return;
-      leer();
-      destArchivos.forEach(f => (f.curso = form.elements.curso.value));
-      dibujar();
+
+    cont.addEventListener('change', e => {
+      const t = e.target;
+      if (t.dataset.acc === 'fotos') {
+        const nuevos = t.closest('.dp-nuevos');
+        nuevos._archivos = nuevos._archivos || [];
+        leerFilasNuevas(nuevos);
+        [...t.files].forEach(file => nuevos._archivos.push({ file, vista: URL.createObjectURL(file) }));
+        t.value = '';
+        dibujarFilas(nuevos);
+        nuevos.querySelector('.dest-fila:last-child [data-campo="nombre"]')?.focus();
+      } else if (t.dataset.acc === 'foto') {
+        // nueva foto para alguien ya publicado: se ve al tiro y se guarda con "Guardar"
+        const it = t.closest('.dp-item');
+        if (!t.files[0]) return;
+        it._foto = t.files[0];
+        it.querySelector('img').src = URL.createObjectURL(t.files[0]);
+        it.classList.add('cambiado');
+      } else if (t.dataset.acc === 'fotoCurso') {
+        const b = t.closest('.dp-nuevo-curso');
+        if (!t.files[0]) return;
+        b._foto = t.files[0];
+        const v = b.querySelector('.dp-vista');
+        v.src = URL.createObjectURL(t.files[0]);
+        v.hidden = false;
+      }
     });
-    form._leerDest = leer;
+    cont.addEventListener('input', e => { const it = e.target.closest('.dp-item'); if (it) it.classList.add('cambiado'); });
+
+    cont.addEventListener('click', async e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const g = b.closest('.dp-grupo');
+      const tipo = g.dataset.tipo;
+      const curso = g.dataset.curso;
+      const ocupado = async (texto, fn) => {
+        const antes = b.textContent;
+        b.disabled = true;
+        b.textContent = texto;
+        try { await fn(); } catch (err) { toast(err.message, 'err'); b.disabled = false; b.textContent = antes; }
+      };
+      if (b.classList.contains('tel-quitar')) {
+        const nuevos = b.closest('.dp-nuevos');
+        leerFilasNuevas(nuevos);
+        nuevos._archivos.splice(+b.closest('.dest-fila').dataset.k, 1);
+        dibujarFilas(nuevos);
+      } else if (b.dataset.acc === 'publicar') {
+        const nuevos = b.closest('.dp-nuevos');
+        leerFilasNuevas(nuevos);
+        const comun = nuevos.querySelector('[data-f="motivoComun"]').value.trim();
+        const fs = nuevos._archivos || [];
+        const sin = fs.findIndex(f => !f.nombre);
+        if (sin > -1) return toast(`Falta el nombre de la foto ${sin + 1}`, 'err');
+        if (fs.some(f => !f.motivo) && !comun) return toast('Escriba el motivo (para todos o en cada fila)', 'err');
+        await ocupado('Subiendo…', async () => {
+          const grupoId = 'g' + Date.now();
+          for (let k = 0; k < fs.length; k++) {
+            b.textContent = `Subiendo ${k + 1} de ${fs.length}…`;
+            const f = fs[k];
+            const item = Object.assign(opc(), { tipo, grupo: grupoId, nombre: f.nombre, motivo: f.motivo || comun,
+              curso: tipo === 'alumno' ? curso : (f.curso || '') });
+            const image = { data: await comprimir(f.file, 900), mimeType: 'image/jpeg', name: f.nombre + '.jpg' };
+            await API.admin('add', { password, sheet: 'destacados', item, image });
+          }
+          toast(`${fs.length} publicado(s) ✔`);
+          await recargar();
+        });
+      } else if (b.dataset.acc === 'publicarCurso') {
+        const bl = b.closest('.dp-nuevo-curso');
+        const motivo = bl.querySelector('[data-f="motivoCurso"]').value.trim();
+        if (!bl._foto) return toast('Elija la foto del curso completo', 'err');
+        if (!motivo) return toast('Escriba el motivo', 'err');
+        await ocupado('Subiendo…', async () => {
+          const image = { data: await comprimir(bl._foto, 1920), mimeType: 'image/jpeg', name: curso + '.jpg' };
+          await API.admin('add', { password, sheet: 'destacados', item: Object.assign(opc(), { tipo: 'curso', curso, motivo }), image });
+          toast('Curso destacado ✔');
+          await recargar();
+        });
+      } else if (b.dataset.acc === 'guardar') {
+        const it = b.closest('.dp-item');
+        const item = { id: it.dataset.id };
+        it.querySelectorAll('[data-f]').forEach(c => (item[c.dataset.f] = c.value.trim()));
+        if (item.nombre === '') return toast('Escriba el nombre', 'err');
+        await ocupado('Guardando…', async () => {
+          const image = it._foto ? { data: await comprimir(it._foto, it.closest('.dp-curso') ? 1920 : 900), mimeType: 'image/jpeg', name: (item.nombre || curso) + '.jpg' } : undefined;
+          await API.admin('update', { password, sheet: 'destacados', item, image });
+          toast('Cambios guardados ✔');
+          await recargar();
+        });
+      } else if (b.dataset.acc === 'eliminar') {
+        if (!confirm('¿Eliminar este destacado? (también su foto)')) return;
+        await ocupado('Eliminando…', async () => {
+          await API.admin('delete', { password, sheet: 'destacados', id: b.closest('.dp-item').dataset.id });
+          toast('Eliminado');
+          await recargar();
+        });
+      }
+    });
   }
 
-  async function publicarDestacados(form, btn) {
-    const el = form.elements;
-    const tipo = el.tipo.value;
-    const comun = { publico: el.publico.value, espacio: el.espacio.value, vence: el.vence.value,
-      curso: el.curso.value.trim(), motivo: el.motivo.value.trim() };
-    try {
-      let items = [];
-      if (tipo === 'curso') {
-        const f = document.getElementById('dest-foto-curso').files[0];
-        if (!comun.curso) throw new Error('Escriba el curso destacado');
-        if (!f) throw new Error('Elija una foto del curso');
-        if (!comun.motivo) throw new Error('Escriba el motivo');
-        items = [{ file: f, max: 1920, item: Object.assign({ tipo: 'curso' }, comun) }];
-      } else {
-        form._leerDest();
-        if (!destArchivos.length) throw new Error('Elija las fotos de los alumnos');
-        const sinNombre = destArchivos.findIndex(f => !f.nombre);
-        if (sinNombre > -1) throw new Error(`Falta el nombre del alumno ${sinNombre + 1}`);
-        if (destArchivos.some(f => !f.motivo) && !comun.motivo) throw new Error('Escriba el motivo (para todos o en cada alumno)');
-        const grupo = 'g' + Date.now();
-        items = destArchivos.map(f => ({ file: f.file, max: 900, item: Object.assign({}, comun, {
-          tipo: 'alumno', grupo, nombre: f.nombre, curso: f.curso || comun.curso, motivo: f.motivo || comun.motivo }) }));
-      }
-      btn.disabled = true;
-      for (let k = 0; k < items.length; k++) {
-        btn.textContent = items.length > 1 ? `Subiendo ${k + 1} de ${items.length}…` : 'Publicando…';
-        const it = items[k];
-        const image = { data: await comprimir(it.file, it.max), mimeType: 'image/jpeg', name: (it.item.nombre || it.item.curso || 'destacado') + '.jpg' };
-        await API.admin('add', { password, sheet: 'destacados', item: it.item, image });
-      }
-      toast(items.length > 1 ? `${items.length} alumnos destacados publicados ✔` : 'Publicado ✔');
-      destArchivos = [];
-      await recargar();
-    } catch (err) {
-      toast(err.message, 'err');
-      btn.disabled = false;
-      btn.textContent = 'Publicar';
-    }
-  }
 
   function vistaPanel() {
+    UI.ajustes(data); // suma los edificios agregados en Ajustes a las listas
     const S = SECCIONES[seccion];
     const lista = (data[seccion] || []).slice().reverse();
     const cuerpo = seccion === 'ajustes' ? formAjustes() : seccion === 'instagram' ? vistaInstagram()
-      : seccion === 'reunion' ? formReunion() : `
+      : seccion === 'reunion' ? formReunion() : seccion === 'destacados' ? vistaDestacados() : `
       <div class="grid ${seccion === 'destacados' ? 'una-col' : ''}">
         <div class="panel ${editando ? 'editando' : ''}"><h2>${editando ? '✏️ Editar publicación' : 'Agregar'}</h2>
           <form id="f-add">${S.form}<button class="btn">${editando ? '💾 Guardar cambios' : 'Publicar'}</button>
@@ -1185,6 +1384,9 @@
         `<button data-k="${k}" class="${k === seccion ? 'on' : ''}">${SECCIONES[k].nombre}</button>`).join('')}</div>
       ${cuerpo}`;
 
+    // los edificios agregados también se pueden elegir como "Espacio" de cada publicación
+    app.querySelectorAll('select[name="espacio"]').forEach(s => Object.entries(UI.ESPACIOS).filter(([, e]) => e.extra)
+      .forEach(([id, e]) => { if (![...s.options].some(o => o.value === id)) s.add(new Option(e.nombre, id)); }));
     app.querySelectorAll('.nav button').forEach(b => (b.onclick = () => { seccion = b.dataset.k; editando = null; vistaPanel(); }));
     document.getElementById('salir').onclick = () => {
       try { sessionStorage.removeItem(PASS_KEY); } catch (e) {}
@@ -1202,10 +1404,25 @@
       iniciarReunion();
       return;
     }
+    if (seccion === 'destacados') {
+      iniciarDestacados();
+      return;
+    }
 
     if (seccion === 'ajustes') {
       iniciarClave();
       const fa = document.getElementById('f-ajustes');
+      iniciarTema(fa);
+      const edFilas = document.getElementById('ed-filas');
+      document.getElementById('ed-agregar').onclick = () => {
+        edFilas.insertAdjacentHTML('beforeend', filaEdificio({}));
+        edFilas.lastElementChild.querySelector('input').focus();
+      };
+      edFilas.onclick = e => {
+        if (!e.target.classList.contains('tel-quitar')) return;
+        if (e.target.closest('.ed-fila').dataset.id && !confirm('¿Quitar este edificio? En los TV que lo tengan elegido habrá que elegir otro espacio.')) return;
+        e.target.closest('.ed-fila').remove();
+      };
       const filas = document.getElementById('tel-filas');
       // agregar / quitar filas de teléfono
       document.getElementById('tel-agregar').onclick = () => filas.insertAdjacentHTML('beforeend', filaTel({}));
@@ -1225,6 +1442,22 @@
           f.querySelectorAll('[data-campo]').forEach(c => (o[c.dataset.campo] = c.value.trim()));
           return o;
         }).filter(t => t.numero));
+        // colores y fondo
+        valores.tema = JSON.stringify(temaDelForm(fa));
+        ['temaPreset', 'temaFondo', 'temaBase', 'temaAcento'].forEach(k => delete valores[k]);
+        // edificios agregados (cada uno con un id fijo, ej. "edanexo")
+        const usados = new Set(Object.keys(UI.ESPACIOS).concat(Object.keys(UI.EDIFICIOS)));
+        valores.edificios = JSON.stringify([...edFilas.querySelectorAll('.ed-fila')].map(f => {
+          const nombre = f.querySelector('[data-campo="nombre"]').value.trim();
+          let id = f.dataset.id;
+          if (!id && nombre) {
+            const base = 'ed' + nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^edificio\s+/, '').replace(/[^a-z0-9]+/g, '').slice(0, 14);
+            id = base; let n = 2;
+            while (usados.has(id)) id = base + n++;
+            usados.add(id);
+          }
+          return { id, nombre, ico: f.querySelector('[data-campo="ico"]').value };
+        }).filter(e => e.nombre));
         btn.disabled = true;
         btn.textContent = 'Guardando…';
         try {
@@ -1278,13 +1511,10 @@
     const cancelar = document.getElementById('cancelar-edicion');
     if (cancelar) cancelar.onclick = () => { editando = null; vistaPanel(); };
 
-    if (seccion === 'destacados' && !editando) iniciarDestacados(form);
-
     form.onsubmit = async e => {
       e.preventDefault();
       if (editando) return guardarEdicion(form);
       const btn = form.querySelector('.btn');
-      if (seccion === 'destacados') return publicarDestacados(form, btn);
       try {
         const item = {};
         new FormData(form).forEach((v, k) => { if (k !== 'imagen' && k !== 'tipo') item[k] = v; });

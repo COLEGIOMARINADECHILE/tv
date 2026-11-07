@@ -75,6 +75,7 @@
       firma = f;
       document.querySelector('.demo-badge')?.remove();
       if (data.demo) document.body.insertAdjacentHTML('beforeend', '<div class="demo-badge">MODO DEMO</div>');
+      aplicarTema(ajustes(data)); // colores y fondo elegidos en Admin
       onData(data);
     };
 
@@ -219,7 +220,7 @@
           const foto = p => (p.url ? `<img src="${esc(p.url)}" alt="${esc(p.nombre)}">`
             : `<span class="dest-inicial">${esc(String(p.nombre || '⭐').trim().charAt(0).toUpperCase())}</span>`);
           return `<div class="ph destacado alumnos n${f.personas.length}">
-            <div class="dest-cabeza"><span class="dest-sello">⭐ Alumnos destacados</span>${f.titulo ? `<b>${esc(f.titulo)}</b>` : ''}</div>
+            <div class="dest-cabeza"><span class="dest-sello">${esc(f.sello || '⭐ Alumnos/as destacados/as')}</span>${f.titulo ? `<b>${esc(f.titulo)}</b>` : ''}</div>
             <div class="dest-grid">${f.personas.map(p => `<div class="dest-card">
               <div class="dest-foto">${foto(p)}</div>
               <div class="dest-datos"><h3>${esc(p.nombre)}</h3>${p.curso ? `<span class="dest-curso">${esc(p.curso)}</span>` : ''}
@@ -665,7 +666,73 @@
     (data.ajustes || []).forEach(r => { if (r.id) a[r.id] = r.valor; });
     a.segFotosFamilias = Math.max(3, +a.segFotosFamilias || CFG.DURACION_FOTO_SEG);
     a.segFotosFuncionarios = Math.max(3, +a.segFotosFuncionarios || CFG.DURACION_FOTO_FUNCIONARIOS_SEG);
+    sumarEdificios(leerJSON(a.edificios, []), true);
     return a;
+  }
+
+  // ---------- 🎨 Colores y fondo de las pantallas (Admin → Ajustes) ----------
+  // Ajuste "tema" = { preset, fondo, base, acento }. ?tema={...} en la dirección = vista previa sin guardar.
+  const TEMAS = {
+    marino:    { nombre: '⚓ Azul marino (original)', c: ['#06153a', '#0a1f52', '#0f2c72', '#163b94', '#2453c4'], acento: '#f6c90e' },
+    oceano:    { nombre: '🌊 Océano', c: ['#03252e', '#063d4a', '#0a5566', '#0e7487', '#13a0b5'], acento: '#ffd166' },
+    pacifico:  { nombre: '🐋 Pacífico profundo', c: ['#041a2f', '#06294a', '#0b3d6b', '#12579a', '#1f7bd6'], acento: '#5ee2ff' },
+    atardecer: { nombre: '🌅 Atardecer', c: ['#25082b', '#3d0f3d', '#5a1750', '#86265f', '#c2416b'], acento: '#ffb347' },
+    bosque:    { nombre: '🌲 Bosque', c: ['#08200f', '#0e3219', '#154625', '#1e6334', '#2e8b4c'], acento: '#f4d35e' },
+    granate:   { nombre: '🍷 Granate', c: ['#250508', '#3d0a10', '#561018', '#7a1622', '#ab2232'], acento: '#f6c90e' },
+    morado:    { nombre: '🔮 Morado', c: ['#170a2e', '#26114a', '#371a68', '#4e2694', '#6f3fd0'], acento: '#ffcf33' },
+    noche:     { nombre: '🌌 Noche estrellada', c: ['#07081a', '#0e1030', '#171a48', '#232868', '#3a40a8'], acento: '#a5b4ff' },
+    grafito:   { nombre: '🖤 Grafito elegante', c: ['#101215', '#191c21', '#23272e', '#30363f', '#4a5463'], acento: '#f6c90e' },
+    chile:     { nombre: '🇨🇱 Patrio', c: ['#071a3d', '#0b2557', '#103479', '#1747a3', '#d52b1e'], acento: '#ffffff' },
+  };
+  const FONDOS = {
+    degradado: '✨ Degradado con brillo (original)',
+    aurora: '🌈 Aurora en movimiento suave',
+    ondas: '🌊 Ondas',
+    puntos: '🔹 Puntos finos',
+    diagonal: '📐 Líneas diagonales',
+    liso: '⬛ Color liso',
+  };
+  const hexRgb = h => { const n = parseInt(String(h).replace('#', '').padEnd(6, '0').slice(0, 6), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const rgbHex = a => '#' + a.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  const mezclar = (h, con, t) => { const a = hexRgb(h), b = hexRgb(con); return rgbHex(a.map((v, i) => v + (b[i] - v) * t)); };
+  const rgba = (h, al) => `rgba(${hexRgb(h).join(',')},${al})`;
+  // colores del tema elegido (o los personalizados: un color principal y uno de acento)
+  function coloresTema(t) {
+    t = t || {};
+    if (t.preset === 'propio' && /^#[0-9a-f]{6}$/i.test(t.base || '')) {
+      const b = t.base;
+      return { c: [mezclar(b, '#000', 0.6), mezclar(b, '#000', 0.4), b, mezclar(b, '#fff', 0.15), mezclar(b, '#fff', 0.35)],
+        acento: /^#[0-9a-f]{6}$/i.test(t.acento || '') ? t.acento : '#f6c90e' };
+    }
+    const p = TEMAS[t.preset] || TEMAS.marino;
+    return { c: p.c, acento: /^#[0-9a-f]{6}$/i.test(t.acento || '') && t.acentoPropio ? t.acento : p.acento };
+  }
+  function aplicarTema(aj, temaTexto) {
+    let t = {};
+    try { t = JSON.parse((aj ? aj.tema : temaTexto) || '{}') || {}; } catch (e) {}
+    try { const q = new URLSearchParams(location.search).get('tema'); if (q) t = JSON.parse(q); } catch (e) {}
+    const { c, acento } = coloresTema(t);
+    const st = document.documentElement.style;
+    ['--navy-900', '--navy-800', '--navy-700', '--navy-600', '--navy-500'].forEach((v, i) => st.setProperty(v, c[i]));
+    st.setProperty('--gold', acento);
+    st.setProperty('--gold-soft', mezclar(acento, '#fff', 0.45));
+    st.setProperty('--brillo1', rgba(c[4], 0.55));
+    st.setProperty('--brillo2', rgba(acento, 0.12));
+    if (document.body) document.body.dataset.fondo = FONDOS[t.fondo] ? t.fondo : 'degradado';
+    // se recuerda en el equipo para que al abrir la pantalla ya parta con estos colores
+    if (aj && !/[?&]tema=/.test(location.search)) try { localStorage.setItem('cmch_tema', aj.tema || ''); } catch (e) {}
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = c[1];
+  }
+
+  // ---------- 🏫 Edificios agregados desde el panel (Ajustes → Edificios) ----------
+  // Ajuste "edificios" = [{ id, nombre, ico }]. Se guardan en el equipo para conocerlos antes de cargar los datos.
+  function sumarEdificios(lista, guardar) {
+    (lista || []).filter(e => e && /^ed[\w-]+$/.test(e.id) && e.nombre).forEach(e => {
+      EDIFICIOS[e.id] = (e.ico || '🏢') + ' ' + e.nombre;
+      ESPACIOS[e.id] = { nombre: (e.ico || '🏢') + ' ' + e.nombre, corto: e.nombre, grupos: [e.id], extra: true };
+    });
+    if (guardar) try { localStorage.setItem('cmch_edificios', JSON.stringify(lista || [])); } catch (e) {}
   }
 
   // Modo reunión de apoderados (Admin → 👨‍👩‍👧 Reunión): salas de cada edificio y varias reuniones guardadas
@@ -680,18 +747,33 @@
     matriz: { nombre: '🏫 Edificio Matriz', corto: 'Edificio Matriz', grupos: ['prebasica', 'matriz'] },
     menor: { nombre: '🧒 Edificio Ciclo Menor', corto: 'Ciclo Menor', grupos: ['menor'] },
   };
-  // Espacio de este TV: ?espacio=matriz|menor|general (se recuerda en el equipo). '' = general (todo)
+  // edificios nuevos ya conocidos por este equipo
+  try { sumarEdificios(JSON.parse(localStorage.getItem('cmch_edificios') || '[]')); } catch (e) {}
+  // colores guardados en el equipo (antes de que lleguen los datos); el panel Admin mantiene los suyos
+  if (!/admin\.html/.test(location.pathname)) {
+    let temaGuardado = '';
+    try { temaGuardado = localStorage.getItem('cmch_tema') || ''; } catch (e) {}
+    const aplicarGuardado = () => aplicarTema(null, temaGuardado);
+    if (document.body) aplicarGuardado(); else document.addEventListener('DOMContentLoaded', aplicarGuardado);
+  }
+  // Espacio de este TV: ?espacio=matriz|menor|general|ed… (se recuerda en el equipo). '' = general (todo)
   function espacioTv() {
     const KEY = 'cmch_espacio';
+    const valido = v => {
+      if (ESPACIOS[v]) return v;
+      // edificio nuevo que este equipo aún no conoce: se acepta y su nombre llega con los datos
+      if (/^ed[\w-]+$/.test(v || '')) { ESPACIOS[v] = { nombre: '🏢 Edificio', corto: 'Edificio', grupos: [v], extra: true }; return v; }
+      return '';
+    };
     const q = new URLSearchParams(location.search).get('espacio');
     if (q !== null) {
-      const v = ESPACIOS[q] ? q : '';
+      const v = valido(q);
       try { localStorage.setItem(KEY, v); } catch (e) {}
       return v;
     }
     let v = '';
     try { v = localStorage.getItem(KEY) || ''; } catch (e) {}
-    return ESPACIOS[v] ? v : '';
+    return valido(v);
   }
   // Solo lo publicado para todos o para el espacio de este TV (el TV General muestra todo)
   const paraEspacio = (lista, esp) => (lista || []).filter(x => !esp || !x.espacio || x.espacio === esp);
@@ -765,18 +847,29 @@
   }
   // Reunión general previa (ej. en el gimnasio con una institución): "Gimnasio · 17:00 hrs · Charla … · con Carabineros"
   function textoPrevia(p) {
-    if (!p || p.activa !== 'si' || !(p.lugar || p.hora)) return '';
+    if (!p || p.activa === '' || p.activa === 'no' || !(p.lugar || p.hora)) return '';
     return [p.lugar, p.hora ? p.hora + ' hrs' : '', p.tema, p.institucion ? 'con ' + p.institucion : ''].filter(Boolean).join(' · ');
   }
+  // Reuniones generales de una reunión: puede haber varias (ej. una por ciclo), cada una "para" todos o un ciclo.
+  // Devuelve [{ para, quien, texto, espacio }] (en el TV de un edificio, solo las que le corresponden)
+  function previasDe(r, esp) {
+    const lista = Array.isArray(r && r.previas) ? r.previas
+      : r && r.previa && r.previa.activa === 'si' ? [Object.assign({ para: 'todos' }, r.previa)] : [];
+    return lista.map(p => {
+      const N = NIVELES[p.para];
+      return { para: p.para || 'todos', quien: N ? N.corto : 'Todos los cursos', texto: textoPrevia(Object.assign({}, p, { activa: 'si' })),
+        espacio: N ? espacioDeGrupo(N.edificio) : '' };
+    }).filter(p => p.texto && (!esp || !p.espacio || p.espacio === esp));
+  }
 
-  // Cursos del colegio y dónde tienen reunión (así no hay que escribirlos uno a uno en cada reunión)
+  // Cursos del colegio por ciclo y dónde tienen reunión (así no hay que escribirlos uno a uno en cada reunión)
   const NIVELES = {
-    pre: { nombre: '🧸 Pre-Kínder y Kínder', edificio: 'prebasica', cursos: ['Pre-Kínder', 'Kínder'] },
-    menor: { nombre: '🧒 1° a 4° Básico A y B (Ciclo Menor)', edificio: 'menor',
+    pre: { nombre: '🧸 Prebásica (Pre-Kínder y Kínder)', corto: 'Prebásica', edificio: 'prebasica', cursos: ['Pre-Kínder', 'Kínder'] },
+    menor: { nombre: '🧒 Primer ciclo (1° a 4° Básico · Ciclo Menor)', corto: 'Primer ciclo', edificio: 'menor',
       cursos: [1, 2, 3, 4].flatMap(n => ['A', 'B'].map(l => `${n}° Básico ${l}`)) },
-    basica: { nombre: '🏫 5° a 8° Básico A y B (Matriz)', edificio: 'matriz',
+    basica: { nombre: '🏫 Segundo ciclo (5° a 8° Básico · Matriz)', corto: 'Segundo ciclo', edificio: 'matriz',
       cursos: [5, 6, 7, 8].flatMap(n => ['A', 'B'].map(l => `${n}° Básico ${l}`)) },
-    media: { nombre: '🎓 1° a 4° Medio A, B y C (Matriz)', edificio: 'matriz',
+    media: { nombre: '🎓 Enseñanza Media (1° a 4° Medio · Matriz)', corto: 'Enseñanza Media', edificio: 'matriz',
       cursos: [1, 2, 3, 4].flatMap(n => ['A', 'B', 'C'].map(l => `${n}° Medio ${l}`)) },
   };
 
@@ -854,23 +947,26 @@
 
   // ⭐ Alumnos destacados: los subidos juntos (mismo "grupo") pasan de a 3 por diapositiva.
   // 🏆 Cursos destacados: uno por diapositiva. Se dejan de mostrar después de "vence" (si se indicó).
+  const TIPOS_DEST = { alumno: '⭐ Alumnos/as destacados/as', apoderado: '💙 Apoderados/as destacados/as', funcionario: '🏅 Funcionarios/as destacados/as' };
+  // posición del curso en el colegio (Pre-Kínder primero, 4° Medio al final) para ordenar
+  const ordenCurso = c => {
+    const todos = Object.values(NIVELES).flatMap(n => n.cursos);
+    const i = todos.findIndex(x => String(c || '').includes(x));
+    return i < 0 ? 999 : i;
+  };
   function destacados(data, perfil) {
     const hoy = new Date().toISOString().slice(0, 10);
     const lista = API.para(data.destacados, perfil).filter(d => !d.vence || String(d.vence) >= hoy);
-    const out = [];
-    const grupos = {};
-    lista.filter(d => d.tipo !== 'curso').forEach(d => {
-      const g = d.grupo || d.id;
-      if (!grupos[g]) { grupos[g] = []; out.push(grupos[g]); }
-      grupos[g].push(d);
-    });
     const slides = [];
-    out.forEach(g => {
+    // alumnos/as, apoderados/as y funcionarios/as: cada grupo pasa de a 3 (ordenados por curso)
+    Object.entries(TIPOS_DEST).forEach(([tipo, sello]) => {
+      const g = lista.filter(d => (d.tipo || 'alumno') === tipo)
+        .sort((a, b) => ordenCurso(a.curso) - ordenCurso(b.curso));
       for (let k = 0; k < g.length; k += 3) {
         const personas = g.slice(k, k + 3);
         // si todos comparten el motivo, va una vez arriba (como título)
         const mismo = personas.every(p => p.motivo === personas[0].motivo) && personas.length > 1 ? personas[0].motivo : '';
-        slides.push({ destacado: 'alumnos', titulo: mismo, url: personas.map(p => p.url).join(' '),
+        slides.push({ destacado: 'alumnos', sello, titulo: mismo, url: personas.map(p => p.url).join(' '),
           texto: personas.map(p => p.nombre + p.curso + p.motivo).join('|'),
           personas: personas.map(p => ({ nombre: p.nombre, curso: p.curso, motivo: mismo ? '' : p.motivo, url: p.url })) });
       }
@@ -905,5 +1001,5 @@
     return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, textoPrevia, NIVELES, destacados, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, textoPrevia, previasDe, NIVELES, destacados, TEMAS, FONDOS, coloresTema, aplicarTema, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

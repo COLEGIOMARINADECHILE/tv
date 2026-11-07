@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261107b">
+  <link rel="stylesheet" href="styles.css?v=20261107c">
   <style>
     body { overflow: auto; font-size: 15px; }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -89,6 +89,44 @@
     @media (max-width: 640px) { .tel-fila { grid-template-columns: 1fr 1fr; } }
     /* ⭐ destacados: una fila por alumno */
     .dest-filas { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 12px; }
+    /* ⭐ Destacados por curso: cada curso es un botón que se abre */
+    .dp-nivel h3 { font-size: 15px; color: var(--gold); margin: 16px 0 8px; }
+    .dp-cursos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+    .dp-grupo { border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.04); }
+    .dp-grupo > summary { list-style: none; cursor: pointer; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .dp-grupo > summary::-webkit-details-marker { display: none; }
+    .dp-grupo > summary:hover { background: rgba(255,255,255,.06); border-radius: 12px; }
+    .dp-resumen { font-size: 13px; color: var(--gold); font-weight: 700; white-space: nowrap; }
+    .dp-grupo[open] { grid-column: 1 / -1; border-color: var(--gold); background: rgba(246,201,14,.05); }
+    .dp-grupo[open] > summary b { font-size: 18px; }
+    .dp-cuerpo { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+    .dp-lista { display: flex; flex-direction: column; gap: 8px; }
+    .dp-item { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.05); }
+    .dp-item.cambiado { outline: 2px solid var(--gold); }
+    .dp-item img { width: 72px; height: 72px; object-fit: cover; border-radius: 12px; border: 2px solid var(--gold); }
+    .dp-item img.ancha { width: 128px; height: 72px; }
+    .dp-curso .dp-item { grid-template-columns: 128px minmax(0, 1fr) auto; }
+    .dp-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+    .dp-campos label, .dp-nuevo-curso label:not(.btn), .dp-publicar label { text-transform: none; letter-spacing: 0; font-size: 12px; }
+    .dp-opciones .dos { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .dp-opciones label, .dp-opciones select { min-width: 0; width: 100%; }
+    .dp-acc .del { background: transparent; border: 1px solid var(--red); color: #ff8b8e; border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 13px; font-weight: 700; }
+    .dp-acc { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+    .btn.mini { padding: 7px 12px; font-size: 13px; }
+    .dp-subir { display: inline-block; cursor: pointer; text-transform: none; letter-spacing: 0; font-size: 14px; }
+    .dp-publicar { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+    .dp-publicar label { flex: 1; min-width: 220px; }
+    .dp-curso { border-top: 1px dashed var(--line); padding-top: 10px; }
+    .dp-nuevo-curso { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+    .dp-nuevo-curso label:not(.btn) { flex: 1; min-width: 200px; }
+    .dp-vista { width: 128px; height: 72px; object-fit: cover; border-radius: 10px; border: 2px solid var(--gold); }
+    .dp-filas { display: flex; flex-direction: column; gap: 8px; }
+    .dp-filas .dest-fila:not(.con-detalle) { grid-template-areas: "foto nom nom x" "foto mot mot x"; }
+    .dp-filas .dest-fila:not(.con-detalle) label:nth-of-type(2) { grid-area: mot; }
+    .dest-fila.con-detalle { grid-template-areas: "foto nom det x" "foto mot mot x"; }
+    .dest-fila.con-detalle label:nth-of-type(2) { grid-area: det; }
+    .dest-fila.con-detalle label:nth-of-type(3) { grid-area: mot; }
+    @media (max-width: 640px) { .dp-item, .dp-curso .dp-item { grid-template-columns: 72px 1fr; } .dp-acc { grid-column: 1 / -1; } }
     /* Destacados: formulario a todo el ancho (las filas de alumnos necesitan espacio) y lo publicado debajo */
     .grid.una-col { grid-template-columns: 1fr !important; max-width: 980px; }
     /* foto a la izquierda · arriba el nombre (grande) · abajo curso y motivo */
@@ -110,6 +148,26 @@
     @media (max-width: 640px) { .reu-tabla-head { display: none; } }
     .curso-fijo { background: transparent !important; border-color: transparent !important; font-weight: 800; color: #fff; }
     .reu-curso-fila.sin-sala [data-campo="sala"] { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(246,201,14,.35); }
+    /* 🎨 temas de colores y fondo */
+    .tema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; }
+    .tema-op { cursor: pointer; text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--ink); gap: 6px; position: relative; }
+    .tema-op input { position: absolute; opacity: 0; }
+    .tema-muestra { height: 64px; border-radius: 12px; border: 3px solid transparent; display: flex; align-items: flex-end; gap: 4px; padding: 8px; }
+    .tema-muestra i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,.6); }
+    .tema-op input:checked + .tema-muestra { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(246,201,14,.35); }
+    .tema-op input:focus-visible + .tema-muestra { outline: 2px solid #fff; }
+    .tema-propio input[type=color] { height: 42px; padding: 2px; cursor: pointer; }
+    .fondo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 14px; margin: 6px 0 12px; }
+    .tema-vista-acc { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+    .tema-vista-acc select { width: auto; }
+    .tema-vista { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; border: 2px solid var(--line); background: #000; }
+    .tema-vista iframe { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }
+    .tel-fila.ed-fila { grid-template-columns: 80px 1fr auto 40px; align-items: center; }
+    .reu-previas { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+    .reu-previa-fila { display: grid; grid-template-columns: 1.6fr 1.2fr 110px 1.2fr 1.2fr 36px; gap: 8px; align-items: end; }
+    .reu-previa-fila label { text-transform: none; letter-spacing: 0; min-width: 0; }
+    .reu-previa-fila input, .reu-previa-fila select { min-width: 0; width: 100%; }
+    @media (max-width: 760px) { .reu-previa-fila { grid-template-columns: 1fr 1fr; } }
     .reu-previa-box { border: 1px dashed #2fbf71; border-radius: 10px; padding: 10px; margin: 10px 0; }
     details.reu-detalle > summary { cursor: pointer; font-weight: 700; color: var(--gold); margin: 8px 0; }
     .clave-box { max-width: 520px; }
@@ -148,9 +206,9 @@
 </head>
 <body>
   <div class="wrap" id="app"></div>
-  <script src="config.js?v=20261107b"></script>
-  <script src="api.js?v=20261107b"></script>
-  <script src="common.js?v=20261107b"></script>
-  <script src="admin.js?v=20261107b"></script>
+  <script src="config.js?v=20261107c"></script>
+  <script src="api.js?v=20261107c"></script>
+  <script src="common.js?v=20261107c"></script>
+  <script src="admin.js?v=20261107c"></script>
 </body>
 </html>

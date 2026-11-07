@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261107b">
+  <link rel="stylesheet" href="styles.css?v=20261107c">
 </head>
 <body>
   <main class="home">
@@ -44,7 +44,28 @@
       </nav>
     </div>
   </main>
+  <script src="config.js?v=20261107c"></script>
+  <script src="api.js?v=20261107c"></script>
+  <script src="common.js?v=20261107c"></script>
   <script>
+    // Edificios agregados en Admin → Ajustes: también se pueden elegir para este TV (y los colores elegidos)
+    function sumarEspacios() {
+      const nav = document.getElementById('espacios');
+      Object.entries(UI.ESPACIOS).filter(([, e]) => e.extra).forEach(([id, e]) => {
+        if (nav.querySelector(`[data-id="${id}"]`)) return;
+        const a = document.createElement('a');
+        a.className = 'profile';
+        a.dataset.id = id;
+        a.href = 'familias.html?espacio=' + encodeURIComponent(id);
+        a.innerHTML = `<span class="ico">${UI.esc(e.nombre.split(' ')[0])}</span><b>${UI.esc(e.corto)}</b><span>Información y salas de este edificio</span>`;
+        nav.appendChild(a);
+      });
+      if (!nav.hidden) items = [...nav.querySelectorAll('.profile')];
+    }
+    try {
+      sumarEspacios();
+      API.cargarDatos().then(d => { const aj = UI.ajustes(d); UI.aplicarTema(aj); sumarEspacios(); }).catch(() => {});
+    } catch (e) {}
     // Navegación con flechas del control remoto
     let items = [...document.querySelectorAll('.profiles:not([hidden]) .profile')];
     items[0].focus();

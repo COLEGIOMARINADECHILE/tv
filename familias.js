@@ -5,6 +5,8 @@
 
   // Espacio (edificio) de este TV: muestra lo publicado para ese edificio y sus salas de reunión
   const ESPACIO = UI.espacioTv();
+  // ?vista=1: vista previa dentro del panel Admin (sin música ni sonido)
+  const VISTA = /[?&]vista=1/.test(location.search);
   document.getElementById('hdr').outerHTML = UI.header(ESPACIO ? 'Familias · ' + UI.ESPACIOS[ESPACIO].corto : 'Familias');
   UI.startClock();
   UI.backToHome();
@@ -313,6 +315,7 @@
   };
 
   function setMusica(lista) {
+    if (VISTA) return; // vista previa del panel: sin música
     const f = JSON.stringify(lista.map(m => m.url));
     if (f === firmaMusica) return; // misma lista → seguir sonando sin cortar
     firmaMusica = f;
@@ -371,7 +374,7 @@
     const lista = UI.proximasReuniones(aj)
       .map(r => Object.assign({}, r, { grupos: r.grupos.filter(g => !ESPACIO || g.espacio === ESPACIO) }))
       .filter(r => r.grupos.length);
-    const firma = JSON.stringify(lista.map(r => [r.fecha, r.grupos, r.previa]));
+    const firma = JSON.stringify(lista.map(r => [r.fecha, r.grupos, r.previa, r.previas]));
     if (box._firma === firma) return;
     box._firma = firma;
     clearInterval(box._rot);
@@ -384,7 +387,7 @@
         <span>${esc(g.espacio ? UI.ESPACIOS[g.espacio].nombre : UI.EDIFICIOS[g.grupo])}</span>
         ${g.hora ? `<span class="pr-hora">🕒 ${esc(g.hora)} hrs</span>` : ''}
       </div>`).join('')}</div>
-      ${UI.textoPrevia(r.previa) ? `<div class="prox-previa">📣 Antes: reunión general · ${esc(UI.textoPrevia(r.previa))}</div>` : ''}`;
+      ${UI.previasDe(r, ESPACIO).map(p => `<div class="prox-previa">📣 Antes, reunión general${p.para === 'todos' ? '' : ' ' + esc(p.quien)}: ${esc(p.texto)}</div>`).join('')}`;
     // si hay más de una reunión próxima (ej. Básica y Media), se alternan
     let k = 0;
     const mostrar = () => { box.innerHTML = `<div class="fade">${tarjeta(lista[k])}</div>`; };
@@ -430,12 +433,12 @@
     galMini.hidden = !mini.length;
     if (mini.length) {
       UI.gallery(galMini, mini,
-        { seg: 8, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,
+        { seg: 8, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS && !VISTA,
           perfil: 'familias', onCambio: onCambioVideo },
         'Actividades del colegio');
     }
 
-    const firma = JSON.stringify([r.titulo, r.horas, r.cursos, r.previa]);
+    const firma = JSON.stringify([r.titulo, r.horas, r.cursos, r.previa, r.previas]);
     if (box._firma === firma) return true;
     box._firma = firma;
     clearInterval(box._pag);
@@ -457,8 +460,9 @@
         ${r.titulo ? `<span class="reu-titulo">${esc(r.titulo)}</span>` : ''}
         <span class="reu-nota">Busque el curso de su hijo o hija y diríjase a la sala indicada</span>
       </div>
-      ${UI.textoPrevia(r.previa) ? `<div class="reu-previa"><span class="rp-tit">📣 Primero: reunión general</span>
-        <span>${esc(UI.textoPrevia(r.previa))}</span></div>` : ''}
+      ${UI.previasDe(r, ESPACIO).length ? `<div class="reu-previas-tv">${UI.previasDe(r, ESPACIO).map(p => `<div class="reu-previa">
+        <span class="rp-tit">📣 ${p.para === 'todos' ? 'Primero: reunión general' : 'Reunión general · ' + esc(p.quien)}</span>
+        <span>${esc(p.texto)}</span></div>`).join('')}</div>` : ''}
       <div class="reu-cols ${['', 'una', 'dos', 'tres'][edificios.length]}" style="grid-template-columns:${anchos}">
         ${edificios.map(e => `<div class="reu-col reu-${e}">
           <h3><span>${UI.EDIFICIOS[e]}</span>
@@ -509,7 +513,7 @@
       // Modo reunión de apoderados: ocupa el lugar del carrusel mientras esté activo
       if (renderReunion(aj, fotos)) return;
       UI.gallery(gal, fotos,
-        { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS,
+        { seg: aj.segFotosFamilias, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: CFG.VIDEO_CON_SONIDO_FAMILIAS && !VISTA,
           perfil: 'familias', onCambio: onCambioVideo },
         'Actividades del colegio');
     };
@@ -518,7 +522,7 @@
     // en el equipo quedan guardados solo los videos y canciones que siguen publicados
     API.limpiarMedios((data.fotos || []).filter(f => f.formato === 'video' && f.fileId).map(f => f.fileId)
       .concat((data.musica || []).filter(m => m.fileId).map(m => m.fileId)));
-    const videosConAudio = CFG.VIDEO_CON_SONIDO_FAMILIAS &&
+    const videosConAudio = CFG.VIDEO_CON_SONIDO_FAMILIAS && !VISTA &&
       fotos.some(f => UI.youtubeId(f.url) && f.audio !== 'no');
     if (pistas.length || videosConAudio) UI.pedirSonido(activarSonido);
     ultimoAj = aj;

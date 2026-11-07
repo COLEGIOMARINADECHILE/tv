@@ -49,7 +49,8 @@
           .map(([edificio, sala, piso]) => ({ edificio, sala, piso }))) },
       { id: 'reuniones', valor: JSON.stringify([
         { id: 'r1', nombre: 'Básica', activo: 'si', fecha: hoyMas(0), titulo: 'Hoy', horas: { prebasica: '17:30', menor: '18:00', matriz: '19:00' },
-          previa: { activa: 'si', lugar: 'Gimnasio', hora: '17:00', tema: 'Charla de seguridad escolar', institucion: 'Carabineros de Chile' }, cursos:
+          previas: [{ para: 'menor', lugar: 'Hall Ciclo Menor', hora: '17:30', tema: 'Bienvenida del ciclo' },
+            { para: 'basica', lugar: 'Gimnasio', hora: '18:30', tema: 'Charla de seguridad escolar', institucion: 'Carabineros de Chile' }], cursos:
           [{ curso: 'Pre-Kínder', edificio: 'prebasica', sala: 'Pre-Kínder' }, { curso: 'Kínder', edificio: 'prebasica', sala: 'Kínder' }]
             .concat([1, 2, 3, 4].flatMap((n, k) => ['A', 'B'].map((l, j) => ({ curso: `${n}° Básico ${l}`, edificio: 'menor', sala: String(k * 2 + j + 1) }))))
             .concat([5, 6, 7, 8].flatMap((n, k) => ['A', 'B'].map((l, j) => ({ curso: `${n}° Básico ${l}`, edificio: 'matriz', sala: String([11, 12, 13, 14, 21, 22, 23, 24][k * 2 + j]) }))))
@@ -66,6 +67,10 @@
     ].map(([nombre, curso], k) => ({ id: 'e' + k, tipo: 'alumno', nombre, curso, grupo: 'g1', publico: 'ambos',
       motivo: k === 3 ? 'Primer lugar comunal de ajedrez' : 'Excelencia académica del semestre',
       url: `https://picsum.photos/seed/alumno${k}/600/600` }))
+      .concat([{ id: 'p1', tipo: 'apoderado', nombre: 'Carolina Pérez', curso: 'Apoderada de 2° Básico B', publico: 'ambos',
+        motivo: 'Por su compromiso con la directiva del curso', url: 'https://picsum.photos/seed/apod1/600/600' },
+      { id: 'u1', tipo: 'funcionario', nombre: 'Jorge Lagos', curso: 'Inspector', publico: 'ambos',
+        motivo: '25 años de servicio en el colegio', url: 'https://picsum.photos/seed/func1/600/600' }])
       .concat([{ id: 'c1', tipo: 'curso', curso: '6° Básico B', publico: 'ambos', url: 'https://picsum.photos/seed/curso6b/1280/860',
         motivo: '🏆 Mejor asistencia del mes de octubre (98 %). ¡Felicitaciones a los estudiantes y sus familias!' }]),
     historias: [
