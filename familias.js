@@ -279,8 +279,8 @@
         musica.volume = vol;
         musica.play().catch(() => UI.pedirSonido(activarSonido)); // navegador: esperar un clic/OK
       };
-      // MP3 subido a Drive: se descarga vía Apps Script (Drive ya no deja reproducirlo directo)
-      if (p.fileId) API.video(p.fileId).then(sonar).catch(() => sonar(p.url));
+      // MP3 subido a Drive: llega vía Apps Script (Drive ya no deja reproducirlo directo) y suena mientras se descarga
+      if (p.fileId) API.musica(p.fileId).then(sonar).catch(() => sonar(p.url));
       else sonar(p.url);
     }
   }
@@ -322,7 +322,14 @@
     pistas = CFG.MUSICA_FAMILIAS ? lista.filter(m => m.url).sort(() => Math.random() - 0.5) : [];
     pista = 0;
     errores = 0;
-    tocar();
+    // primero una canción que ya esté guardada en el TV (suena al instante); si no hay, la que toque
+    Promise.all(pistas.map(m => (m.fileId ? API.medioGuardado(m.fileId) : Promise.resolve(true))))
+      .then(listas => {
+        const k = listas.indexOf(true);
+        if (k > 0) pistas.unshift(...pistas.splice(k, 1));
+      })
+      .catch(() => {})
+      .then(tocar);
   }
 
   // Mientras suene un video del carrusel, la música de fondo baja.

@@ -219,6 +219,65 @@
     return videos[fileId];
   }
 
+  // 🎵 Canción MP3 subida: empieza a sonar apenas llega la primera parte (unos segundos), sin esperar
+  // a que se descargue entera; mientras suena se sigue descargando y al final queda guardada en el equipo
+  // (la próxima vez suena al instante). Si el equipo no puede, se descarga entera como antes.
+  const leerParte = async (fileId, k) => {
+    const d = await (await fetch(CFG.API_URL + '?accion=video&id=' + encodeURIComponent(fileId) + '&parte=' + k)).json();
+    if (!d.data) throw new Error(d.error || 'Archivo no disponible');
+    return { tipo: d.tipo, total: d.partes || 1, buf: await (await fetch(`data:${d.tipo};base64,${d.data}`)).arrayBuffer() };
+  };
+  const musicas = {};
+  const sinStream = {};
+  async function musica(fileId) {
+    if (musicas[fileId]) return musicas[fileId];
+    try {
+      const guardado = await (await caches.open(CACHE)).match(claveCache(fileId));
+      if (guardado) return (musicas[fileId] = URL.createObjectURL(await guardado.blob()));
+    } catch (e) {}
+    const MS = window.MediaSource;
+    const p0 = await leerParte(fileId, 0);
+    if (p0.total === 1 || !MS || !MS.isTypeSupported(p0.tipo) || sinStream[fileId]) {
+      // archivo chico o formato que no se puede ir reproduciendo: se descarga entero
+      const partes = [p0.buf];
+      for (let k = 1; k < p0.total; k++) partes.push((await leerParte(fileId, k)).buf);
+      const blob = new Blob(partes, { type: p0.tipo });
+      try { await (await caches.open(CACHE)).put(claveCache(fileId), new Response(blob)); } catch (e) {}
+      return (musicas[fileId] = URL.createObjectURL(blob));
+    }
+    const ms = new MS();
+    const url = URL.createObjectURL(ms);
+    ms.addEventListener('sourceopen', async () => {
+      try {
+        const sb = ms.addSourceBuffer(p0.tipo);
+        const agregar = buf => new Promise((ok, mal) => {
+          sb.addEventListener('updateend', ok, { once: true });
+          sb.addEventListener('error', mal, { once: true });
+          sb.appendBuffer(buf);
+        });
+        const partes = [p0.buf];
+        await agregar(p0.buf);
+        for (let k = 1; k < p0.total; k++) {
+          const p = await leerParte(fileId, k);
+          partes.push(p.buf);
+          await agregar(p.buf);
+        }
+        ms.endOfStream();
+        // completa: queda guardada para la próxima vez
+        try { await (await caches.open(CACHE)).put(claveCache(fileId), new Response(new Blob(partes, { type: p0.tipo }))); } catch (e) {}
+      } catch (e) {
+        // este equipo no pudo ir reproduciéndola: la próxima vez se descarga entera (como antes)
+        sinStream[fileId] = true;
+        try { ms.endOfStream('network'); } catch (e2) {}
+      }
+    }, { once: true });
+    return url; // (no se recuerda: si se vuelve a pedir antes de guardarse, se arma de nuevo)
+  }
+  // ¿Este archivo ya está guardado en el equipo? (sirve para elegir primero una canción que suene al instante)
+  async function medioGuardado(fileId) {
+    try { return !!(await (await caches.open(CACHE)).match(claveCache(fileId))); } catch (e) { return false; }
+  }
+
   // Borra del equipo los videos y canciones que ya no están publicados
   async function limpiarMedios(vigentes) {
     try {
@@ -261,5 +320,5 @@
     throw new Error('La subida no terminó, intente de nuevo');
   }
 
-  window.API = { cargarDatos, version, admin, para, video, limpiarMedios, subirArchivo, DEMO };
+  window.API = { cargarDatos, version, admin, para, video, musica, medioGuardado, limpiarMedios, subirArchivo, DEMO };
 })();

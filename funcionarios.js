@@ -263,12 +263,40 @@
     }
   }
 
+  // 🎂 Canción de cumpleaños: suena al aparecer el saludo, las veces al día elegidas en Admin → Ajustes
+  // (repartidas en la jornada). Mientras suena, la TV se pausa y luego vuelve.
+  let vecesCumple = 3;
+  let cantando = false;
+  function onCumple() {
+    if (!vecesCumple || cantando || tvPausada) return; // 0 = sin canción · si suena un video, no se mezcla
+    const CLAVE = 'cmch_cumple_musica';
+    const hoy = new Date().toDateString();
+    let r = null;
+    try { r = JSON.parse(localStorage.getItem(CLAVE)); } catch (e) {}
+    if (!r || r.d !== hoy) r = { d: hoy, n: 0, t: 0 };
+    const separacion = (CFG.JORNADA_MIN || 600) / vecesCumple * 60000;
+    if (r.n >= vecesCumple || (r.t && Date.now() - r.t < separacion)) return;
+    r.n++;
+    r.t = Date.now();
+    try { localStorage.setItem(CLAVE, JSON.stringify(r)); } catch (e) {}
+    cantando = true;
+    if (conTv) {
+      NATIVE && NATIVE.hideTv();
+      player.innerHTML = `<div class="empty"><span style="font-size:8vh">🎂</span><b>¡Feliz cumpleaños!</b>La TV vuelve al terminar la canción.</div>`;
+    }
+    UI.melodiaCumple().then(() => {
+      cantando = false;
+      if (conTv && !tvPausada) sintonizar(actual);
+    });
+  }
+
   function activarSonido() {
     document.getElementById('gal')._activarSonido();
   }
 
   UI.autoData(data => {
     const aj = UI.ajustes(data);
+    vecesCumple = aj.cumpleMusica === undefined || aj.cumpleMusica === '' ? 3 : +aj.cumpleMusica || 0;
     renderCanales(data.canales || []);
     renderAgenda(API.para(data.actividades, 'funcionarios'));
     // Actividades del colegio + Educación en el mismo carrusel (el rótulo indica la categoría)
@@ -277,7 +305,7 @@
     API.limpiarMedios((data.fotos || []).filter(f => f.formato === 'video' && f.fileId).map(f => f.fileId));
     UI.gallery(document.getElementById('gal'), fotos,
       { seg: aj.segFotosFuncionarios, maxVideo: CFG.DURACION_VIDEO_MAX_SEG, sonido: true, perfil: 'funcionarios',
-        audioDe: f => f.audioFunc === 'si', onCambio: onCambioVideo },
+        audioDe: f => f.audioFunc === 'si', onCambio: onCambioVideo, onCumple },
       'Actividades del colegio');
     if (fotos.some(f => UI.youtubeId(f.url) && f.audioFunc === 'si')) UI.pedirSonido(activarSonido);
     UI.renderTicker(document.getElementById('ticker'), API.para(data.avisos, 'funcionarios'), aj.velocidadAvisos);

@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261108a">
+  <link rel="stylesheet" href="styles.css?v=20261108b">
   <style>
     body { overflow: auto; font-size: 15px; }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -167,6 +167,13 @@
     .sello-fila select { font-size: 22px; padding: 4px; }
     @media (max-width: 640px) { .sello-fila { grid-template-columns: 70px 1fr 36px; } .sello-fila label:nth-of-type(2) { grid-column: 1 / -1; } }
     .eq-item img { border-radius: 50%; }
+    .ins-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .ins-op { position: relative; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px;
+      border-radius: 12px; border: 2px solid var(--line); background: rgba(255,255,255,.05); text-transform: none; letter-spacing: 0; font-size: 12px; }
+    .ins-op img { height: 80px; width: auto; object-fit: contain; }
+    .ins-op input[type=checkbox] { position: absolute; top: 8px; left: 8px; width: 18px; height: 18px; accent-color: var(--gold); }
+    .ins-op:has(input:checked) { border-color: var(--gold); background: rgba(246,201,14,.08); }
+    .ins-op.img-subir { justify-content: center; min-height: 120px; border-style: dashed; color: var(--gold); }
     .tema-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
     .tema-tabs button { background: rgba(255,255,255,.06); border: 1px solid var(--line); color: var(--ink); border-radius: 99px; padding: 8px 14px; cursor: pointer; font-weight: 700; }
     .tema-tabs button.on { background: var(--gold); color: #06153a; border-color: var(--gold); }
@@ -227,9 +234,9 @@
 </head>
 <body>
   <div class="wrap" id="app"></div>
-  <script src="config.js?v=20261108a"></script>
-  <script src="api.js?v=20261108a"></script>
-  <script src="common.js?v=20261108a"></script>
-  <script src="admin.js?v=20261108a"></script>
+  <script src="config.js?v=20261108b"></script>
+  <script src="api.js?v=20261108b"></script>
+  <script src="common.js?v=20261108b"></script>
+  <script src="admin.js?v=20261108b"></script>
 </body>
 </html>

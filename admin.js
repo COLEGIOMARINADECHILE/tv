@@ -544,6 +544,12 @@
           <legend>📺 Pantalla Funcionarios</legend>
           <label>Segundos que se ve cada foto · Funcionarios<input type="number" name="segFotosFuncionarios" min="3" max="120" value="${esc(a.segFotosFuncionarios)}"></label>
           <p class="note">Los videos siempre se muestran completos.</p>
+          <label>🎂 Canción de cumpleaños (suena al aparecer el saludo; la TV se pausa mientras suena)
+            <select name="cumpleMusica">${[['0', '🔇 No suena'], ['1', '1 vez al día'], ['2', '2 veces al día'], ['3', '3 veces al día'],
+              ['4', '4 veces al día'], ['6', '6 veces al día']].map(([v, t]) => `<option value="${v}" ${String(a.cumpleMusica === undefined || a.cumpleMusica === '' ? '3' : a.cumpleMusica) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+          <p class="note">Las veces se reparten durante la jornada (no suena dos veces seguidas). Es la melodía tradicional
+          de "Cumpleaños feliz" tocada como caja musical, unos 13 segundos.
+          <button type="button" class="link-btn" id="probar-cumple">▶ Escuchar</button></p>
         </fieldset>
 
         ${bloqueTema(a)}
@@ -1567,6 +1573,67 @@
       <button type="button" class="del" data-acc="eliminar">🗑️</button>
     </div></div>`;
 
+  // 🛡️ Insignias que se alternan en el encabezado al girar
+  function bloqueInsignias(aj) {
+    const elegidas = UI.leerJSON(aj.insignias, null);
+    const todas = UI.INSIGNIAS_BASE.map(u => ({ url: u, nombre: u === 'insignia.png' ? 'Insignia' : 'Insignia en color' }))
+      .concat((data.insignias || []).map(i => ({ url: i.url, nombre: i.nombre, id: i.id })));
+    const usa = u => (Array.isArray(elegidas) ? elegidas.includes(u) : true);
+    return `<fieldset class="grupo" id="ins-box" style="margin-top:18px">
+      <legend>🛡️ Insignias del encabezado</legend>
+      <p class="note">El escudo de arriba gira cada cierto tiempo. Marque las insignias que quiere que vayan <b>alternándose</b> en cada giro
+      (por ejemplo la de color y la de los <b>70 años</b>). Use imágenes con fondo transparente (PNG) para que se vean mejor.</p>
+      <div class="ins-lista">${todas.map(i => `<label class="ins-op">
+        <input type="checkbox" value="${esc(i.url)}" ${usa(i.url) ? 'checked' : ''}>
+        <img src="${esc(i.url)}" alt=""><span>${esc(i.nombre || '')}</span>
+        ${i.id ? `<button type="button" class="img-quitar" data-id="${esc(i.id)}" title="Eliminar">✕</button>` : ''}</label>`).join('')}
+        <label class="ins-op img-subir"><input type="file" accept="image/png,image/*" id="ins-subir" hidden><span>➕<br>Subir insignia</span></label></div>
+      <button type="button" class="btn" id="ins-guardar">💾 Guardar insignias</button>
+    </fieldset>`;
+  }
+  function iniciarInsignias() {
+    const box = document.getElementById('ins-box');
+    document.getElementById('ins-guardar').onclick = async e => {
+      const urls = [...box.querySelectorAll('.ins-op input[type=checkbox]:checked')].map(c => c.value);
+      if (!urls.length) return toast('Marque al menos una insignia', 'err');
+      e.target.disabled = true;
+      try {
+        await API.admin('ajustes', { password, valores: { insignias: JSON.stringify(urls) } });
+        toast('Insignias guardadas ✔');
+        await recargar();
+      } catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
+    };
+    document.getElementById('ins-subir').onchange = async e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const etq = e.target.closest('.img-subir').querySelector('span');
+      etq.textContent = 'Subiendo…';
+      try {
+        // PNG: se sube tal cual (para no perder el fondo transparente) si no es muy grande
+        const png = /png/i.test(f.type) && f.size < 3 * 1024 * 1024;
+        const image = png ? { data: await aBase64(f), mimeType: 'image/png', name: f.name }
+          : { data: await comprimir(f, 800), mimeType: 'image/jpeg', name: f.name.replace(/\.\w+$/, '') + '.jpg' };
+        const r = await API.admin('add', { password, sheet: 'insignias', item: { nombre: f.name.replace(/\.\w+$/, '') }, image });
+        // la nueva queda marcada para alternarse
+        const actuales = [...box.querySelectorAll('.ins-op input[type=checkbox]:checked')].map(c => c.value);
+        if (r.item && r.item.url) await API.admin('ajustes', { password, valores: { insignias: JSON.stringify(actuales.concat(r.item.url)) } });
+        toast('Insignia subida ✔');
+        await recargar();
+      } catch (err) { toast(err.message, 'err'); etq.innerHTML = '➕<br>Subir insignia'; }
+    };
+    box.addEventListener('click', async e => {
+      const b = e.target.closest('.img-quitar');
+      if (!b) return;
+      e.preventDefault();
+      if (!confirm('¿Eliminar esta insignia?')) return;
+      try {
+        await API.admin('delete', { password, sheet: 'insignias', id: b.dataset.id });
+        toast('Eliminada');
+        await recargar();
+      } catch (err) { toast(err.message, 'err'); }
+    });
+  }
+
   function vistaInstitucional() {
     const aj = UI.ajustes(data);
     const g = UI.leerJSON(aj.institucional, {});
@@ -1601,6 +1668,7 @@
         <button class="btn">💾 Guardar Misión, Visión y Sellos</button>
         ${g.vision || g.mision || g.sellos ? '<button type="button" class="btn ghost" id="inst-original">↺ Volver al texto original</button>' : ''}
       </form>
+      ${bloqueInsignias(aj)}
       <fieldset class="grupo" id="equipo-box" style="margin-top:18px">
         <legend>👥 Conoce al equipo de gestión</legend>
         <datalist id="cargos-base">${[...new Set(CARGOS_BASE)].map(c => `<option value="${esc(c)}">`).join('')}
@@ -1616,6 +1684,7 @@
   }
 
   function iniciarInstitucional() {
+    iniciarInsignias();
     const f = document.getElementById('f-inst');
     const sellos = document.getElementById('sellos-filas');
     document.getElementById('sello-agregar').onclick = () => sellos.insertAdjacentHTML('beforeend', filaSello({ icono: '⭐' }));
@@ -1781,6 +1850,7 @@
       iniciarClave();
       const fa = document.getElementById('f-ajustes');
       iniciarTema(fa);
+      document.getElementById('probar-cumple').onclick = e => { e.target.disabled = true; UI.melodiaCumple().then(() => (e.target.disabled = false)); };
       const edFilas = document.getElementById('ed-filas');
       document.getElementById('ed-agregar').onclick = () => {
         edFilas.insertAdjacentHTML('beforeend', filaEdificio({}));

@@ -37,6 +37,71 @@
       </header>`;
   }
 
+  // 🎵 Melodía de "Cumpleaños feliz" (melodía tradicional, de dominio público) tocada como caja musical
+  // con el propio navegador: no necesita archivos ni internet. Devuelve una promesa que termina al acabar.
+  function melodiaCumple(volumen) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return Promise.resolve();
+    const ctx = new AC();
+    const N = { C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, G4: 392, A4: 440, B4: 493.88 };
+    const notas = [['G4', .75], ['G4', .25], ['A4', 1], ['G4', 1], ['C5', 1], ['B4', 2],
+      ['G4', .75], ['G4', .25], ['A4', 1], ['G4', 1], ['D5', 1], ['C5', 2],
+      ['G4', .75], ['G4', .25], ['G5', 1], ['E5', 1], ['C5', 1], ['B4', 1], ['A4', 2],
+      ['F5', .75], ['F5', .25], ['E5', 1], ['C5', 1], ['D5', 1], ['C5', 3]];
+    const pulso = 0.45;
+    const maestro = ctx.createGain();
+    maestro.gain.value = volumen == null ? 0.35 : volumen;
+    maestro.connect(ctx.destination);
+    let t = ctx.currentTime + 0.15;
+    notas.forEach(([n, d]) => {
+      const dur = d * pulso;
+      // dos osciladores (fundamental + octava suave) con caída rápida: suena a caja musical
+      [[1, 'triangle', 1], [2, 'sine', 0.25]].forEach(([mult, tipo, nivel]) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = tipo;
+        o.frequency.value = N[n] * mult;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(nivel, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(dur, 0.35) + 0.4);
+        o.connect(g).connect(maestro);
+        o.start(t);
+        o.stop(t + Math.max(dur, 0.35) + 0.45);
+      });
+      t += dur;
+    });
+    const total = (t - ctx.currentTime + 0.6) * 1000;
+    if (ctx.resume) ctx.resume().catch(() => {});
+    return new Promise(ok => setTimeout(() => { try { ctx.close(); } catch (e) {} ok(); }, total));
+  }
+
+  // 🛡️ Escudo del encabezado: está quieto y cada 24 s gira sobre su eje; si hay varias insignias elegidas
+  // (Admin → 🏫 Misión, Visión y Equipo → Insignias), en cada giro cambia a la siguiente.
+  const INSIGNIAS_BASE = ['insignia.png', 'insignia-color.png'];
+  let logos = ['insignia.png'];
+  let logoI = 0;
+  function insignias(data) {
+    const elegidas = leerJSON(ajustes(data).insignias, null);
+    const lista = (Array.isArray(elegidas) ? elegidas : INSIGNIAS_BASE.concat((data.insignias || []).map(i => i.url))).filter(Boolean);
+    logos = lista.length ? lista : ['insignia.png'];
+    logos.forEach(u => { new Image().src = u; }); // se cargan antes, para que el cambio sea limpio
+    if (logoI >= logos.length) logoI = 0;
+  }
+  function girarLogo() {
+    const el = document.querySelector('.brand img');
+    if (!el || !el.animate || document.hidden || document.body.classList.contains('video-activo')) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const sig = logos.length > 1 ? (logoI + 1) % logos.length : -1;
+    // primera mitad del giro (hasta quedar de canto), cambio de insignia y segunda mitad
+    el.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(90deg)' }], { duration: 550, easing: 'ease-in' }).finished
+      .then(() => {
+        if (sig > -1) { logoI = sig; el.src = logos[sig]; }
+        return el.animate([{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0deg) scale(1.08)', offset: 0.75 }, { transform: 'rotateY(0deg) scale(1)' }],
+          { duration: 800, easing: 'ease-out' }).finished;
+      }).catch(() => {});
+  }
+  setTimeout(() => { girarLogo(); setInterval(girarLogo, 24000); }, 6000);
+
   function startClock() {
     const t = document.getElementById('clk-time');
     const d = document.getElementById('clk-date');
@@ -76,6 +141,7 @@
       document.querySelector('.demo-badge')?.remove();
       if (data.demo) document.body.insertAdjacentHTML('beforeend', '<div class="demo-badge">MODO DEMO</div>');
       aplicarTema(ajustes(data)); // colores y fondo elegidos en Admin
+      insignias(data); // escudos que se alternan en el encabezado
       onData(data);
     };
 
@@ -187,15 +253,28 @@
     try { localStorage.setItem(clave, JSON.stringify(r)); } catch (e) {}
   }
 
-  // Achica la letra de los elementos [data-ajustar] hasta que su contenido quepa en su caja (mínimo 55 %)
+  // Letra a la medida del espacio: en los elementos [data-ajustar="máx"] busca el tamaño más grande con el que
+  // todo el contenido cabe en su caja (desde 50 % hasta "máx" veces el tamaño normal, por defecto 1,5).
+  // Así un texto largo no se corta y uno corto no deja espacio vacío.
   function ajustarTextos(raiz) {
     raiz.querySelectorAll('[data-ajustar]').forEach(caja => {
       caja.style.fontSize = '';
       const base = parseFloat(getComputedStyle(caja).fontSize);
       if (!base || !caja.clientHeight) return;
-      for (let f = 1; f > 0.55 && caja.scrollHeight > caja.clientHeight + 1; f -= 0.05) caja.style.fontSize = base * f + 'px';
+      const cabe = f => {
+        caja.style.fontSize = base * f + 'px';
+        return caja.scrollHeight <= caja.clientHeight + 1 && caja.scrollWidth <= caja.clientWidth + 1;
+      };
+      let lo = 0.5, hi = +caja.dataset.ajustar || 1.5;
+      if (cabe(hi)) return;
+      for (let k = 0; k < 8; k++) { const m = (lo + hi) / 2; if (cabe(m)) lo = m; else hi = m; }
+      cabe(lo);
     });
   }
+  // al cambiar el tamaño de la ventana o terminar de cargar las letras, se vuelve a medir lo que se está viendo
+  const reajustar = () => document.querySelectorAll('.ph.active').forEach(ajustarTextos);
+  window.addEventListener('resize', () => { clearTimeout(reajustar._t); reajustar._t = setTimeout(reajustar, 300); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(reajustar);
 
   // Galería de fotos (transición tipo Ken Burns) y videos de YouTube.
   // opts: { seg, maxVideo, sonido, perfil, onCambio(videoConAudio) }
@@ -232,18 +311,18 @@
         if (f.destacado === 'inst') {
           const vis = f.clave === 'vision';
           return `<div class="ph inst inst-${vis ? 'vision' : 'mision'}" data-seg="22">
-            <div class="inst-lado" data-ajustar>
+            <div class="inst-lado" data-ajustar="1.3">
               <span class="inst-sello">${vis ? '🔭 Nuestra Visión' : '🧭 Nuestra Misión'}</span>
               <h2 class="inst-lema">${esc(f.titulo)}</h2>
               <img class="inst-escudo" src="insignia.png" alt="">
             </div>
-            <div class="inst-texto" data-ajustar><span class="inst-comilla" aria-hidden="true">“</span><p>${resaltar(f.texto)}</p></div></div>`;
+            <div class="inst-texto" data-ajustar="1.5"><span class="inst-comilla" aria-hidden="true">“</span><p>${resaltar(f.texto)}</p></div></div>`;
         }
         // 🏫 Sellos educativos: una tarjeta por sello con su ícono
         if (f.destacado === 'sellos') {
           return `<div class="ph inst-sellos n${f.sellos.length}" data-seg="20">
             <div class="sellos-cabeza"><img src="insignia.png" alt=""><div><small>Lo que nos identifica</small><h2>Nuestros sellos educativos</h2></div></div>
-            <div class="sellos-grid" data-ajustar>${f.sellos.map((s, k) => `<div class="sello-card" style="--k:${k}">
+            <div class="sellos-grid" data-ajustar="1.5">${f.sellos.map((s, k) => `<div class="sello-card" style="--k:${k}">
               <span class="sello-ico">${esc(s.icono || '⭐')}</span><b>${esc(s.titulo || '')}</b><p>${esc(s.texto || '')}</p></div>`).join('')}</div></div>`;
         }
         // 👥 Conoce al equipo de gestión (de a 4)
@@ -276,7 +355,7 @@
           return `<div class="ph destacado curso" data-seg="14">
             <div class="ig-fondo" style="background-image:url('${esc(f.url)}')"></div>
             <div class="ig-foto"><img src="${esc(f.url)}" alt="${esc(f.titulo)}"></div>
-            <div class="dest-lado"><span class="dest-sello">${esc(f.sello || '🏆 Curso destacado')}</span>
+            <div class="dest-lado" data-ajustar="1.4"><span class="dest-sello">${esc(f.sello || '🏆 Curso destacado')}</span>
               <h3>${esc(f.titulo)}</h3>${motivo ? `<p class="${motivo.length < 140 ? 'g' : 'm'}">${esc(motivo)}</p>` : ''}</div></div>`;
         }
         // Publicación o reel de Instagram por enlace: tarjeta oficial de Instagram y el mensaje al lado
@@ -376,8 +455,11 @@
       ph._sonoEstaVez = false;
       ph._reintentos = 0;
       phs.forEach(p => p.classList.toggle('active', p === ph));
-      // textos largos (Misión, Visión, Sellos…): la letra se achica lo justo para que se lean completos
+      // textos (Misión, Visión, Sellos, destacados…): la letra se ajusta al espacio para que se lean completos
       ajustarTextos(ph);
+      setTimeout(() => ph.classList.contains('active') && ajustarTextos(ph), 1200); // por si la foto o la letra llegó después
+      // 🎂 aparece el saludo de cumpleaños: la pantalla decide si suena la melodía
+      if (ph.classList.contains('cumple') && opts.onCumple) opts.onCumple();
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
       const conAudio = tocaSonido(ph);
       if (ph.dataset.yt) {
@@ -1179,5 +1261,5 @@
     return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, textoPrevia, previasDe, NIVELES, destacados, institucional, TEMAS, FONDOS, IMG_DEF, coloresTema, aplicarTema, temaDePerfil, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, textoPrevia, previasDe, NIVELES, destacados, institucional, INSIGNIAS_BASE, ajustarTextos, melodiaCumple, TEMAS, FONDOS, IMG_DEF, coloresTema, aplicarTema, temaDePerfil, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

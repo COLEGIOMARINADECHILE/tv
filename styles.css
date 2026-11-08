@@ -1035,7 +1035,7 @@ body.video-activo .sem-card.importante::after { display: none; }
 
 /* ---------- Logo del encabezado: quieto y, cada cierto tiempo, gira sobre su eje ---------- */
 .brand { perspective: 60vh; }
-.brand img { animation: giroLogo 24s ease-in-out 6s infinite; transform-style: preserve-3d; backface-visibility: visible; }
+.brand img { transform-style: preserve-3d; backface-visibility: visible; } /* el giro lo hace common.js (girarLogo) */
 @keyframes giroLogo {
   0%, 88% { transform: rotateY(0deg); }
   96% { transform: rotateY(360deg) scale(1.08); }
@@ -1087,20 +1087,20 @@ body.video-activo .sem-card.importante::after { display: none; }
 .gal-chica .dest-datos h3 { font-size: 1.9vh; }
 .gal-chica .dest-curso { font-size: 1.4vh; }
 .gal-chica .dest-datos p { font-size: 1.4vh; }
-.gal-chica .dest-lado h3 { font-size: 3vh; }
-.gal-chica .dest-lado p { font-size: 1.8vh; }
+.gal-chica .dest-lado { font-size: 1.8vh; }
+
 .gal-chica .ph.destacado.n1 .dest-grid { max-width: 50%; }
 .gal-chica .ph.destacado.n2 .dest-grid { max-width: 80%; }
 /* curso destacado: foto completa y, al lado, el curso y el motivo */
 .gallery .ph.destacado.curso { flex-direction: row; align-items: center; gap: 2.4vw; padding: 3% 3%; }
 .ph.destacado.curso .ig-foto { max-width: 55%; }
 .dest-lado {
-  position: relative; flex: 1 1 40%; min-width: 30%; max-height: 100%; overflow: hidden;
+  position: relative; flex: 1 1 40%; min-width: 30%; max-height: 100%; overflow: hidden; font-size: 2.6vh;
   display: flex; flex-direction: column; gap: 1.6vh; align-items: flex-start;
 }
-.dest-lado h3 { font-size: 4.6vh; color: var(--white); line-height: 1.1; text-shadow: 0 0.4vh 1.4vh rgba(0, 0, 0, 0.5); }
-.dest-lado p { font-size: 2.6vh; color: #fff; font-weight: 700; line-height: 1.35; border-left: 0.6vh solid var(--gold); padding-left: 1vw; }
-.dest-lado p.m { font-size: 2vh; }
+.dest-lado .dest-sello { font-size: 0.9em; } color: var(--white); line-height: 1.1; text-shadow: 0 0.4vh 1.4vh rgba(0, 0, 0, 0.5); }
+.dest-lado p { font-size: 1em; color: #fff; font-weight: 700; line-height: 1.35; border-left: 0.6vh solid var(--gold); padding-left: 1vw; }
+.dest-lado p.m { font-size: 0.8em; }
 
 /* ---------- Reunión general previa (gimnasio, hall…) ---------- */
 .reu-previa {
@@ -1182,15 +1182,17 @@ body.video-activo .cumple-confeti i { animation: none !important; display: none;
 .gallery .ph.inst-mision { background: radial-gradient(circle at 100% 100%, rgba(246, 201, 14, 0.28), transparent 50%),
     radial-gradient(circle at 0% 0%, var(--brillo1, rgba(36, 83, 196, 0.5)), transparent 55%),
     linear-gradient(225deg, var(--navy-600), var(--navy-900)); }
-.inst-lado { position: relative; display: flex; flex-direction: column; gap: 2vh; align-items: flex-start; font-size: 5.6vh; max-height: 100%; overflow: hidden; }
-.inst-sello { background: var(--gold); color: var(--navy-900); font-weight: 800; font-size: 2.4vh; padding: 0.8vh 1.4vw; border-radius: 99px; letter-spacing: 0.04em; }
+.inst-lado { position: relative; display: flex; flex-direction: column; gap: 0.35em; align-items: flex-start; font-size: 5.6vh; max-height: 100%; overflow: hidden; }
+.inst-sello { background: var(--gold); color: var(--navy-900); font-weight: 800; font-size: 0.43em; padding: 0.35em 0.7em; border-radius: 99px; letter-spacing: 0.04em; }
 .inst-lema { font-size: 1em; line-height: 1.1; color: #fff; font-weight: 800; text-shadow: 0 0.6vh 2vh rgba(0, 0, 0, 0.4); }
-.gallery .ph .inst-escudo { width: auto; height: 11vh; opacity: 0.9; filter: drop-shadow(0 1vh 2vh rgba(0, 0, 0, 0.4)); animation: none; }
+.gallery .ph .inst-escudo { width: auto; height: 2em; flex: none; opacity: 0.9; filter: drop-shadow(0 1vh 2vh rgba(0, 0, 0, 0.4)); animation: none; }
 .inst-texto {
   position: relative; background: rgba(255, 255, 255, 0.94); color: var(--navy-900); border-radius: 2.4vh;
   padding: 3.2vh 2.2vw 3vh; box-shadow: 0 2vh 4vh rgba(0, 0, 0, 0.35); border-left: 1vh solid var(--gold);
 }
-.inst-comilla { position: absolute; top: -3.4vh; left: 1.2vw; font-size: 12vh; line-height: 1; color: var(--gold); font-family: Georgia, serif; }
+/* comilla decorativa dentro de la tarjeta (como marca de agua), así no se corta */
+.inst-comilla { position: absolute; top: 0.4vh; right: 1vw; font-size: 14vh; line-height: 0.9; color: var(--gold); opacity: 0.35; font-family: Georgia, serif; pointer-events: none; }
+.inst-texto p { position: relative; }
 .inst-texto p { font-size: 1em; line-height: 1.55; font-weight: 600; }
 .inst-texto mark {
   background: linear-gradient(transparent 55%, rgba(246, 201, 14, 0.75) 55%) no-repeat 0 0 / 0% 100%;
@@ -1206,7 +1208,7 @@ body.video-activo .cumple-confeti i { animation: none !important; display: none;
 .gal-chica .ph.inst { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); gap: 1.2vh; padding: 1.4vh 1.2vw; align-content: center; }
 .gal-chica .inst-lado { flex-direction: row; align-items: center; gap: 1vw; flex-wrap: wrap; }
 .gal-chica .inst-escudo { display: none; }
-.gal-chica .inst-sello { font-size: 1.5vh; }
+
 .gal-chica .inst-lado { font-size: 2.4vh; }
 .gal-chica .inst-texto { padding: 1.4vh 1.2vw; border-radius: 1.4vh; border-left-width: 0.6vh; font-size: 1.6vh; }
 .gal-chica .inst-comilla { display: none; }
