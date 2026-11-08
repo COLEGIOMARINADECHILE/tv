@@ -91,7 +91,7 @@
     montarEscudos();
     cambiarEscudos(logos[logoI]);
   }
-  const CAPAS_3D = 7;
+  const CAPAS_3D = 0; // (el relieve se hace con luces y sombras, sin copias)
   // convierte cada escudo en una pieza 3D: varias copias detrás (el grosor), la cara y el brillo
   function montarEscudos() {
     document.querySelectorAll('.brand > img, .side-logo > img').forEach(img => {
@@ -116,7 +116,10 @@
     const giros = [...document.querySelectorAll('.escudo3d .e3d-giro')].filter(g => g.offsetParent);
     if (!giros.length || !giros[0].animate || document.hidden || document.body.classList.contains('video-activo')) return;
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const sig = logos.length > 1 ? (logoI + 1) % logos.length : -1;
+    // quieto la mayor parte del tiempo: solo da una vuelta para cambiar de insignia (si hay más de una)
+    if (logos.length < 2) return;
+    const sig = (logoI + 1) % logos.length;
+    document.querySelectorAll('.escudo3d').forEach(c => { c.classList.remove('brilla'); void c.offsetWidth; c.classList.add('brilla'); });
     // media vuelta (hasta quedar de canto), cambio de insignia y la otra media vuelta
     Promise.all(giros.map(g => g.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(90deg)' }],
       { duration: 650, easing: 'ease-in' }).finished))
@@ -126,7 +129,8 @@
           { duration: 950, easing: 'ease-out' }).finished));
       }).catch(() => {});
   }
-  setTimeout(() => { girarLogo(); setInterval(girarLogo, 24000); }, 6000);
+  // cada 45 s cambia de insignia (con una vuelta); el resto del tiempo el escudo está quieto
+  setTimeout(() => { girarLogo(); setInterval(girarLogo, 45000); }, 8000);
 
   function startClock() {
     const t = document.getElementById('clk-time');
@@ -310,8 +314,19 @@
     const firma = JSON.stringify(fotos.map(f => [f.url, f.titulo, f.texto, f.audio, f.audioFunc, f.vecesAudio, f.etiqueta].join('|')).concat(!!opts.sonido, opts.seg));
     // qué videos llevan sonido en este perfil (por defecto: el campo "audio" de Familias)
     const audioDe = opts.audioDe || (f => f.audio !== 'no');
-    // carrusel chico (menos de 40 % de la altura de la pantalla): los destacados usan textos más compactos
-    el.classList.toggle('gal-chica', el.clientHeight > 0 && el.clientHeight < innerHeight * 0.4);
+    // carrusel chico (menos de 40 % de la altura de la pantalla): los destacados usan textos más compactos.
+    // Se vuelve a revisar cada vez que el recuadro cambia de tamaño (ej. Funcionarios sin actividades lo agranda)
+    const medir = () => {
+      el.classList.toggle('gal-chica', el.clientHeight > 0 && el.clientHeight < innerHeight * 0.4);
+      const activa = el.querySelector('.ph.active');
+      if (activa) ajustarTextos(activa);
+    };
+    medir();
+    if (!el._obs && window.ResizeObserver) {
+      let t;
+      el._obs = new ResizeObserver(() => { clearTimeout(t); t = setTimeout(medir, 150); });
+      el._obs.observe(el);
+    }
     if (el._firma === firma) return;
     el._firma = firma;
     clearTimeout(el._timer);
@@ -333,36 +348,28 @@
             <div class="cumple-grid">${f.personas.map(p => `<div class="cumple-card">
               <b>${esc(p.nombre)}</b>${p.cargo ? `<span>${esc(p.cargo)}</span>` : ''}<p>${esc(p.mensaje)}</p></div>`).join('')}</div></div>`;
         }
-        // 🏫 Visión / Misión: título, la frase grande, las ideas clave como fichas que aparecen una a una
-        // y el texto completo más chico debajo (con las mismas palabras resaltadas)
+        // 🏫 Visión / Misión: todo centrado y ordenado: el rótulo, la frase grande, una línea dorada
+        // y el texto completo justificado en una tarjeta (las palabras clave en negrita dorada)
         if (f.destacado === 'inst') {
           const vis = f.clave === 'vision';
-          const claves = (String(f.texto).match(/\*\*(.+?)\*\*/g) || []).map(s => s.slice(2, -2)).slice(0, 8);
           return `<div class="ph inst inst-${vis ? 'vision' : 'mision'}" data-seg="24">
-            <div class="inst-rayos" aria-hidden="true"></div>
             <img class="inst-marca" src="insignia.png" alt="" aria-hidden="true">
-            <div class="inst-cuerpo" data-ajustar="1.6">
-              <div class="inst-cab"><span class="inst-ico">${vis ? '🔭' : '🧭'}</span>
-                <div><small>Colegio Marina de Chile</small><h2>${vis ? 'Nuestra Visión' : 'Nuestra Misión'}</h2></div></div>
+            <div class="inst-cuerpo" data-ajustar="3">
+              <span class="inst-rotulo">${vis ? '🔭' : '🧭'} ${vis ? 'Nuestra Visión' : 'Nuestra Misión'}</span>
               <h3 class="inst-lema">${esc(f.titulo)}</h3>
-              ${claves.length ? `<div class="inst-claves">${claves.map((c, k) => `<span style="--k:${k}">${esc(c)}</span>`).join('')}</div>` : ''}
+              <span class="inst-linea" aria-hidden="true"><i></i>✦<i></i></span>
               <p class="inst-texto">${resaltar(f.texto)}</p>
             </div></div>`;
         }
-        // 🏫 Sellos educativos: el timón del escudo al centro y los sellos alrededor, como medallas numeradas
+        // 🏫 Sellos educativos: título centrado y tarjetas iguales en dos columnas (ícono, título y texto justificado)
         if (f.destacado === 'sellos') {
-          const lado = (lista, desde) => lista.map((s, k) => `<div class="sello-card" style="--k:${desde + k}">
-              <span class="sello-num">${String(desde + k + 1).padStart(2, '0')}</span>
-              <span class="sello-ico">${esc(s.icono || '⭐')}</span>
-              <div class="sello-txt"><b>${esc(s.titulo || '')}</b><p>${esc(s.texto || '')}</p></div></div>`).join('');
-          const mitad = Math.ceil(f.sellos.length / 2);
           return `<div class="ph inst-sellos n${f.sellos.length}" data-seg="22">
-            <div class="inst-rayos" aria-hidden="true"></div>
-            <div class="sellos-cuerpo" data-ajustar="1.5">
-              <div class="sellos-col">${lado(f.sellos.slice(0, mitad), 0)}</div>
-              <div class="sellos-centro"><div class="sellos-timon"><img src="insignia.png" alt=""></div>
-                <small>Lo que nos identifica</small><h2>Nuestros sellos</h2></div>
-              <div class="sellos-col">${lado(f.sellos.slice(mitad), mitad)}</div>
+            <img class="inst-marca" src="insignia.png" alt="" aria-hidden="true">
+            <div class="sellos-cuerpo" data-ajustar="2.5">
+              <span class="inst-rotulo">🏅 Nuestros sellos educativos</span>
+              <div class="sellos-grid">${f.sellos.map((s, k) => `<div class="sello-card" style="--k:${k}">
+                <span class="sello-ico">${esc(s.icono || '⭐')}</span>
+                <b>${esc(s.titulo || '')}</b><p>${esc(s.texto || '')}</p></div>`).join('')}</div>
             </div></div>`;
         }
         // 👥 Conoce al equipo de gestión (de a 4)

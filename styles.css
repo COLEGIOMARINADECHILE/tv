@@ -1197,140 +1197,93 @@ body.video-activo .cumple-confeti i { animation: none !important; display: none;
 .gal-chica .equipo-card { gap: 0.5vh; }
 .gal-chica .equipo-card b { font-size: 1.5vh; }
 .gal-chica .equipo-card span { font-size: 1.15vh; padding: 0.2vh 0.6vw; }
-/* ---------- 🛡️ Escudos en 3D (encabezado y escudo grande de Familias) ---------- */
-.escudo3d { position: relative; display: inline-block; perspective: 60vh; flex: none; }
-.brand .escudo3d { height: 8.5vh; --prof: 0.32vh; }
-.side-logo .escudo3d { position: absolute; left: 10%; top: 6%; width: 80%; height: 86%; --prof: 0.7vh; perspective: 90vh; }
-.e3d-giro {
-  position: relative; height: 100%; transform-style: preserve-3d;
-  animation: escudoMecer 7s ease-in-out infinite alternate;
+/* ---------- 🛡️ Escudos en 3D con relieve (encabezado y escudo grande de Familias) ----------
+   Solo la insignia, quieta, con grosor (borde azul oscuro hacia abajo a la derecha), luz en el borde superior
+   y sombra sobre el fondo. Solo se mueve al cambiar de insignia (una vuelta, de vez en cuando). */
+.escudo3d { position: relative; display: block; perspective: 80vh; flex: none; }
+.brand .escudo3d { height: 8.5vh; }
+.side-logo .escudo3d { position: absolute; left: 10%; top: 6%; width: 80%; height: 86%; }
+.e3d-giro { position: relative; height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; transform-style: preserve-3d; }
+.escudo3d .e3d-capa { display: none; }
+.escudo3d .e3d-frente {
+  position: static; height: 8.5vh; width: auto; object-fit: contain; animation: none;
+  filter: drop-shadow(-0.08vh -0.08vh 0 rgba(255, 255, 255, 0.85))
+    drop-shadow(0.1vh 0.1vh 0 #0a1f52) drop-shadow(0.1vh 0.1vh 0 #0a1f52) drop-shadow(0.1vh 0.1vh 0 #071537)
+    drop-shadow(0.3vh 0.5vh 0.5vh rgba(0, 0, 0, 0.5));
 }
-.side-logo .e3d-giro { width: 100%; animation: escudoMecer 7s ease-in-out infinite alternate, float 6s ease-in-out infinite; }
-@keyframes escudoMecer { from { transform: rotateY(-20deg) rotateX(4deg); } to { transform: rotateY(20deg) rotateX(-3deg); } }
-body.video-activo .e3d-giro, body.video-activo .e3d-brillo { animation-play-state: paused; }
-/* la cara: en el encabezado da el tamaño; en el grande ocupa su caja */
-.escudo3d .e3d-frente, .escudo3d .e3d-capa { display: block; filter: none; animation: none; }
-.brand .escudo3d .e3d-frente { position: relative; height: 100%; width: auto; transform: translateZ(0.01px); }
-.side-logo .escudo3d img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: contain; }
-.side-logo .escudo3d .e3d-frente { transform: translateZ(0.01px); filter: drop-shadow(0 2vh 2.5vh rgba(0, 0, 0, 0.45)); }
-/* el grosor: copias más oscuras, una detrás de otra */
-.escudo3d .e3d-capa {
-  position: absolute; left: 0; top: 0; height: 100%; width: auto;
-  transform: translateZ(calc(var(--z) * var(--prof) * -1));
-  filter: brightness(calc(0.62 - var(--z) * 0.05)) saturate(0.8);
+.side-logo .escudo3d .e3d-frente {
+  width: 100%; height: 100%;
+  filter: drop-shadow(-0.2vh -0.2vh 0 rgba(255, 255, 255, 0.85))
+    drop-shadow(0.25vh 0.25vh 0 #0f2c72) drop-shadow(0.25vh 0.25vh 0 #0a1f52) drop-shadow(0.25vh 0.25vh 0 #0a1f52) drop-shadow(0.25vh 0.25vh 0 #071537)
+    drop-shadow(0.8vh 1.6vh 1.6vh rgba(0, 0, 0, 0.55));
 }
-.brand .escudo3d .e3d-capa { width: 100%; object-fit: contain; }
-/* brillo que recorre la insignia (solo sobre su forma) */
+/* brillo que pasa una sola vez cuando cambia la insignia */
 .e3d-brillo {
-  position: absolute; inset: 0; transform: translateZ(0.2px); pointer-events: none; mix-blend-mode: screen;
-  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.75) 45%, transparent 60%) no-repeat;
-  background-size: 250% 100%; animation: escudoBrillo 5.5s ease-in-out infinite;
+  position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; opacity: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.8) 45%, transparent 60%) no-repeat 130% 0 / 250% 100%;
   -webkit-mask: var(--mascara) center / contain no-repeat; mask: var(--mascara) center / contain no-repeat;
 }
-@keyframes escudoBrillo { 0%, 55% { background-position: 130% 0; } 100% { background-position: -30% 0; } }
-@media (prefers-reduced-motion: reduce) { .e3d-giro, .e3d-brillo { animation: none; } }
-/* ---------- 🏫 Visión y Misión (diseño propio) ---------- */
-.gallery .ph.inst, .gallery .ph.inst-sellos { overflow: hidden; }
-.gallery .ph.inst {
-  display: flex; align-items: center; padding: 3.5vh 3.2vw;
-  background: radial-gradient(ellipse at 15% 110%, rgba(246, 201, 14, 0.35), transparent 55%),
-    radial-gradient(ellipse at 90% -10%, var(--brillo1, rgba(36, 83, 196, 0.6)), transparent 60%),
-    linear-gradient(150deg, var(--navy-600), var(--navy-900) 75%);
-}
-.gallery .ph.inst-mision {
-  background: radial-gradient(ellipse at 85% 110%, rgba(47, 191, 160, 0.35), transparent 55%),
-    radial-gradient(ellipse at 10% -10%, var(--brillo1, rgba(36, 83, 196, 0.6)), transparent 60%),
-    linear-gradient(210deg, var(--navy-600), var(--navy-900) 75%);
-}
-/* rayos de luz que giran muy lento detrás */
-.inst-rayos {
-  position: absolute; left: 50%; top: 50%; width: 220%; aspect-ratio: 1; transform: translate(-50%, -50%);
-  background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.045) 0deg 6deg, transparent 6deg 18deg);
-  animation: rayosGiro 90s linear infinite; pointer-events: none;
-}
-@keyframes rayosGiro { to { transform: translate(-50%, -50%) rotate(360deg); } }
-body.video-activo .inst-rayos, body.video-activo .inst-marca, body.video-activo .sellos-timon { animation-play-state: paused; }
-/* escudo gigante de marca de agua */
-.gallery .ph .inst-marca {
-  position: absolute; right: -6%; top: 50%; height: 120%; width: auto; transform: translateY(-50%) rotate(-8deg);
-  opacity: 0.09; filter: grayscale(1) brightness(2); animation: none; pointer-events: none;
-}
-.inst-cuerpo { position: relative; width: 100%; max-height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: 0.55em; font-size: 2.6vh; }
-.inst-cab { display: flex; align-items: center; gap: 0.6em; }
-.inst-ico {
-  width: 2.6em; height: 2.6em; border-radius: 50%; display: grid; place-items: center; font-size: 1.15em; flex: none;
-  background: radial-gradient(circle at 30% 30%, #fff6c8, var(--gold)); box-shadow: 0 0 0 0.25em rgba(246, 201, 14, 0.25), 0 0.6em 1.2em rgba(0, 0, 0, 0.35);
-}
-.inst-cab small { display: block; font-size: 0.62em; color: var(--gold); font-weight: 800; letter-spacing: 0.3em; text-transform: uppercase; }
-.inst-cab h2 { font-size: 1.5em; color: #fff; line-height: 1.05; letter-spacing: 0.02em; }
-.inst-lema {
-  font-size: 2.3em; line-height: 1.05; font-weight: 800; max-width: 85%;
-  background: linear-gradient(90deg, #fff 0%, var(--gold-soft) 50%, var(--gold) 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 0.15em 0.3em rgba(0, 0, 0, 0.35));
-}
-.inst-claves { display: flex; flex-wrap: wrap; gap: 0.4em 0.45em; }
-.inst-claves span {
-  background: rgba(255, 255, 255, 0.95); color: var(--navy-900); font-weight: 800; font-size: 0.92em;
-  padding: 0.3em 0.8em; border-radius: 99px; border-left: 0.35em solid var(--gold); box-shadow: 0 0.3em 0.8em rgba(0, 0, 0, 0.3);
-}
-.ph.inst.active .inst-claves span { animation: fichaPop 0.55s calc(0.6s + var(--k) * 0.35s) cubic-bezier(0.2, 1.4, 0.4, 1) both; }
-@keyframes fichaPop { from { opacity: 0; transform: translateY(0.8em) scale(0.6); } }
-.inst-texto {
-  font-size: 0.78em; line-height: 1.5; color: rgba(255, 255, 255, 0.86); font-weight: 500; max-width: 92%;
-  border-top: 1px solid rgba(255, 255, 255, 0.18); padding-top: 0.6em;
-}
-.inst-texto mark { background: none; color: var(--gold-soft); font-weight: 800; }
-.ph.inst.active .inst-cab { animation: destEntrada 0.7s ease-out both; }
-.ph.inst.active .inst-lema { animation: destEntrada 0.8s 0.15s ease-out both; }
-.ph.inst.active .inst-texto { animation: destEntrada 0.8s 1.2s ease-out both; }
-.gal-chica .ph.inst { padding: 1.4vh 1.2vw; }
-.gal-chica .inst-cuerpo { font-size: 1.6vh; }
+.escudo3d.brilla .e3d-brillo { animation: escudoBrillo 1.6s ease-in-out; }
+@keyframes escudoBrillo { 0% { opacity: 1; background-position: 130% 0; } 100% { opacity: 1; background-position: -30% 0; } }
 
-/* ---------- 🏫 Sellos: el timón al centro y medallas numeradas alrededor ---------- */
-.gallery .ph.inst-sellos {
-  display: flex; align-items: center; padding: 3vh 2vw;
-  background: radial-gradient(circle at 50% 50%, rgba(246, 201, 14, 0.22), transparent 45%),
+/* ---------- 🏫 Visión, Misión y Sellos: centrados, ordenados y con el texto justificado ---------- */
+.gallery .ph.inst, .gallery .ph.inst-sellos {
+  display: flex; align-items: center; justify-content: center; padding: 4% 5%; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 0%, var(--brillo1, rgba(36, 83, 196, 0.55)), transparent 65%),
+    radial-gradient(ellipse at 50% 115%, rgba(246, 201, 14, 0.22), transparent 55%),
     linear-gradient(180deg, var(--navy-700), var(--navy-900));
 }
-.sellos-cuerpo {
-  position: relative; width: 100%; max-height: 100%; overflow: hidden; font-size: 2.1vh;
-  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 1.4em; align-items: center;
+.gallery .ph.inst-mision { background: radial-gradient(ellipse at 50% 0%, rgba(47, 191, 160, 0.32), transparent 65%),
+    radial-gradient(ellipse at 50% 115%, rgba(246, 201, 14, 0.22), transparent 55%), linear-gradient(180deg, var(--navy-700), var(--navy-900)); }
+/* la insignia, grande y muy suave, al centro detrás */
+.gallery .ph .inst-marca {
+  position: absolute; left: 50%; top: 50%; height: 115%; width: auto; transform: translate(-50%, -50%);
+  opacity: 0.06; filter: grayscale(1) brightness(2.2); animation: none; pointer-events: none;
 }
-.sellos-col { display: flex; flex-direction: column; gap: 0.9em; }
-.sellos-centro { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.3em; width: 10em; }
-.sellos-timon {
-  width: 8.5em; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; position: relative;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 55%, var(--gold) 56%, var(--gold) 62%, transparent 63%);
-  box-shadow: 0 0 0 0.4em rgba(246, 201, 14, 0.18), 0 0 3em rgba(246, 201, 14, 0.35);
+.inst-cuerpo, .sellos-cuerpo {
+  position: relative; width: 100%; max-height: 100%; overflow: hidden; font-size: 2.4vh;
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.7em;
 }
-/* rayos del timón */
-.sellos-timon::before {
-  content: ''; position: absolute; inset: -0.7em; border-radius: 50%;
-  background: repeating-conic-gradient(var(--gold) 0deg 4deg, transparent 4deg 45deg);
-  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%); mask: radial-gradient(circle, transparent 60%, #000 61%);
-  animation: rayosGiro 40s linear infinite; transform-origin: center;
+.inst-rotulo {
+  display: inline-block; background: var(--gold); color: var(--navy-900); font-weight: 800; font-size: 0.8em;
+  letter-spacing: 0.12em; text-transform: uppercase; padding: 0.45em 1.4em; border-radius: 99px;
+  box-shadow: 0 0.4em 1em rgba(0, 0, 0, 0.3);
 }
-.gallery .ph .sellos-timon img { width: 70%; height: auto; animation: none; position: relative; }
-.sellos-centro small { color: var(--gold); font-weight: 800; letter-spacing: 0.25em; text-transform: uppercase; font-size: 0.65em; margin-top: 0.6em; }
-.sellos-centro h2 { color: #fff; font-size: 1.6em; line-height: 1.05; }
+.inst-lema {
+  font-size: 2.1em; line-height: 1.12; font-weight: 800; color: #fff; max-width: 90%; text-wrap: balance;
+  text-shadow: 0 0.12em 0.4em rgba(0, 0, 0, 0.45);
+}
+.inst-linea { display: flex; align-items: center; gap: 0.6em; color: var(--gold); font-size: 0.9em; width: 45%; }
+.inst-linea i { flex: 1; height: 2px; background: linear-gradient(90deg, transparent, var(--gold)); }
+.inst-linea i:last-child { background: linear-gradient(90deg, var(--gold), transparent); }
+.inst-texto {
+  max-width: 92%; font-size: 1em; line-height: 1.6; font-weight: 500; color: #eef3ff;
+  text-align: justify; text-align-last: center; hyphens: auto; -webkit-hyphens: auto;
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 0.9em;
+  padding: 0.9em 1.3em;
+}
+.inst-texto mark { background: none; color: var(--gold-soft); font-weight: 800; }
+.ph.inst.active .inst-rotulo { animation: destEntrada 0.6s ease-out both; }
+.ph.inst.active .inst-lema { animation: destEntrada 0.7s 0.15s ease-out both; }
+.ph.inst.active .inst-linea { animation: destEntrada 0.7s 0.3s ease-out both; }
+.ph.inst.active .inst-texto { animation: destEntrada 0.8s 0.45s ease-out both; }
+/* Sellos: dos columnas de tarjetas del mismo tamaño */
+.sellos-grid { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 0.8em; }
+.ph.inst-sellos.n1 .sellos-grid { grid-template-columns: minmax(0, 0.6fr); justify-content: center; }
+.ph.inst-sellos.n3 .sellos-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .sello-card {
-  position: relative; display: flex; align-items: center; gap: 0.7em; padding: 0.7em 0.9em 0.7em 0.7em;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
-  border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 1.1em; box-shadow: 0 0.6em 1.4em rgba(0, 0, 0, 0.3);
+  display: flex; flex-direction: column; align-items: center; gap: 0.35em; padding: 0.8em 1em;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.18); border-top: 0.25em solid var(--gold); border-radius: 0.9em;
+  box-shadow: 0 0.5em 1.2em rgba(0, 0, 0, 0.3);
 }
-.sellos-col:first-child .sello-card { flex-direction: row-reverse; text-align: right; padding: 0.7em 0.7em 0.7em 0.9em; }
-.ph.inst-sellos.active .sello-card { animation: destEntrada 0.7s calc(0.3s + var(--k) * 0.3s) ease-out both; }
-.sello-num {
-  position: absolute; top: -0.55em; font-size: 0.7em; font-weight: 800; color: var(--navy-900); background: var(--gold);
-  padding: 0.1em 0.6em; border-radius: 99px; letter-spacing: 0.1em;
-}
-.sellos-col:first-child .sello-num { right: 1.2em; }
-.sellos-col:last-child .sello-num { left: 1.2em; }
+.ph.inst-sellos.active .inst-rotulo { animation: destEntrada 0.6s ease-out both; }
+.ph.inst-sellos.active .sello-card { animation: destEntrada 0.6s calc(0.2s + var(--k) * 0.2s) ease-out both; }
 .sello-ico {
-  flex: none; width: 1.75em; height: 1.75em; border-radius: 50%; display: grid; place-items: center; font-size: 1.9em; line-height: 1;
-  background: radial-gradient(circle at 30% 30%, #fff6c8, var(--gold)); box-shadow: 0 0.3em 0.6em rgba(0, 0, 0, 0.35);
+  width: 2.2em; height: 2.2em; border-radius: 50%; display: grid; place-items: center; font-size: 1.35em; line-height: 1;
+  background: radial-gradient(circle at 30% 30%, #fff6c8, var(--gold)); box-shadow: 0 0.25em 0.5em rgba(0, 0, 0, 0.35);
 }
-.sello-txt b { display: block; font-size: 1.15em; color: var(--gold); line-height: 1.15; }
-.sello-txt p { font-size: 0.85em; color: #fff; line-height: 1.35; margin-top: 0.2em; }
-.gal-chica .ph.inst-sellos { padding: 1.2vh 1vw; }
-.gal-chica .sellos-cuerpo { font-size: 1.3vh; }
+.sello-card b { font-size: 1.15em; color: var(--gold); line-height: 1.15; }
+.sello-card p { font-size: 0.9em; color: #fff; line-height: 1.45; text-align: justify; text-align-last: center; hyphens: auto; -webkit-hyphens: auto; width: 100%; }
+.gal-chica .ph.inst, .gal-chica .ph.inst-sellos { padding: 2% 3%; }
+.gal-chica .inst-cuerpo, .gal-chica .sellos-cuerpo { font-size: 1.5vh; }
