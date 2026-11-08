@@ -1267,23 +1267,39 @@ body.video-activo .cumple-confeti i { animation: none !important; display: none;
 .ph.inst.active .inst-lema { animation: destEntrada 0.7s 0.15s ease-out both; }
 .ph.inst.active .inst-linea { animation: destEntrada 0.7s 0.3s ease-out both; }
 .ph.inst.active .inst-texto { animation: destEntrada 0.8s 0.45s ease-out both; }
-/* Sellos: dos columnas de tarjetas del mismo tamaño */
-.sellos-grid { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 0.8em; }
+/* Sellos: de a 2, tarjetas altas que llenan el recuadro, con fondo de color (o la imagen del sello) */
+.ph.inst-sellos .sellos-cuerpo { height: 100%; }
+.sellos-grid { flex: 1; min-height: 0; width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1em; }
 .ph.inst-sellos.n1 .sellos-grid { grid-template-columns: minmax(0, 0.6fr); justify-content: center; }
-.ph.inst-sellos.n3 .sellos-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .sello-card {
-  display: flex; flex-direction: column; align-items: center; gap: 0.35em; padding: 0.8em 1em;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04));
-  border: 1px solid rgba(255, 255, 255, 0.18); border-top: 0.25em solid var(--gold); border-radius: 0.9em;
-  box-shadow: 0 0.5em 1.2em rgba(0, 0, 0, 0.3);
+  position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.5em; padding: 1.8em 1.3em 1.2em; border-radius: 1.1em; color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.22); border-top: 0.3em solid var(--gold);
+  box-shadow: 0 0.8em 1.8em rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+/* un color para cada sello */
+.sello-card.c0 { background: radial-gradient(circle at 80% 0%, rgba(246, 201, 14, 0.45), transparent 60%), linear-gradient(160deg, #1d4fbf, #0a1f52); }
+.sello-card.c1 { background: radial-gradient(circle at 80% 0%, rgba(94, 226, 200, 0.45), transparent 60%), linear-gradient(160deg, #0e7a8a, #062a3a); }
+.sello-card.c2 { background: radial-gradient(circle at 80% 0%, rgba(150, 230, 120, 0.4), transparent 60%), linear-gradient(160deg, #2e8b4c, #0b2e18); }
+.sello-card.c3 { background: radial-gradient(circle at 80% 0%, rgba(255, 150, 120, 0.45), transparent 60%), linear-gradient(160deg, #a1306b, #3a0d2a); }
+/* con imagen propia: la foto de fondo, oscurecida para que el texto se lea */
+.sello-card.con-img { background: linear-gradient(180deg, rgba(6, 21, 58, 0.55), rgba(6, 21, 58, 0.9)), var(--sello-img) center / cover no-repeat; }
+.sello-card > * { position: relative; }
+.sello-marca { position: absolute !important; right: -0.1em; bottom: -0.25em; font-size: 7em; line-height: 1; opacity: 0.13; pointer-events: none; }
+.sello-card.con-img .sello-marca { display: none; }
+.sello-num {
+  position: absolute !important; top: 0.7em; left: 0.9em; font-size: 0.8em; font-weight: 800; letter-spacing: 0.12em;
+  color: var(--navy-900); background: var(--gold); padding: 0.15em 0.7em; border-radius: 99px;
 }
 .ph.inst-sellos.active .inst-rotulo { animation: destEntrada 0.6s ease-out both; }
-.ph.inst-sellos.active .sello-card { animation: destEntrada 0.6s calc(0.2s + var(--k) * 0.2s) ease-out both; }
+.ph.inst-sellos.active .sello-card { animation: destEntrada 0.7s calc(0.2s + var(--k) * 0.3s) ease-out both; }
 .sello-ico {
-  width: 2.2em; height: 2.2em; border-radius: 50%; display: grid; place-items: center; font-size: 1.35em; line-height: 1;
-  background: radial-gradient(circle at 30% 30%, #fff6c8, var(--gold)); box-shadow: 0 0.25em 0.5em rgba(0, 0, 0, 0.35);
+  width: 2.1em; height: 2.1em; border-radius: 50%; display: grid; place-items: center; font-size: 1.9em; line-height: 1;
+  background: radial-gradient(circle at 30% 30%, #fff6c8, var(--gold)); box-shadow: 0 0.2em 0.5em rgba(0, 0, 0, 0.4), 0 0 0 0.15em rgba(255, 255, 255, 0.25);
 }
-.sello-card b { font-size: 1.15em; color: var(--gold); line-height: 1.15; }
-.sello-card p { font-size: 0.9em; color: #fff; line-height: 1.45; text-align: justify; text-align-last: center; hyphens: auto; -webkit-hyphens: auto; width: 100%; }
-.gal-chica .ph.inst, .gal-chica .ph.inst-sellos { padding: 2% 3%; }
+.sello-card b { font-size: 1.3em; color: var(--gold-soft); line-height: 1.15; text-align: center; text-shadow: 0 0.1em 0.3em rgba(0, 0, 0, 0.5); }
+.sello-card p {
+  font-size: 0.8em; line-height: 1.5; text-align: justify; text-align-last: center; hyphens: auto; -webkit-hyphens: auto; width: 100%;
+  text-shadow: 0 0.1em 0.3em rgba(0, 0, 0, 0.4);
+}.gal-chica .ph.inst, .gal-chica .ph.inst-sellos { padding: 2% 3%; }
 .gal-chica .inst-cuerpo, .gal-chica .sellos-cuerpo { font-size: 1.5vh; }

@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261108e">
+  <link rel="stylesheet" href="styles.css?v=20261108f">
   <style>
     body { overflow: auto; font-size: 15px; }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -165,6 +165,10 @@
     .sello-fila { display: grid; grid-template-columns: 70px minmax(0, 1fr) minmax(0, 2fr) 36px; gap: 8px; align-items: end; }
     .sello-fila label { text-transform: none; letter-spacing: 0; min-width: 0; }
     .sello-fila select { font-size: 22px; padding: 4px; }
+    .sello-fila { grid-template-columns: 70px minmax(0, 1fr) minmax(0, 2fr) auto 36px !important; }
+    .sello-img { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .sello-img img { width: 64px; height: 40px; object-fit: cover; border-radius: 6px; border: 2px solid var(--gold); }
+    @media (max-width: 760px) { .sello-fila { grid-template-columns: 70px 1fr 36px !important; } .sello-img { grid-column: 1 / -1; } }
     @media (max-width: 640px) { .sello-fila { grid-template-columns: 70px 1fr 36px; } .sello-fila label:nth-of-type(2) { grid-column: 1 / -1; } }
     .eq-item img { border-radius: 50%; }
     .ins-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px; }
@@ -234,9 +238,9 @@
 </head>
 <body>
   <div class="wrap" id="app"></div>
-  <script src="config.js?v=20261108e"></script>
-  <script src="api.js?v=20261108e"></script>
-  <script src="common.js?v=20261108e"></script>
-  <script src="admin.js?v=20261108e"></script>
+  <script src="config.js?v=20261108f"></script>
+  <script src="api.js?v=20261108f"></script>
+  <script src="common.js?v=20261108f"></script>
+  <script src="admin.js?v=20261108f"></script>
 </body>
 </html>

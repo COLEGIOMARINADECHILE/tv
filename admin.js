@@ -1558,6 +1558,12 @@
     <select data-s="icono">${ICONOS_SELLO.map(i => `<option ${i === (s.icono || '⭐') ? 'selected' : ''}>${i}</option>`).join('')}</select>
     <label>Título corto (se ve grande)<input data-s="titulo" value="${esc(s.titulo || '')}" placeholder="Ej: Deporte y arte"></label>
     <label>Texto<input data-s="texto" value="${esc(s.texto || '')}"></label>
+    <div class="sello-img">
+      <input type="hidden" data-s="img" value="${esc(s.img || '')}">
+      <img src="${esc(s.img || '')}" alt="" ${s.img ? '' : 'hidden'}>
+      <label class="btn ghost mini">🖼️ ${s.img ? 'Cambiar' : 'Imagen de fondo'}<input type="file" accept="image/*" data-acc="selloImg" hidden></label>
+      <button type="button" class="btn ghost mini sello-sin-img" ${s.img ? '' : 'hidden'}>Quitar imagen</button>
+    </div>
     <button type="button" class="tel-quitar" title="Quitar">✕</button></div>`;
   const tarjetaEquipo = p => `<div class="dp-item eq-item" data-id="${esc(p.id)}">
     <img src="${esc(p.url || 'insignia.png')}" alt="">
@@ -1687,7 +1693,37 @@
     const f = document.getElementById('f-inst');
     const sellos = document.getElementById('sellos-filas');
     document.getElementById('sello-agregar').onclick = () => sellos.insertAdjacentHTML('beforeend', filaSello({ icono: '⭐' }));
-    sellos.onclick = e => { if (e.target.classList.contains('tel-quitar')) e.target.closest('.sello-fila').remove(); };
+    sellos.onclick = e => {
+      if (e.target.classList.contains('tel-quitar')) e.target.closest('.sello-fila').remove();
+      if (e.target.classList.contains('sello-sin-img')) {
+        const c = e.target.closest('.sello-img');
+        c.querySelector('[data-s="img"]').value = '';
+        c.querySelector('img').hidden = true;
+        e.target.hidden = true;
+      }
+    };
+    // imagen de fondo de un sello: se sube a Drive y queda en el sello (se guarda con "Guardar Misión, Visión y Sellos")
+    sellos.onchange = async e => {
+      if (e.target.dataset.acc !== 'selloImg' || !e.target.files[0]) return;
+      const c = e.target.closest('.sello-img');
+      const etq = e.target.closest('label');
+      const antes = etq.firstChild.textContent;
+      etq.firstChild.textContent = 'Subiendo… ';
+      try {
+        const f = e.target.files[0];
+        const titulo = e.target.closest('.sello-fila').querySelector('[data-s="titulo"]').value || 'sello';
+        const r = await API.admin('add', { password, sheet: 'fondos', item: { nombre: 'Sello: ' + titulo },
+          image: { data: await comprimir(f, 1280), mimeType: 'image/jpeg', name: 'sello-' + titulo + '.jpg' } });
+        const url = (r.item && r.item.url) || URL.createObjectURL(f);
+        c.querySelector('[data-s="img"]').value = (r.item && r.item.url) || '';
+        c.querySelector('img').src = url;
+        c.querySelector('img').hidden = false;
+        c.querySelector('.sello-sin-img').hidden = false;
+        toast('Imagen lista ✔ · pulse "Guardar Misión, Visión y Sellos"');
+        etq.firstChild.textContent = '🖼️ Cambiar';
+      } catch (err) { toast(err.message, 'err'); etq.firstChild.textContent = antes; }
+      e.target.value = '';
+    };
     const guardar = async valor => {
       const btn = f.querySelector('.btn:not(.ghost)');
       btn.disabled = true;

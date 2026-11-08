@@ -293,7 +293,17 @@
       if (!base || !caja.clientHeight) return;
       const cabe = f => {
         caja.style.fontSize = base * f + 'px';
-        return caja.scrollHeight <= caja.clientHeight + 1 && caja.scrollWidth <= caja.clientWidth + 1;
+        // también cada tarjeta interior marcada [data-medir] (ej. un sello) debe mostrar todo su contenido
+        return caja.scrollHeight <= caja.clientHeight + 1 && caja.scrollWidth <= caja.clientWidth + 1 &&
+          [...caja.querySelectorAll('[data-medir]')].every(t => {
+            // (los adornos de posición absoluta no cuentan)
+            const R = t.getBoundingClientRect();
+            return [...t.children].filter(c => getComputedStyle(c).position !== 'absolute')
+              .every(c => {
+                const r = c.getBoundingClientRect();
+                return r.top >= R.top - 1 && r.bottom <= R.bottom + 1 && c.scrollWidth <= c.clientWidth + 1 && r.right <= R.right + 1;
+              });
+          });
       };
       let lo = 0.5, hi = +caja.dataset.ajustar || 1.5;
       if (cabe(hi)) return;
@@ -367,9 +377,15 @@
             <img class="inst-marca" src="insignia.png" alt="" aria-hidden="true">
             <div class="sellos-cuerpo" data-ajustar="2.5">
               <span class="inst-rotulo">🏅 Nuestros sellos educativos</span>
-              <div class="sellos-grid">${f.sellos.map((s, k) => `<div class="sello-card" style="--k:${k}">
+              <div class="sellos-grid">${f.sellos.map((s, k) => {
+                // fondo: la imagen del sello (si se subió) o un color propio de cada sello, con su ícono gigante de marca de agua
+                const img = /^https?:\/\//.test(s.img || '') ? s.img : '';
+                return `<div class="sello-card c${(s.n || 0) % 4} ${img ? 'con-img' : ''}" data-medir style="--k:${k}${img ? `;--sello-img:url('${esc(img)}')` : ''}">
+                <span class="sello-marca" aria-hidden="true">${esc(s.icono || '⭐')}</span>
+                <span class="sello-num">${String((s.n || 0) + 1).padStart(2, '0')}</span>
                 <span class="sello-ico">${esc(s.icono || '⭐')}</span>
-                <b>${esc(s.titulo || '')}</b><p>${esc(s.texto || '')}</p></div>`).join('')}</div>
+                <b>${esc(s.titulo || '')}</b><p>${esc(s.texto || '')}</p></div>`;
+              }).join('')}</div>
             </div></div>`;
         }
         // 👥 Conoce al equipo de gestión (de a 4)
@@ -1193,10 +1209,11 @@
     const ins = institucional(ajustes(data));
     const out = [];
     if (ins.activo) {
-      // los sellos van alrededor del timón, hasta 4 por imagen
+      // los sellos van de a 2 por imagen (grandes, para leerlos desde lejos), seguidos uno tras otro
       const ss = ins.sellos.filter(s => s.titulo || s.texto);
-      for (let k = 0; k < ss.length; k += 4) {
-        out.push({ destacado: 'sellos', titulo: 'Sellos ' + k, texto: JSON.stringify(ss.slice(k, k + 4)), url: '', sellos: ss.slice(k, k + 4) });
+      for (let k = 0; k < ss.length; k += 2) {
+        out.push({ destacado: 'sellos', titulo: 'Sellos ' + k, texto: JSON.stringify(ss.slice(k, k + 2)), url: '',
+          sellos: ss.slice(k, k + 2).map((s, j) => Object.assign({ n: k + j }, s)) });
       }
       ['vision', 'mision'].forEach(k => { if (ins[k].texto) out.push({ destacado: 'inst', clave: k, titulo: ins[k].lema, texto: ins[k].texto, url: '' }); });
     }
