@@ -75,6 +75,11 @@
         motivo: 'Por su gran trabajo en la Fiesta de la Chilenidad', url: 'https://picsum.photos/seed/equipo1/1280/860' }])
       .concat([{ id: 'c1', tipo: 'curso', curso: '6° Básico B', publico: 'ambos', url: 'https://picsum.photos/seed/curso6b/1280/860',
         motivo: '🏆 Mejor asistencia del mes de octubre (98 %). ¡Felicitaciones a los estudiantes y sus familias!' }]),
+    // 👥 equipo de gestión de ejemplo (nombres ficticios)
+    equipo: [['Directora', 'Patricia Morales'], ['Inspector General', 'Luis Herrera'], ['Inspectora General', 'Carmen Vidal'],
+      ['Inspector General', 'Rodrigo Fuentes'], ['Encargada de Convivencia Escolar', 'Daniela Rojas'], ['Jefe de UTP', 'Andrés Muñoz'],
+      ['Coordinadora PIE', 'Valentina Castro'], ['Coordinadora Primer Ciclo', 'Francisca Soto']]
+      .map(([cargo, nombre], k) => ({ id: 'q' + k, nombre, cargo, orden: k + 1, url: k % 3 === 2 ? '' : `https://picsum.photos/seed/equipo${k}/500/500` })),
     fondos: [{ id: 'fo1', nombre: 'Bahía', url: 'https://picsum.photos/seed/bahiaconce/1920/1080' }],
     // 🎂 cumpleaños de ejemplo: hoy (se ve en Funcionarios)
     cumpleanos: [

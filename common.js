@@ -187,6 +187,16 @@
     try { localStorage.setItem(clave, JSON.stringify(r)); } catch (e) {}
   }
 
+  // Achica la letra de los elementos [data-ajustar] hasta que su contenido quepa en su caja (mínimo 55 %)
+  function ajustarTextos(raiz) {
+    raiz.querySelectorAll('[data-ajustar]').forEach(caja => {
+      caja.style.fontSize = '';
+      const base = parseFloat(getComputedStyle(caja).fontSize);
+      if (!base || !caja.clientHeight) return;
+      for (let f = 1; f > 0.55 && caja.scrollHeight > caja.clientHeight + 1; f -= 0.05) caja.style.fontSize = base * f + 'px';
+    });
+  }
+
   // Galería de fotos (transición tipo Ken Burns) y videos de YouTube.
   // opts: { seg, maxVideo, sonido, perfil, onCambio(videoConAudio) }
   // Devuelve (en el elemento) el._activarSonido() para quitar el silencio al video actual.
@@ -212,11 +222,38 @@
       fotos.map(f => {
         // 🎂 saludo de cumpleaños (pantalla Funcionarios)
         if (f.destacado === 'cumple') {
-          return `<div class="ph cumple n${f.personas.length}">
+          return `<div class="ph cumple n${f.personas.length}" data-seg="15">
             <div class="cumple-confeti" aria-hidden="true">${'<i></i>'.repeat(18)}</div>
             <div class="cumple-cabeza"><span class="cumple-torta">🎂</span><h2>¡Feliz cumpleaños!</h2></div>
             <div class="cumple-grid">${f.personas.map(p => `<div class="cumple-card">
               <b>${esc(p.nombre)}</b>${p.cargo ? `<span>${esc(p.cargo)}</span>` : ''}<p>${esc(p.mensaje)}</p></div>`).join('')}</div></div>`;
+        }
+        // 🏫 Visión / Misión: la frase grande a un lado y el texto con sus palabras clave resaltadas al otro
+        if (f.destacado === 'inst') {
+          const vis = f.clave === 'vision';
+          return `<div class="ph inst inst-${vis ? 'vision' : 'mision'}" data-seg="22">
+            <div class="inst-lado" data-ajustar>
+              <span class="inst-sello">${vis ? '🔭 Nuestra Visión' : '🧭 Nuestra Misión'}</span>
+              <h2 class="inst-lema">${esc(f.titulo)}</h2>
+              <img class="inst-escudo" src="insignia.png" alt="">
+            </div>
+            <div class="inst-texto" data-ajustar><span class="inst-comilla" aria-hidden="true">“</span><p>${resaltar(f.texto)}</p></div></div>`;
+        }
+        // 🏫 Sellos educativos: una tarjeta por sello con su ícono
+        if (f.destacado === 'sellos') {
+          return `<div class="ph inst-sellos n${f.sellos.length}" data-seg="20">
+            <div class="sellos-cabeza"><img src="insignia.png" alt=""><div><small>Lo que nos identifica</small><h2>Nuestros sellos educativos</h2></div></div>
+            <div class="sellos-grid" data-ajustar>${f.sellos.map((s, k) => `<div class="sello-card" style="--k:${k}">
+              <span class="sello-ico">${esc(s.icono || '⭐')}</span><b>${esc(s.titulo || '')}</b><p>${esc(s.texto || '')}</p></div>`).join('')}</div></div>`;
+        }
+        // 👥 Conoce al equipo de gestión (de a 4)
+        if (f.destacado === 'equipo') {
+          const foto = p => (p.url ? `<img src="${esc(p.url)}" alt="${esc(p.nombre)}">`
+            : `<span class="dest-inicial">${esc(String(p.nombre || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase())}</span>`);
+          return `<div class="ph equipo n${f.personas.length}" data-seg="16">
+            <div class="equipo-cabeza"><small>Colegio Marina de Chile</small><h2>👥 Conoce al equipo de gestión</h2></div>
+            <div class="equipo-grid">${f.personas.map((p, k) => `<div class="equipo-card" style="--k:${k}">
+              <div class="equipo-foto">${foto(p)}</div><b>${esc(p.nombre)}</b><span>${esc(p.cargo || '')}</span></div>`).join('')}</div></div>`;
         }
         // diapositiva de solo texto (Educación sin video)
         if (!f.url && f.texto !== undefined) {
@@ -227,7 +264,7 @@
         if (f.destacado === 'alumnos') {
           const foto = p => (p.url ? `<img src="${esc(p.url)}" alt="${esc(p.nombre)}">`
             : `<span class="dest-inicial">${esc(String(p.nombre || '⭐').trim().charAt(0).toUpperCase())}</span>`);
-          return `<div class="ph destacado alumnos n${f.personas.length}">
+          return `<div class="ph destacado alumnos n${f.personas.length}" data-seg="14">
             <div class="dest-cabeza"><span class="dest-sello">${esc(f.sello || '⭐ Alumnos/as destacados/as')}</span>${f.titulo ? `<b>${esc(f.titulo)}</b>` : ''}</div>
             <div class="dest-grid">${f.personas.map(p => `<div class="dest-card">
               <div class="dest-foto">${foto(p)}</div>
@@ -236,7 +273,7 @@
         }
         if (f.destacado === 'curso') {
           const motivo = String(f.texto || '').trim();
-          return `<div class="ph destacado curso">
+          return `<div class="ph destacado curso" data-seg="14">
             <div class="ig-fondo" style="background-image:url('${esc(f.url)}')"></div>
             <div class="ig-foto"><img src="${esc(f.url)}" alt="${esc(f.titulo)}"></div>
             <div class="dest-lado"><span class="dest-sello">${esc(f.sello || '🏆 Curso destacado')}</span>
@@ -317,8 +354,8 @@
     };
     el.querySelectorAll('img').forEach(im => (im.onerror = () => {
       // en Alumnos destacados una foto que no carga no oculta a los demás: se ve la inicial del nombre
-      const card = im.closest('.dest-card');
-      if (card) { im.replaceWith(Object.assign(document.createElement('span'), { className: 'dest-inicial', textContent: (card.querySelector('h3')?.textContent || '⭐').trim().charAt(0) })); return; }
+      const card = im.closest('.dest-card, .equipo-card');
+      if (card) { im.replaceWith(Object.assign(document.createElement('span'), { className: 'dest-inicial', textContent: (card.querySelector('h3, b')?.textContent || '⭐').trim().charAt(0) })); return; }
       const p = im.closest('.ph'); if (p) p._falla = Date.now();
     }));
 
@@ -339,6 +376,8 @@
       ph._sonoEstaVez = false;
       ph._reintentos = 0;
       phs.forEach(p => p.classList.toggle('active', p === ph));
+      // textos largos (Misión, Visión, Sellos…): la letra se achica lo justo para que se lean completos
+      ajustarTextos(ph);
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
       const conAudio = tocaSonido(ph);
       if (ph.dataset.yt) {
@@ -423,7 +462,8 @@
         // un poco más que una foto, para alcanzar a leer la reseña
         el._timer = setTimeout(siguiente, opts.seg * 1500);
       } else if (phs.length > 1) {
-        el._timer = setTimeout(siguiente, opts.seg * 1000);
+        // las de texto (misión, visión, sellos, equipo, destacados) se quedan más, para alcanzar a leerlas
+        el._timer = setTimeout(siguiente, Math.max(opts.seg, +ph.dataset.seg || 0) * 1000);
       }
       if (!ph.dataset.mp4) avisar(!!ph.dataset.yt && conAudio); // el MP4 avisa al comenzar a sonar
     };
@@ -980,12 +1020,85 @@
     const historias = (data.historias || [])
       .filter(h => new Date(h.vence).getTime() > Date.now())
       .map(h => ({ titulo: 'Historia de Instagram', url: h.url, fecha: h.fecha, historia: true, etiqueta: 'Recién publicado' }));
-    const resto = historias.concat(destacados(data, perfil), fotos, antiguos);
+    const resto = intercalarInstitucional(historias.concat(destacados(data, perfil), fotos, antiguos), data);
     const cumple = cumpleanosHoy(data, perfil);
     if (!cumple.length) return resto;
     // el saludo de cumpleaños aparece primero y se repite cada 4 publicaciones durante el día
     const out = cumple.slice();
     resto.forEach((f, k) => { out.push(f); if ((k + 1) % 4 === 0 && k < resto.length - 1) out.push(...cumple); });
+    return out;
+  }
+
+  // ---------- 🏫 Misión, Visión, Sellos y "Conoce al equipo de gestión" (Admin → 🏫 Institucional) ----------
+  // Aparecen "a veces": una después de cada N publicaciones, turnándose. **texto** = palabras destacadas.
+  const INSTITUCIONAL = {
+    vision: {
+      lema: 'Formar personas para el siglo XXI',
+      texto: 'Como comunidad, buscamos ser reconocidos como una institución **formadora de personas para el siglo XXI**, bajo un sistema educativo con **enfoque humanista** que les permita: cultivar la **autonomía**, el **respeto**, desarrollar **habilidades de orden superior**, participar activamente de procesos educativos, **artísticos y deportivos**, favoreciendo la **continuidad de estudios superiores**.',
+    },
+    mision: {
+      lema: 'Educar para liderar la sociedad del futuro',
+      texto: 'Somos una comunidad educativa de carácter **científico – humanista**, comprometida en el **respeto por el medioambiente**, el **entorno social** y los procesos formativos de nuestros/as estudiantes. Nuestro propósito es **educar a personas para el siglo XXI** bajo un enfoque humanista y los sellos de nuestro colegio, otorgándoles herramientas que les permita **adaptarse** a las diversas necesidades de la comunidad y **liderar la sociedad del futuro**.',
+    },
+    sellos: [
+      { icono: '🎓', titulo: 'Camino a la educación superior', texto: 'Formación de personas para la continuidad de estudios superiores.' },
+      { icono: '🧭', titulo: 'Autonomía y constancia', texto: 'Desarrollo de la autonomía, compromiso y constancia con los procesos educativos, en nuestros/as estudiantes.' },
+      { icono: '🌱', titulo: 'Solidaridad y medioambiente', texto: 'Formación de personas solidarias y responsables tanto en aspectos sociales como medioambientales.' },
+      { icono: '🎨', titulo: 'Deporte y arte', texto: 'Desarrollo de aprendizajes deportivos y artísticos, en nuestros/as estudiantes.' },
+    ],
+  };
+  // lo guardado en Ajustes ("institucional" = { vision, mision, sellos, activo, cada }) o lo de arriba
+  function institucional(aj) {
+    const g = leerJSON(aj && aj.institucional, {});
+    return {
+      vision: Object.assign({}, INSTITUCIONAL.vision, g.vision || {}),
+      mision: Object.assign({}, INSTITUCIONAL.mision, g.mision || {}),
+      sellos: Array.isArray(g.sellos) && g.sellos.length ? g.sellos : INSTITUCIONAL.sellos,
+      activo: g.activo !== 'no', equipo: g.equipo !== 'no',
+      cada: Math.max(2, +g.cada || 5),
+    };
+  }
+  // "**palabra**" → resaltado (con el texto ya escapado)
+  const resaltar = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<mark>$1</mark>');
+  function slidesInstitucionales(data) {
+    const ins = institucional(ajustes(data));
+    const out = [];
+    if (ins.activo) {
+      // los sellos van de a 2 por imagen: así la letra se lee bien desde lejos
+      const ss = ins.sellos.filter(s => s.titulo || s.texto);
+      for (let k = 0; k < ss.length; k += 2) {
+        out.push({ destacado: 'sellos', titulo: 'Sellos ' + k, texto: JSON.stringify(ss.slice(k, k + 2)), url: '', sellos: ss.slice(k, k + 2) });
+      }
+      ['vision', 'mision'].forEach(k => { if (ins[k].texto) out.push({ destacado: 'inst', clave: k, titulo: ins[k].lema, texto: ins[k].texto, url: '' }); });
+    }
+    if (ins.equipo) {
+      // el equipo de gestión, de a 4 por imagen, en el orden elegido
+      const eq = (data.equipo || []).filter(p => p.nombre)
+        .sort((a, b) => (+a.orden || 999) - (+b.orden || 999));
+      for (let k = 0; k < eq.length; k += 4) {
+        const ps = eq.slice(k, k + 4);
+        out.push({ destacado: 'equipo', titulo: 'Equipo', texto: ps.map(p => p.nombre + p.cargo + p.url).join('|'), url: '',
+          personas: ps.map(p => ({ nombre: p.nombre, cargo: p.cargo, url: p.url })) });
+      }
+    }
+    return { lista: out, cada: ins.cada };
+  }
+  // una institucional después de cada N publicaciones, turnándose (si hay pocas publicaciones, van todas al final)
+  function intercalarInstitucional(resto, data) {
+    const { lista, cada } = slidesInstitucionales(data);
+    if (!lista.length) return resto;
+    if (resto.length < cada) return resto.concat(lista);
+    // las de sellos van seguidas (1-2 y 3-4), como un solo bloque
+    const bloques = [];
+    lista.forEach(s => {
+      const ult = bloques[bloques.length - 1];
+      if (ult && s.destacado === 'sellos' && ult[0].destacado === 'sellos') ult.push(s); else bloques.push([s]);
+    });
+    const out = [];
+    let j = 0;
+    resto.forEach((f, k) => { out.push(f); if ((k + 1) % cada === 0) out.push(...bloques[j++ % bloques.length]); });
+    // que todas alcancen a aparecer en cada vuelta
+    while (j < bloques.length) out.push(...bloques[j++]);
     return out;
   }
 
@@ -1066,5 +1179,5 @@
     return min < 60 ? `Hace ${min || 1} min` : `Hace ${Math.round(min / 60)} h`;
   }
 
-  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, textoPrevia, previasDe, NIVELES, destacados, TEMAS, FONDOS, IMG_DEF, coloresTema, aplicarTema, temaDePerfil, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
+  window.UI = { MESES, parseFecha, diasHasta, esc, header, startClock, renderTicker, autoData, backToHome, gallery, youtubeId, instagramRuta, sonidoPermitido, pedirSonido, autoScroll, carrusel, miniaturaVideo, enlaceVideo, textoLimpio, ajustes, reunion, reuniones, estaVigente, proximasReuniones, resumenCursos, espacioDeGrupo, leerJSON, EDIFICIOS, ESPACIOS, espacioTv, paraEspacio, nombreSala, textoPrevia, previasDe, NIVELES, destacados, institucional, TEMAS, FONDOS, IMG_DEF, coloresTema, aplicarTema, temaDePerfil, avisoHoy, estadoHoy, yaPaso, minutosDelDia, ICONOS, icono, contactos, redes };
 })();

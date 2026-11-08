@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261107d">
+  <link rel="stylesheet" href="styles.css?v=20261108a">
   <style>
     body { overflow: auto; font-size: 15px; }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -162,6 +162,11 @@
     .tema-vista-acc select { width: auto; }
     .tema-vista { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; border: 2px solid var(--line); background: #000; }
     .tema-vista iframe { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }
+    .sello-fila { display: grid; grid-template-columns: 70px minmax(0, 1fr) minmax(0, 2fr) 36px; gap: 8px; align-items: end; }
+    .sello-fila label { text-transform: none; letter-spacing: 0; min-width: 0; }
+    .sello-fila select { font-size: 22px; padding: 4px; }
+    @media (max-width: 640px) { .sello-fila { grid-template-columns: 70px 1fr 36px; } .sello-fila label:nth-of-type(2) { grid-column: 1 / -1; } }
+    .eq-item img { border-radius: 50%; }
     .tema-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
     .tema-tabs button { background: rgba(255,255,255,.06); border: 1px solid var(--line); color: var(--ink); border-radius: 99px; padding: 8px 14px; cursor: pointer; font-weight: 700; }
     .tema-tabs button.on { background: var(--gold); color: #06153a; border-color: var(--gold); }
@@ -222,9 +227,9 @@
 </head>
 <body>
   <div class="wrap" id="app"></div>
-  <script src="config.js?v=20261107d"></script>
-  <script src="api.js?v=20261107d"></script>
-  <script src="common.js?v=20261107d"></script>
-  <script src="admin.js?v=20261107d"></script>
+  <script src="config.js?v=20261108a"></script>
+  <script src="api.js?v=20261108a"></script>
+  <script src="common.js?v=20261108a"></script>
+  <script src="admin.js?v=20261108a"></script>
 </body>
 </html>

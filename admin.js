@@ -10,8 +10,9 @@
   let seccion = 'actividades';
   let editando = null; // publicación que se está editando (o null = agregar nueva)
   // Tamaño máximo de archivos (se suben por partes de 8 MB; cada pantalla los descarga una vez y los guarda)
-  const MAX_VIDEO_MB = 200;
-  const MAX_AUDIO_MB = 100;
+  // (cada TV descarga el archivo por partes una sola vez y lo guarda; archivos muy grandes tardan más la primera vez)
+  const MAX_VIDEO_MB = 500;
+  const MAX_AUDIO_MB = 500;
 
   // En qué edificio se muestra en las pantallas Familias (cada TV Familias elige su espacio al abrirse)
   const ESPACIO_SEL = `<label>🏫 Espacio en pantallas Familias
@@ -122,7 +123,8 @@
       // categoría y sonido editables en cada publicación
       extra: f => filaCategoria(f) + filaSonido(f),
     },
-    destacados: { nombre: '⭐ Destacados' }, // vista propia: todos los cursos listos (ver vistaDestacados)
+    destacados: { nombre: '⭐ Destacados' },
+    institucional: { nombre: '🏫 Misión, Visión y Equipo' }, // vista propia (vistaInstitucional) // vista propia: todos los cursos listos (ver vistaDestacados)
     musica: {
       nombre: '🎵 Música Familias',
       form: `<label>Nombre de la canción<input name="titulo" required></label>
@@ -1542,12 +1544,180 @@
   }
 
 
+  // ---------- 🏫 Institucional: Misión, Visión, Sellos y "Conoce al equipo de gestión" ----------
+  const CARGOS_BASE = ['Directora', 'Inspector/a General', 'Inspector/a General', 'Inspector/a General', 'Encargada de Convivencia Escolar',
+    'Jefe de UTP', 'Coordinadora PIE', 'Coordinador/a de Ciclo', 'Coordinador/a de Ciclo', 'Coordinador/a de Ciclo'];
+  const ICONOS_SELLO = ['🎓', '🧭', '🌱', '🎨', '⚽', '🤝', '📚', '🔬', '💙', '🌎', '🏆', '✨', '🧠', '🎭', '🎵', '❤️'];
+  const filaSello = s => `<div class="sello-fila">
+    <select data-s="icono">${ICONOS_SELLO.map(i => `<option ${i === (s.icono || '⭐') ? 'selected' : ''}>${i}</option>`).join('')}</select>
+    <label>Título corto (se ve grande)<input data-s="titulo" value="${esc(s.titulo || '')}" placeholder="Ej: Deporte y arte"></label>
+    <label>Texto<input data-s="texto" value="${esc(s.texto || '')}"></label>
+    <button type="button" class="tel-quitar" title="Quitar">✕</button></div>`;
+  const tarjetaEquipo = p => `<div class="dp-item eq-item" data-id="${esc(p.id)}">
+    <img src="${esc(p.url || 'insignia.png')}" alt="">
+    <div class="dp-campos">
+      <label>👤 Nombre<input data-f="nombre" value="${esc(p.nombre || '')}" placeholder="Nombre y apellido"></label>
+      <label>💼 Cargo<input data-f="cargo" list="cargos-base" value="${esc(p.cargo || '')}"></label>
+    </div>
+    <div class="dp-acc">
+      <button type="button" class="btn ghost mini" data-acc="subir" title="Subir en el orden">⬆</button>
+      <button type="button" class="btn ghost mini" data-acc="bajar" title="Bajar en el orden">⬇</button>
+      <label class="btn ghost mini">📷 ${p.url ? 'Cambiar foto' : 'Agregar foto'}<input type="file" accept="image/*" data-acc="foto" hidden></label>
+      <button type="button" class="btn mini" data-acc="guardar">💾 Guardar</button>
+      <button type="button" class="del" data-acc="eliminar">🗑️</button>
+    </div></div>`;
+
+  function vistaInstitucional() {
+    const aj = UI.ajustes(data);
+    const g = UI.leerJSON(aj.institucional, {});
+    const ins = UI.institucional(aj);
+    const eq = (data.equipo || []).slice().sort((a, b) => (+a.orden || 999) - (+b.orden || 999));
+    const bloque = (k, titulo) => `<fieldset class="grupo">
+      <legend>${titulo}</legend>
+      <label>Frase grande (resumen en pocas palabras)<input name="${k}Lema" value="${esc(ins[k].lema)}" maxlength="70"></label>
+      <label>Texto completo<textarea name="${k}Texto" rows="5">${esc(ins[k].texto)}</textarea></label>
+    </fieldset>`;
+    return `<div class="panel" style="max-width:1100px">
+      <h2>🏫 Misión, Visión, Sellos y Equipo de gestión</h2>
+      <p class="note">Aparecen <b>de vez en cuando</b> en el carrusel de ambas pantallas, con un diseño propio:
+      la Visión y la Misión con su frase grande y las <b>palabras clave resaltadas</b>; los Sellos como tarjetas con ícono;
+      y "Conoce al equipo de gestión" con fotos, de a 4.</p>
+      <form id="f-inst">
+        <fieldset class="grupo">
+          <legend>⚙️ Cuándo aparecen</legend>
+          <label class="check"><input type="checkbox" name="activo" ${ins.activo ? 'checked' : ''}> Mostrar Misión, Visión y Sellos</label>
+          <label class="check"><input type="checkbox" name="equipo" ${ins.equipo ? 'checked' : ''}> Mostrar "Conoce al equipo de gestión"</label>
+          <label>Aparece una cada…<select name="cada">${[3, 4, 5, 6, 8, 10, 15].map(n => `<option value="${n}" ${ins.cada === n ? 'selected' : ''}>${n} publicaciones</option>`).join('')}</select></label>
+        </fieldset>
+        <p class="note">✍️ Para <b>resaltar</b> palabras clave escríbalas entre dos asteriscos: <code>**enfoque humanista**</code>.
+        Así el texto largo se lee rápido: en pantalla se marcan en dorado una por una.</p>
+        ${bloque('vision', '🔭 Visión')}
+        ${bloque('mision', '🧭 Misión')}
+        <fieldset class="grupo">
+          <legend>🏅 Sellos educativos</legend>
+          <div class="tel-filas" id="sellos-filas">${ins.sellos.map(filaSello).join('')}</div>
+          <button type="button" class="btn ghost" id="sello-agregar">➕ Agregar sello</button>
+        </fieldset>
+        <button class="btn">💾 Guardar Misión, Visión y Sellos</button>
+        ${g.vision || g.mision || g.sellos ? '<button type="button" class="btn ghost" id="inst-original">↺ Volver al texto original</button>' : ''}
+      </form>
+      <fieldset class="grupo" id="equipo-box" style="margin-top:18px">
+        <legend>👥 Conoce al equipo de gestión</legend>
+        <datalist id="cargos-base">${[...new Set(CARGOS_BASE)].map(c => `<option value="${esc(c)}">`).join('')}
+          <option value="Subdirector/a"><option value="Orientador/a"><option value="Psicólogo/a"><option value="Encargado/a de Extraescolar"></datalist>
+        <div class="dp-lista" id="equipo-lista">${eq.map(tarjetaEquipo).join('') || '<p class="note">Aún no hay integrantes. Use "⚡ Agregar los cargos del equipo" o "➕ Agregar integrante".</p>'}</div>
+        <div class="reu-acciones">
+          <button type="button" class="btn ghost" id="eq-agregar">➕ Agregar integrante</button>
+          ${eq.length ? '' : '<button type="button" class="btn ghost" id="eq-base">⚡ Agregar los cargos del equipo (Directora, 3 Inspectores Generales, Convivencia, UTP, PIE, 3 Coordinadores de ciclo)</button>'}
+        </div>
+        <p class="note">Escriba el nombre, elija o escriba el cargo (puede agregar los cargos que necesite), agregue la foto y pulse 💾 Guardar en cada uno.
+        Solo aparecen en pantalla los que tienen nombre. Ordénelos con ⬆ ⬇.</p>
+      </fieldset></div>`;
+  }
+
+  function iniciarInstitucional() {
+    const f = document.getElementById('f-inst');
+    const sellos = document.getElementById('sellos-filas');
+    document.getElementById('sello-agregar').onclick = () => sellos.insertAdjacentHTML('beforeend', filaSello({ icono: '⭐' }));
+    sellos.onclick = e => { if (e.target.classList.contains('tel-quitar')) e.target.closest('.sello-fila').remove(); };
+    const guardar = async valor => {
+      const btn = f.querySelector('.btn:not(.ghost)');
+      btn.disabled = true;
+      btn.textContent = 'Guardando…';
+      try {
+        await API.admin('ajustes', { password, valores: { institucional: valor } });
+        toast('Guardado ✔');
+        await recargar();
+      } catch (err) {
+        toast(err.message, 'err');
+        btn.disabled = false;
+        btn.textContent = '💾 Guardar Misión, Visión y Sellos';
+      }
+    };
+    f.onsubmit = e => {
+      e.preventDefault();
+      const el = f.elements;
+      guardar(JSON.stringify({
+        activo: el.activo.checked ? 'si' : 'no', equipo: el.equipo.checked ? 'si' : 'no', cada: el.cada.value,
+        vision: { lema: el.visionLema.value.trim(), texto: el.visionTexto.value.trim() },
+        mision: { lema: el.misionLema.value.trim(), texto: el.misionTexto.value.trim() },
+        sellos: [...sellos.querySelectorAll('.sello-fila')].map(r => Object.fromEntries([...r.querySelectorAll('[data-s]')].map(i => [i.dataset.s, i.value.trim()])))
+          .filter(s => s.titulo || s.texto),
+      }));
+    };
+    const orig = document.getElementById('inst-original');
+    if (orig) orig.onclick = () => {
+      if (!confirm('¿Volver a la Misión, Visión y Sellos originales del colegio?')) return;
+      const el = f.elements;
+      guardar(JSON.stringify({ activo: el.activo.checked ? 'si' : 'no', equipo: el.equipo.checked ? 'si' : 'no', cada: el.cada.value }));
+    };
+
+    // 👥 equipo de gestión
+    const box = document.getElementById('equipo-box');
+    const lista = document.getElementById('equipo-lista');
+    const nuevoOrden = () => Math.max(0, ...(data.equipo || []).map(p => +p.orden || 0)) + 1;
+    const agregar = async (items, b) => {
+      b.disabled = true;
+      try {
+        for (const it of items) await API.admin('add', { password, sheet: 'equipo', item: it });
+        toast('Agregado ✔ · complete el nombre y la foto de cada uno');
+        await recargar();
+      } catch (err) { toast(err.message, 'err'); b.disabled = false; }
+    };
+    document.getElementById('eq-agregar').onclick = e => agregar([{ nombre: '', cargo: '', orden: nuevoOrden() }], e.target);
+    const base = document.getElementById('eq-base');
+    if (base) base.onclick = e => agregar(CARGOS_BASE.map((cargo, k) => ({ nombre: '', cargo, orden: k + 1 })), e.target);
+    box.addEventListener('change', e => {
+      const it = e.target.closest('.eq-item');
+      if (!it) return;
+      it.classList.add('cambiado');
+      if (e.target.dataset.acc === 'foto' && e.target.files[0]) { it._foto = e.target.files[0]; it.querySelector('img').src = URL.createObjectURL(it._foto); }
+    });
+    box.addEventListener('input', e => { const it = e.target.closest('.eq-item'); if (it) it.classList.add('cambiado'); });
+    box.addEventListener('click', async e => {
+      const b = e.target.closest('button[data-acc]');
+      if (!b) return;
+      const it = b.closest('.eq-item');
+      const id = it.dataset.id;
+      try {
+        if (b.dataset.acc === 'guardar') {
+          b.disabled = true;
+          b.textContent = 'Guardando…';
+          const item = { id, nombre: it.querySelector('[data-f="nombre"]').value.trim(), cargo: it.querySelector('[data-f="cargo"]').value.trim() };
+          const image = it._foto ? { data: await comprimir(it._foto, 900), mimeType: 'image/jpeg', name: (item.nombre || 'equipo') + '.jpg' } : undefined;
+          await API.admin('update', { password, sheet: 'equipo', item, image });
+          toast('Guardado ✔');
+          await recargar();
+        } else if (b.dataset.acc === 'eliminar') {
+          if (!confirm('¿Quitar a esta persona del equipo de gestión?')) return;
+          await API.admin('delete', { password, sheet: 'equipo', id });
+          toast('Eliminado');
+          await recargar();
+        } else if (b.dataset.acc === 'subir' || b.dataset.acc === 'bajar') {
+          // intercambia el orden con el vecino
+          const vecino = b.dataset.acc === 'subir' ? it.previousElementSibling : it.nextElementSibling;
+          if (!vecino || !vecino.classList.contains('eq-item')) return;
+          const orden = [...lista.querySelectorAll('.eq-item')].map(x => x.dataset.id);
+          const i = orden.indexOf(id), j = orden.indexOf(vecino.dataset.id);
+          [orden[i], orden[j]] = [orden[j], orden[i]];
+          b.disabled = true;
+          for (let k = 0; k < orden.length; k++) {
+            const p = (data.equipo || []).find(x => String(x.id) === orden[k]);
+            if (p && +p.orden !== k + 1) await API.admin('update', { password, sheet: 'equipo', item: { id: orden[k], orden: k + 1 } });
+          }
+          await recargar();
+        }
+      } catch (err) { toast(err.message, 'err'); b.disabled = false; }
+    });
+  }
+
+
   function vistaPanel() {
     UI.ajustes(data); // suma los edificios agregados en Ajustes a las listas
     const S = SECCIONES[seccion];
     const lista = (data[seccion] || []).slice().reverse();
     const cuerpo = seccion === 'ajustes' ? formAjustes() : seccion === 'instagram' ? vistaInstagram()
-      : seccion === 'reunion' ? formReunion() : seccion === 'destacados' ? vistaDestacados() : `
+      : seccion === 'reunion' ? formReunion() : seccion === 'destacados' ? vistaDestacados() : seccion === 'institucional' ? vistaInstitucional() : `
       <div class="grid ${seccion === 'destacados' ? 'una-col' : ''}">
         <div class="panel ${editando ? 'editando' : ''}"><h2>${editando ? '✏️ Editar publicación' : 'Agregar'}</h2>
           <form id="f-add">${S.form}<button class="btn">${editando ? '💾 Guardar cambios' : 'Publicar'}</button>
@@ -1600,6 +1770,10 @@
     }
     if (seccion === 'destacados') {
       iniciarDestacados();
+      return;
+    }
+    if (seccion === 'institucional') {
+      iniciarInstitucional();
       return;
     }
 
