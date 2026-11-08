@@ -1575,10 +1575,10 @@
 
   // 🛡️ Insignias que se alternan en el encabezado al girar
   function bloqueInsignias(aj) {
-    const elegidas = UI.leerJSON(aj.insignias, null);
+    const ocultas = UI.leerJSON(aj.insigniasOcultas, []);
     const todas = UI.INSIGNIAS_BASE.map(u => ({ url: u, nombre: u === 'insignia.png' ? 'Insignia' : 'Insignia en color' }))
       .concat((data.insignias || []).map(i => ({ url: i.url, nombre: i.nombre, id: i.id })));
-    const usa = u => (Array.isArray(elegidas) ? elegidas.includes(u) : true);
+    const usa = u => !ocultas.includes(u); // las subidas quedan marcadas solas
     return `<fieldset class="grupo" id="ins-box" style="margin-top:18px">
       <legend>🛡️ Insignias del encabezado</legend>
       <p class="note">El escudo de arriba gira cada cierto tiempo. Marque las insignias que quiere que vayan <b>alternándose</b> en cada giro
@@ -1594,11 +1594,12 @@
   function iniciarInsignias() {
     const box = document.getElementById('ins-box');
     document.getElementById('ins-guardar').onclick = async e => {
-      const urls = [...box.querySelectorAll('.ins-op input[type=checkbox]:checked')].map(c => c.value);
-      if (!urls.length) return toast('Marque al menos una insignia', 'err');
+      const marcadas = box.querySelectorAll('.ins-op input[type=checkbox]:checked').length;
+      if (!marcadas) return toast('Marque al menos una insignia', 'err');
+      const ocultas = [...box.querySelectorAll('.ins-op input[type=checkbox]:not(:checked)')].map(c => c.value);
       e.target.disabled = true;
       try {
-        await API.admin('ajustes', { password, valores: { insignias: JSON.stringify(urls) } });
+        await API.admin('ajustes', { password, valores: { insigniasOcultas: JSON.stringify(ocultas), insignias: '' } });
         toast('Insignias guardadas ✔');
         await recargar();
       } catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
@@ -1614,9 +1615,7 @@
         const image = png ? { data: await aBase64(f), mimeType: 'image/png', name: f.name }
           : { data: await comprimir(f, 800), mimeType: 'image/jpeg', name: f.name.replace(/\.\w+$/, '') + '.jpg' };
         const r = await API.admin('add', { password, sheet: 'insignias', item: { nombre: f.name.replace(/\.\w+$/, '') }, image });
-        // la nueva queda marcada para alternarse
-        const actuales = [...box.querySelectorAll('.ins-op input[type=checkbox]:checked')].map(c => c.value);
-        if (r.item && r.item.url) await API.admin('ajustes', { password, valores: { insignias: JSON.stringify(actuales.concat(r.item.url)) } });
+        // la nueva queda incluida sola (solo se excluyen las que se desmarcan)
         toast('Insignia subida ✔');
         await recargar();
       } catch (err) { toast(err.message, 'err'); etq.innerHTML = '➕<br>Subir insignia'; }

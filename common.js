@@ -75,29 +75,55 @@
     return new Promise(ok => setTimeout(() => { try { ctx.close(); } catch (e) {} ok(); }, total));
   }
 
-  // 🛡️ Escudo del encabezado: está quieto y cada 24 s gira sobre su eje; si hay varias insignias elegidas
-  // (Admin → 🏫 Misión, Visión y Equipo → Insignias), en cada giro cambia a la siguiente.
+  // 🛡️ Escudos en 3D (el del encabezado y el grande de Familias): se mecen suavemente, con grosor y un brillo
+  // que los recorre; cada 24 s dan una vuelta completa y, si hay varias insignias, cambian a la siguiente.
+  // Insignias: las dos del colegio + todas las subidas en Admin, menos las que se desmarquen ("insigniasOcultas").
   const INSIGNIAS_BASE = ['insignia.png', 'insignia-color.png'];
   let logos = ['insignia.png'];
   let logoI = 0;
   function insignias(data) {
-    const elegidas = leerJSON(ajustes(data).insignias, null);
-    const lista = (Array.isArray(elegidas) ? elegidas : INSIGNIAS_BASE.concat((data.insignias || []).map(i => i.url))).filter(Boolean);
+    const aj = ajustes(data);
+    const ocultas = leerJSON(aj.insigniasOcultas, []);
+    const lista = INSIGNIAS_BASE.concat((data.insignias || []).map(i => i.url)).filter(u => u && !ocultas.includes(u));
     logos = lista.length ? lista : ['insignia.png'];
     logos.forEach(u => { new Image().src = u; }); // se cargan antes, para que el cambio sea limpio
     if (logoI >= logos.length) logoI = 0;
+    montarEscudos();
+    cambiarEscudos(logos[logoI]);
+  }
+  const CAPAS_3D = 7;
+  // convierte cada escudo en una pieza 3D: varias copias detrás (el grosor), la cara y el brillo
+  function montarEscudos() {
+    document.querySelectorAll('.brand > img, .side-logo > img').forEach(img => {
+      const src = img.getAttribute('src');
+      const caja = document.createElement('div');
+      caja.className = 'escudo3d' + (img.closest('.side-logo') ? ' grande' : '');
+      caja.innerHTML = `<div class="e3d-giro">${Array.from({ length: CAPAS_3D }, (_, k) =>
+        `<img class="e3d-capa" style="--z:${k + 1}" src="${esc(src)}" alt="">`).join('')}
+        <img class="e3d-frente" src="${esc(src)}" alt="${esc(img.alt || 'Escudo')}"><span class="e3d-brillo"></span></div>`;
+      img.replaceWith(caja);
+      cambiarEscudos(logos[logoI] || src, caja); // todos los escudos muestran la misma insignia
+    });
+  }
+  function cambiarEscudos(src, solo) {
+    (solo ? [solo] : document.querySelectorAll('.escudo3d')).forEach(c => {
+      c.querySelectorAll('img').forEach(i => { if (i.getAttribute('src') !== src) i.src = src; });
+      c.querySelector('.e3d-brillo').style.setProperty('--mascara', `url("${String(src).replace(/["\\]/g, '')}")`);
+    });
   }
   function girarLogo() {
-    const el = document.querySelector('.brand img');
-    if (!el || !el.animate || document.hidden || document.body.classList.contains('video-activo')) return;
+    montarEscudos();
+    const giros = [...document.querySelectorAll('.escudo3d .e3d-giro')].filter(g => g.offsetParent);
+    if (!giros.length || !giros[0].animate || document.hidden || document.body.classList.contains('video-activo')) return;
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const sig = logos.length > 1 ? (logoI + 1) % logos.length : -1;
-    // primera mitad del giro (hasta quedar de canto), cambio de insignia y segunda mitad
-    el.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(90deg)' }], { duration: 550, easing: 'ease-in' }).finished
+    // media vuelta (hasta quedar de canto), cambio de insignia y la otra media vuelta
+    Promise.all(giros.map(g => g.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(90deg)' }],
+      { duration: 650, easing: 'ease-in' }).finished))
       .then(() => {
-        if (sig > -1) { logoI = sig; el.src = logos[sig]; }
-        return el.animate([{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0deg) scale(1.08)', offset: 0.75 }, { transform: 'rotateY(0deg) scale(1)' }],
-          { duration: 800, easing: 'ease-out' }).finished;
+        if (sig > -1) { logoI = sig; cambiarEscudos(logos[sig]); }
+        return Promise.all(giros.map(g => g.animate([{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0deg) scale(1.08)', offset: 0.7 }, { transform: 'rotateY(0deg) scale(1)' }],
+          { duration: 950, easing: 'ease-out' }).finished));
       }).catch(() => {});
   }
   setTimeout(() => { girarLogo(); setInterval(girarLogo, 24000); }, 6000);
@@ -307,23 +333,37 @@
             <div class="cumple-grid">${f.personas.map(p => `<div class="cumple-card">
               <b>${esc(p.nombre)}</b>${p.cargo ? `<span>${esc(p.cargo)}</span>` : ''}<p>${esc(p.mensaje)}</p></div>`).join('')}</div></div>`;
         }
-        // 🏫 Visión / Misión: la frase grande a un lado y el texto con sus palabras clave resaltadas al otro
+        // 🏫 Visión / Misión: título, la frase grande, las ideas clave como fichas que aparecen una a una
+        // y el texto completo más chico debajo (con las mismas palabras resaltadas)
         if (f.destacado === 'inst') {
           const vis = f.clave === 'vision';
-          return `<div class="ph inst inst-${vis ? 'vision' : 'mision'}" data-seg="22">
-            <div class="inst-lado" data-ajustar="1.3">
-              <span class="inst-sello">${vis ? '🔭 Nuestra Visión' : '🧭 Nuestra Misión'}</span>
-              <h2 class="inst-lema">${esc(f.titulo)}</h2>
-              <img class="inst-escudo" src="insignia.png" alt="">
-            </div>
-            <div class="inst-texto" data-ajustar="1.5"><span class="inst-comilla" aria-hidden="true">“</span><p>${resaltar(f.texto)}</p></div></div>`;
+          const claves = (String(f.texto).match(/\*\*(.+?)\*\*/g) || []).map(s => s.slice(2, -2)).slice(0, 8);
+          return `<div class="ph inst inst-${vis ? 'vision' : 'mision'}" data-seg="24">
+            <div class="inst-rayos" aria-hidden="true"></div>
+            <img class="inst-marca" src="insignia.png" alt="" aria-hidden="true">
+            <div class="inst-cuerpo" data-ajustar="1.6">
+              <div class="inst-cab"><span class="inst-ico">${vis ? '🔭' : '🧭'}</span>
+                <div><small>Colegio Marina de Chile</small><h2>${vis ? 'Nuestra Visión' : 'Nuestra Misión'}</h2></div></div>
+              <h3 class="inst-lema">${esc(f.titulo)}</h3>
+              ${claves.length ? `<div class="inst-claves">${claves.map((c, k) => `<span style="--k:${k}">${esc(c)}</span>`).join('')}</div>` : ''}
+              <p class="inst-texto">${resaltar(f.texto)}</p>
+            </div></div>`;
         }
-        // 🏫 Sellos educativos: una tarjeta por sello con su ícono
+        // 🏫 Sellos educativos: el timón del escudo al centro y los sellos alrededor, como medallas numeradas
         if (f.destacado === 'sellos') {
-          return `<div class="ph inst-sellos n${f.sellos.length}" data-seg="20">
-            <div class="sellos-cabeza"><img src="insignia.png" alt=""><div><small>Lo que nos identifica</small><h2>Nuestros sellos educativos</h2></div></div>
-            <div class="sellos-grid" data-ajustar="1.5">${f.sellos.map((s, k) => `<div class="sello-card" style="--k:${k}">
-              <span class="sello-ico">${esc(s.icono || '⭐')}</span><b>${esc(s.titulo || '')}</b><p>${esc(s.texto || '')}</p></div>`).join('')}</div></div>`;
+          const lado = (lista, desde) => lista.map((s, k) => `<div class="sello-card" style="--k:${desde + k}">
+              <span class="sello-num">${String(desde + k + 1).padStart(2, '0')}</span>
+              <span class="sello-ico">${esc(s.icono || '⭐')}</span>
+              <div class="sello-txt"><b>${esc(s.titulo || '')}</b><p>${esc(s.texto || '')}</p></div></div>`).join('');
+          const mitad = Math.ceil(f.sellos.length / 2);
+          return `<div class="ph inst-sellos n${f.sellos.length}" data-seg="22">
+            <div class="inst-rayos" aria-hidden="true"></div>
+            <div class="sellos-cuerpo" data-ajustar="1.5">
+              <div class="sellos-col">${lado(f.sellos.slice(0, mitad), 0)}</div>
+              <div class="sellos-centro"><div class="sellos-timon"><img src="insignia.png" alt=""></div>
+                <small>Lo que nos identifica</small><h2>Nuestros sellos</h2></div>
+              <div class="sellos-col">${lado(f.sellos.slice(mitad), mitad)}</div>
+            </div></div>`;
         }
         // 👥 Conoce al equipo de gestión (de a 4)
         if (f.destacado === 'equipo') {
@@ -1146,10 +1186,10 @@
     const ins = institucional(ajustes(data));
     const out = [];
     if (ins.activo) {
-      // los sellos van de a 2 por imagen: así la letra se lee bien desde lejos
+      // los sellos van alrededor del timón, hasta 4 por imagen
       const ss = ins.sellos.filter(s => s.titulo || s.texto);
-      for (let k = 0; k < ss.length; k += 2) {
-        out.push({ destacado: 'sellos', titulo: 'Sellos ' + k, texto: JSON.stringify(ss.slice(k, k + 2)), url: '', sellos: ss.slice(k, k + 2) });
+      for (let k = 0; k < ss.length; k += 4) {
+        out.push({ destacado: 'sellos', titulo: 'Sellos ' + k, texto: JSON.stringify(ss.slice(k, k + 4)), url: '', sellos: ss.slice(k, k + 4) });
       }
       ['vision', 'mision'].forEach(k => { if (ins[k].texto) out.push({ destacado: 'inst', clave: k, titulo: ins[k].lema, texto: ins[k].texto, url: '' }); });
     }
